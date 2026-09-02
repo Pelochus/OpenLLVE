@@ -1,0 +1,27 @@
+[package]
+name = "openllve-core"
+version = "0.1.0"
+edition = "2024"
+authors = ["OpenLLVE Contributors"]
+description = "High-performance agnostic core for real-time low-light video enhancement benchmarking"
+license = "MIT"
+
+[lib]
+name = "openllve_core"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+default = ["std"]
+std = []
+ffi = ["std"]
+
+[dependencies]
+thiserror = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "inference_bench"
+harness = false
+
