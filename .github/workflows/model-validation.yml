@@ -1,0 +1,37 @@
+name: Model Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-model:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install TensorFlow
+        run: pip install tensorflow
+
+      - name: Validate TensorFlow Lite Models
+        run: |
+          for model in app/platforms/android/src/main/assets/models/*.tflite; do
+            echo "Validating model: $model"
+            python -c "
+import tensorflow as tf
+model = tf.lite.Interpreter(model_path='$model')
+model.allocate_tensors()
+input_details = model.get_input_details()
+output_details = model.get_output_details()
+print('Model input details:', input_details)
+print('Model output details:', output_details)
+            "
+          done
