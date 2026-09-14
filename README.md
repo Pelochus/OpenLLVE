@@ -33,7 +33,7 @@ gradlew.bat assembleDebug
 On macOS/Linux:
 
 ```text
-./gradlew.sh assembleDebug
+./gradlew assembleDebug
 ```
 
 ### Rust core
