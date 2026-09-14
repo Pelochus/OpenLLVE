@@ -1,6 +1,6 @@
+use super::InferenceStrategy;
 use crate::error::{CoreError, Result};
 use crate::filters::FrameBlendFilter;
-use super::InferenceStrategy;
 
 /// Strategy B: LLVE Temporal native (stateful sequence model).
 /// It owns temporal state and may optionally accept a raw-vs-output blend topping,
@@ -33,7 +33,9 @@ impl Default for LlveTemporalStrategy {
 impl InferenceStrategy for LlveTemporalStrategy {
     fn process(&mut self, input: &[f32]) -> Result<Vec<f32>> {
         if input.is_empty() {
-            return Err(CoreError::InvalidParameter("Input buffer is empty".to_string()));
+            return Err(CoreError::InvalidParameter(
+                "Input buffer is empty".to_string(),
+            ));
         }
 
         let mut processed = input.to_vec();

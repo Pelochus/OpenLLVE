@@ -50,6 +50,8 @@ mod tests {
         let result = blender.apply(&raw, &enh).unwrap();
         // 0.8 * 10.0 + 0.2 * 0.0 = 8.0
         // 0.8 * 0.0 + 0.2 * 10.0 = 2.0
-        assert_eq!(result, vec![8.0, 2.0]);
+        // f32 arithmetic is not exact, so compare with a tolerance.
+        assert!((result[0] - 8.0).abs() < 1e-4);
+        assert!((result[1] - 2.0).abs() < 1e-4);
     }
 }

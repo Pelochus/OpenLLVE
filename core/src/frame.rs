@@ -1,4 +1,4 @@
-/// Abstraction for zero-copy native frame handles across platforms 
+/// Abstraction for zero-copy native frame handles across platforms
 /// (e.g. AHardwareBuffer on Android, CVPixelBuffer on iOS).
 pub struct NativeFrameHandle {
     width: u32,

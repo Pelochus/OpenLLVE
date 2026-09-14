@@ -1,6 +1,4 @@
-use openllve_core::{
-    BenchmarkMetrics, InferenceStrategy, LlieStrategy, LlveTemporalStrategy, NativeFrameHandle,
-};
+use openllve_core::{BenchmarkMetrics, InferenceStrategy, LlieStrategy, LlveTemporalStrategy, NativeFrameHandle};
 
 #[test]
 fn test_integration_pipeline_llie() {

@@ -1,6 +1,6 @@
+use super::InferenceStrategy;
 use crate::error::{CoreError, Result};
 use crate::filters::{EwmaFilter, FrameBlendFilter};
-use super::InferenceStrategy;
 
 /// Strategy A: LLIE (static frame enhancer) with optional temporal toppings.
 /// This is the place where EWMA smoothing can be attached, but not required.
@@ -39,7 +39,9 @@ impl Default for LlieStrategy {
 impl InferenceStrategy for LlieStrategy {
     fn process(&mut self, input: &[f32]) -> Result<Vec<f32>> {
         if input.is_empty() {
-            return Err(CoreError::InvalidParameter("Input buffer is empty".to_string()));
+            return Err(CoreError::InvalidParameter(
+                "Input buffer is empty".to_string(),
+            ));
         }
 
         let mut processed = input.to_vec();

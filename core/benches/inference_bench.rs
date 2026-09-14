@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use openllve_core::{InferenceStrategy, LlieStrategy, LlveTemporalStrategy};
 
 fn bench_strategies(c: &mut Criterion) {
