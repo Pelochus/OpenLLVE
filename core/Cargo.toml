@@ -10,11 +10,6 @@ license = "MIT"
 name = "openllve_core"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[features]
-default = ["std"]
-std = []
-ffi = ["std"]
-
 [dependencies]
 thiserror = "1.0"
 
