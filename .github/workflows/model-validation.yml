@@ -2,36 +2,35 @@ name: Model Validation
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   validate-model:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.8'
+          python-version: "3.11"
 
       - name: Install TensorFlow
-        run: pip install tensorflow
+        run: pip install tensorflow-cpu==2.16.1
 
       - name: Validate TensorFlow Lite Models
         run: |
-          for model in app/platforms/android/src/main/assets/models/*.tflite; do
+          shopt -s nullglob
+          model_dir=app/platforms/android/src/main/assets/models
+          models=($model_dir/*.tflite)
+          if [ ${#models[@]} -eq 0 ]; then
+            echo "ERROR: no .tflite models found under $model_dir" >&2
+            exit 1
+          fi
+          for model in "${models[@]}"; do
             echo "Validating model: $model"
-            python -c "
-import tensorflow as tf
-model = tf.lite.Interpreter(model_path='$model')
-model.allocate_tensors()
-input_details = model.get_input_details()
-output_details = model.get_output_details()
-print('Model input details:', input_details)
-print('Model output details:', output_details)
-            "
+            python scripts/validate_model.py "$model"
           done
