@@ -44,4 +44,13 @@ cargo test
 cargo bench
 ```
 
+### Local commit hooks (optional)
+
+```text
+git config core.hooksPath .githooks
+```
+
+Runs `cargo fmt --check` when Rust files are staged and `ktlint` when Kotlin
+files are staged (if ktlint is installed). CI remains the authoritative gate.
+
 See the [architecture documentation](docs/ARCHITECTURE.md) before adding code to a new layer.

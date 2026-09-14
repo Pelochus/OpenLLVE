@@ -1,0 +1,26 @@
+#!/bin/sh
+# Local pre-commit checks for fast feedback.
+# CI (rust-core.yml / android-ci.yml) remains the authoritative gate;
+# this hook only runs cheap checks on staged files.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+
+changed=$(git diff --cached --name-only)
+
+# Rust: format check only when core/ files are staged.
+if printf '%s\n' "$changed" | grep -q '^core/'; then
+  if ! cargo fmt --manifest-path core/Cargo.toml --check; then
+    echo "pre-commit: cargo fmt --check failed; run 'cargo fmt' in core/" >&2
+    exit 1
+  fi
+fi
+
+# Kotlin: ktlint only when .kt files are staged and ktlint is installed.
+kt_files=$(printf '%s\n' "$changed" | grep '\.kt$' || true)
+if [ -n "$kt_files" ] && command -v ktlint >/dev/null 2>&1; then
+  if ! ktlint $kt_files; then
+    echo "pre-commit: ktlint failed; run 'ktlint -format' to fix" >&2
+    exit 1
+  fi
+fi
