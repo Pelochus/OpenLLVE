@@ -1,6 +1,7 @@
 # OpenLLVE Architecture Documentation
 
 ## 1. Overview
+
 OpenLLVE is a high-performance system for real-time low-light video enhancement. The architecture is intentionally split into a reusable Rust core, a Kotlin Multiplatform shared app layer, and host-specific platform adapters so the compute logic is not tied to Android or iOS implementation details.
 
 ## 2. Core Architectural Tenets
@@ -42,22 +43,26 @@ The important architectural rule is that `core/` stays independent from the app 
 ## 4. Platform Boundary
 
 ### Android / Kotlin layer
+
 - capture, UI, camera session control, benchmark orchestration
 - delegates to the Rust core via the generated C ABI
 - manages Android thread dispatch and lifecycle
 
 ### Shared app layer (KMP)
+
 - reusable app behavior and contracts that are not tied to a host SDK
 - benchmark definitions and UI model/state abstractions
 - platform-neutral orchestration glue between the presentation layer and the host platform adapters
 
 ### Rust Core layer
+
 - frame abstraction and buffer compatibility
 - strategy selection (`LlieStrategy`, `LlveTemporalStrategy`)
 - optional post-processing toppings (`EwmaFilter`, `FrameBlendFilter`)
 - benchmark metrics and pure timing logic
 
 ### Why C FFI
+
 The C ABI is the compatibility layer between the app runtime and the Rust core. It avoids coupling the Rust crate to Kotlin or Swift internals while still allowing fast, cross-platform calls for performance-critical paths.
 
 ## 5. Application Technology Responsibilities
@@ -69,6 +74,7 @@ The C ABI is the compatibility layer between the app runtime and the Rust core. 
 - **Rust core**: business logic, enhancement strategies, filters, frame abstractions, telemetry, and the C FFI surface
 
 ## 6. Data Flow
+
 1. **Video Capture**: the host platform captures frames from camera or a test source.
 2. **Frame Hand-off**: frame handles are mapped into a Rust-compatible abstraction.
 3. **Inference Execution**: a strategy runs the enhancement model or temporal logic.
@@ -80,11 +86,13 @@ The C ABI is the compatibility layer between the app runtime and the Rust core. 
 The strategy is responsible for the main inference path. Toppings are optional and should be attached only when they are relevant to the chosen strategy.
 
 ### LLIE strategy
+
 - best for static frame-wise enhancement models
 - may attach `EwmaFilter` for anti-flicker stabilization
 - may also attach `FrameBlendFilter` when blending with the original signal is desired
 
 ### LLVE temporal strategy
+
 - best for stateful or recurrent temporal models
 - may accept a `FrameBlendFilter`
 - usually should not add `EwmaFilter` unless the model explicitly requires it
