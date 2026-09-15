@@ -183,7 +183,7 @@ Record this as an ADR. The alternative (async pipeline inside Rust) buys nothing
 
 The benchmark thesis (CPU vs GPU vs NPU, repeatable runs) requires models to be *identified*, not just loaded. Suggestion:
 
-- Ship models with a manifest (`models/manifest.json` or a Rust `ModelSpec`): name, version, input/output shapes, quantization (INT8/FP16), supported delegates, expected latency class.
+- Ship models with a manifest (`external/models/manifest.json` or a Rust `ModelSpec`): name, version, input/output shapes, quantization (INT8/FP16), supported delegates, expected latency class.
 - `BenchmarkRun` records the model id/version (suggestion #6) — otherwise two runs of "Zero-DCE" with different weights are indistinguishable.
 - This also fixes the `model-validation.yml` design: validation reads the manifest and checks each listed model's tensor signature, failing when the manifest and files disagree.
 

@@ -20,7 +20,7 @@ the app and the benchmark harness always have a real model to test against.
 
 ## Adding more models
 
-New models are pulled in as **external git submodules** under `models/` at the
-repo root — see [`models/README.md`](../../../../models/README.md). After a
+New models are pulled in as **external git submodules** under `external/models/`
+at the repo root — see [`external/models/README.md`](../../../../external/models/README.md). After a
 model is validated upstream, copy its `.tflite` here and record its I/O shape
 and license in this README.

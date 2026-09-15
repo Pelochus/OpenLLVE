@@ -10,7 +10,7 @@ table in sync.
 2. `README.md` — overview + build commands.
 3. `docs/ARCHITECTURE.md` — layering tenets, repo layout, data flow.
 4. `core/README.md` — Rust core modules.
-5. `models/README.md` — model convention (default model + submodules).
+5. `external/models/README.md` — model convention (default model + submodules).
 
 ## Current state
 
@@ -18,7 +18,7 @@ table in sync.
   (error codes, `openllve_abi_version`), metrics (median, f64, warm-up),
   blend semantics fixed, `NativeFrameHandle` validated.
 - **Models**: default `zero-dce-int8.tflite` in app assets; external
-  submodules convention under `models/`.
+  submodules convention under `external/models/`.
 - **Android app**: compiles as a stub (Compose UI + placeholder pipeline using
   Kotlin `LlieEwmaEnhancer`). **No JNI/Rust wiring** (reverted — premature).
 - **CI**: small `android-ci.yml` (lint, test, assemble) + `rust-core.yml`
@@ -26,7 +26,7 @@ table in sync.
 
 ## Do next (in order)
 
-1. [ ] **P1.0 — Architecture decision: where does inference live?**
+1. [x] **P1.0 — Architecture decision: where does inference live?** ✅ 2026-09-15 — `docs/ADR-0001-inference-runner.md` written; Option A accepted (in-Rust `ModelRunner` via `tflite-c-rs`, CPU delegate; `LiteRTInferenceEngine.kt` to be deleted in P1.2). Follow-up: P1.2 implements the runner per the ADR.
    - Write a short ADR in `docs/` (e.g. `docs/ADR-0001-inference-runner.md`).
    - Option A (recommended): in-Rust runner via `tflite-c-rs` (CPU delegate) —
      satisfies the "cargo bench on a PC" tenet, enables PC-side benchmarking,
@@ -41,7 +41,7 @@ table in sync.
      tensor mapping, CPU delegate) and run it in `VideoPipelineManager`.
    - Goal: frame in → enhanced frame out.
    - Model I/O is `(H,W,4) → (H,W,24)` (Zero-DCE: RGB + brightness channel in;
-     8×RGB curve params out — apply the curves per `models/README.md` /
+     8×RGB curve params out — apply the curves per `external/models/README.md` /
      raspberrypi/AI_enhance).
 3. [ ] **P1.3 — KMP shared layer.**
    - Create `app/shared/` KMP module: benchmark definitions, UI state
