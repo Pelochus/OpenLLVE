@@ -61,3 +61,5 @@ table in sync.
 
 - Don't build a complex CI pipeline until the app is functional.
 - Keep commits small and scoped (one task per commit).
+- Review `docs/DESIGN_SUGGESTIONS.md` for further improvements where
+  applicable (or defer them if not recommended or too hard/complex).
