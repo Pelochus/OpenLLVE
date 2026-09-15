@@ -1,22 +1,26 @@
-# OpenLLVE Models Documentation
+# OpenLLVE Models (app assets)
 
-This directory contains the TensorFlow Lite models used for low-light video enhancement in the OpenLLVE application. Below are the details regarding the models:
+This directory holds the `.tflite` model files the Android app loads from
+assets. The app is external to model development: it just plugs in a model
+and runs it.
 
-## Model Formats
+## Default test model
 
-- The models are stored in `.tflite` format, which is optimized for mobile and edge devices.
-- Models are quantized to **INT8** or **FP16** to ensure efficient execution on hardware accelerators.
+- **`zero-dce-int8.tflite`** — Zero-DCE (DCE-Net) low-light image enhancement,
+  INT8-quantized. Source: [raspberrypi/AI_enhance](https://github.com/raspberrypi/AI_enhance)
+  (BSD-2-Clause).
+  - Input: `(H, W, 4)` float32 — RGB in `[0, 1]` plus a brightness-guidance
+    channel (default patch 256×256).
+  - Output: `(H, W, 24)` float32 — 8 iterations of per-channel curve
+    parameters.
+  - ~58 KB.
 
-## Usage
+This is the only model committed as a raw file in the main repo. It exists so
+the app and the benchmark harness always have a real model to test against.
 
-- Place your model files in this directory.
-- Ensure that the model names match the expected names in the application code.
-- Refer to the application documentation for details on how to load and utilize these models within the OpenLLVE framework.
+## Adding more models
 
-## Supported Models
-
-- **Zero-DCE**: A model designed for low-light image enhancement.
-- **MBLLEN**: A lightweight model for enhancing video quality in low-light conditions.
-- Additional models may be added in the future as the project evolves.
-
-For any questions or contributions regarding the models, please refer to the main project documentation or contact the project maintainers.
+New models are pulled in as **external git submodules** under `models/` at the
+repo root — see [`models/README.md`](../../../../models/README.md). After a
+model is validated upstream, copy its `.tflite` here and record its I/O shape
+and license in this README.

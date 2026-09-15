@@ -10,17 +10,17 @@ Status of the §5 items after the implementation pass:
 | --- | --- |
 | P0.1 `ffi.rs` edition-2024 + CI gate | ✅ done — `#[unsafe(no_mangle)]`, explicit `unsafe {}` blocks, `# Safety:` docs; pre-existing blend test failure fixed (f32 rounding); `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check` all green |
 | P0.2 Gradle repair | ✅ done — stray root `build.gradle.kts` + fake `gradlew.sh` removed, `include(":core")` dropped, real Gradle wrapper (8.9), plugin pins via `pluginManagement` (AGP 8.5.2, Kotlin 2.0.21), `local.properties` untracked, `gradle.properties` cleaned, manifest fixed (namespace, real `MainActivity`, `res/` with strings/theme/launcher icons), Compose deps added to `app/build.gradle.kts` |
-| P0.3 `model-validation.yml` | ✅ done — fails fast when no `.tflite` models exist, `tensorflow-cpu==2.16.1` pinned, `tf.lite.interpreter` with correct call order, logic in `scripts/validate_model.py`. Note: the job is **intentionally red** until a real model lands (P1.2) |
+| P0.3 `model-validation.yml` | ✅ resolved — **removed by design**: model validation is external to the app (the app just plugs in a model). Default test model `zero-dce-int8.tflite` (Zero-DCE, INT8, from raspberrypi/AI_enhance, BSD-2-Clause) committed in assets; new models are added as external submodules under `models/` (see `models/README.md`) |
 | P1.1–P1.7 | ⬜ remaining — see §5 |
 | P1.8 cbindgen header generation | ⬜ proposed — see §5 |
 | P2.1 CI | ⚠️ partial — clippy/fmt added to `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
 | P2.2 tests | ⬜ remaining |
 | P2.3 benchmarks | ⬜ remaining |
 | P2.4 dependency refresh | ⬜ remaining |
-| P2.5 docs | ⚠️ partial — README build commands fixed; `ARCHITECTURE.md` tree reconciliation + LiteRT/TFLite naming remaining |
+| P2.5 docs | ⚠️ partial — README build commands fixed; `ARCHITECTURE.md` tree reconciled with the actual tree; LiteRT/TFLite naming note remaining |
 | P2.6 cargo hygiene | ✅ done — dead `std`/`ffi` features removed |
 
-Also done outside §5: version-controlled pre-commit hook (`.githooks/pre-commit`: `cargo fmt --check` on staged Rust, optional `ktlint`), and line endings standardized to LF (industry standard).
+Also done outside §5: version-controlled pre-commit hook (`.githooks/pre-commit`: `cargo fmt --check` on staged Rust, optional `ktlint`), line endings standardized to LF (industry standard), `gradlew.bat` removed (no Windows support — Linux/macOS/WSL only), and `*.tflite` added to `.gitattributes` as binary.
 
 ## 1. What this repo is
 
@@ -142,4 +142,4 @@ The docs are clear and good, but the code contradicts them:
 
 ### TL;DR
 
-The repo is a well-documented scaffold whose **build is broken in three independent places** (Rust edition-2024 FFI errors, a broken Gradle setup with no wrapper, and a no-op model-validation job), and whose **core promise — Kotlin calling the Rust core — is not implemented** (the FFI is dead code and the same filter logic is duplicated in Kotlin). The highest-leverage work is: (1) fix `ffi.rs` + Gradle so CI goes green, (2) cross-compile the cdylib and call it from Android, (3) plug in a real LiteRT model so the benchmark measures inference instead of a memcpy.
+The repo is a well-documented scaffold whose **build was broken in three independent places** (Rust edition-2024 FFI errors, a broken Gradle setup with no wrapper, and a no-op model-validation job) — the first two are fixed and the third was **removed by design** in favor of a committed default test model (`zero-dce-int8.tflite`) plus external model submodules under `models/`. The **core promise — Kotlin calling the Rust core — is still not implemented** (the FFI is dead code and the same filter logic is duplicated in Kotlin). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) wire the LiteRT model into the pipeline so the benchmark measures inference instead of a memcpy, (3) align the remaining P1 items (blend semantics, metrics, FFI hardening, cbindgen).

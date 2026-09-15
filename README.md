@@ -24,13 +24,7 @@ OpenLLVE is currently a proof-of-concept architecture and early implementation. 
 
 ## Getting Started
 
-### Android
-
-```text
-gradlew.bat assembleDebug
-```
-
-On macOS/Linux:
+### Android (Linux / macOS / WSL)
 
 ```text
 ./gradlew assembleDebug

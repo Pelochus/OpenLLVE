@@ -22,19 +22,19 @@ OpenLLVE/
 │   │   │   └── src/
 │   │   └── ios/                   # Future iOS SwiftUI / AVFoundation layer (empty placeholder for now)
 │   └── build.gradle.kts
+├── models/                        # External model submodules (see models/README.md)
 ├── docs/
+├── scripts/                      # Local dev tooling (not part of CI)
 ├── .github/
 ├── .gitignore
 ├── .editorconfig
 ├── .gitattributes
 ├── .rustfmt.toml
 ├── .cargo/
+├── gradle/
 ├── README.md
-├── build.gradle.kts
 ├── settings.gradle.kts
 ├── gradlew
-├── gradlew.bat
-├── local.properties
 └── gradle.properties
 ```
 
