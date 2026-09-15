@@ -137,6 +137,25 @@ The docs are clear and good, but the code contradicts them:
 5. **Docs**: fix README build commands (only `gradlew.sh` exists today), reconcile the repo-layout tree in `ARCHITECTURE.md` with the actual tree (it lists `gradlew`, `gradlew.bat`, `app/build.gradle.kts` under `app/`), and standardize LiteRT vs TFLite naming.
 6. **Cargo hygiene**: drop the dead `std`/`ffi` features or actually gate `ffi.rs` behind the `ffi` feature; keep `Cargo.lock` committed (fine for reproducible builds).
 
+### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md` (not previously tracked)
+
+Ranked easiest/most-recommended → hardest/least-useful right now. Nothing here
+blocks the build; P3.4–P3.7 assume P1.2 (a real model in the pipeline) is
+landing, and P3.8–P3.10 are explicitly deferred.
+
+| # | Item (`DESIGN_SUGGESTIONS.md` §) | Effort | Verdict | Notes |
+| --- | --- | --- | --- | --- |
+| P3.1 | Model manifest (§10) | easy | **clear win** | `manifest.json` (or a Rust `ModelSpec`) next to each model: id, version, in/out shapes, quantization, supported delegates. Pure data + a tiny loader; makes benchmark runs reproducible and gives model validation something to check against. |
+| P3.2 | Threading model ADR (§9) | easy (doc only) | **clear win** | Short ADR: Rust core stays synchronous (one `process` per frame); the platform owns capture/process/render threads; bounded frame queue with drop-oldest when processing falls behind. Zero code; records the decision the FFI and benchmark hang on. |
+| P3.3 | Crate additions (§13) | easy | enabler | Add each crate when its paired item lands: `serde`/`serde_json` → P3.6, `proptest` → P3.8, `bytemuck` → P3.4; `miri` as a CI job later; `static_assertions` optional. |
+| P3.4 | `Frame` first-class type (§2) | easy–med | **clear win**, foundational | Replace flat `&[f32]` with `Frame { width, height, channels, stride, data, format }`; honest FFI signature `openllve_process_frame(strategy, w, h, channels, stride, in, out)`. Dimension mismatches become checked errors; finally gives `NativeFrameHandle` a job. Do together with P3.5. |
+| P3.5 | Out-buffer API (§3) | easy | **clear win** | `process(input: &Frame, output: &mut Frame)` instead of returning `Vec<f32>` per frame (~36 MB churn/frame at 1080p); platform double-buffers two pre-allocated frames. Removes allocator noise from the benchmark hot path. Do together with P3.4. |
+| P3.6 | `BenchmarkRun` record + persistence (§6) | med | **clear win** | `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples, latencies }` with `median`/`p99`/`fps`/`thermal_drift`; persist runs as JSON/CSV via serde so they are comparable and reproducible. Needs P3.1; builds on P1.6 (done). |
+| P3.7 | `Pipeline` + `TemporalMode` rename (§12) | med | churn — do once | "Strategy" conflates model family and temporal mode; rename to `Pipeline` + `TemporalMode { Stateless, Recurrent }`. Mechanical but touches core, FFI, docs, and Kotlin; fold into the P3.4/P3.5 rework to avoid double churn. |
+| P3.8 | Property / golden / FFI-fuzz tests (§11) | med | partial now | proptest for filter invariants (EWMA stays within `[min,max]` per pixel, blend is a convex combination) can start now; golden-frame hashes and FFI fuzzing/miri need P1.2 first (real model + FFI wiring). |
+| P3.9 | KMP adapter contracts (§8) | med–high | premature | `VideoSource`/`FrameSink`/`AcceleratorProvider`/`BenchmarkContract` interfaces + shared value types. Only worth it if iOS/KMP actually happens; P1.3 covers the minimal shared layer for now. |
+| P3.10 | Hardware-buffer lock protocol (§4) | med–high | defer | AHardwareBuffer/CVPixelBuffer lock-before / unlock-after contract so "zero-copy" is real. Only bites once camera frames flow; adds unsafe-boundary complexity. Defer until P1.1/P1.2 are done. |
+
 ## 6. What's already good
 
 - Clear, consistent architectural docs (`ARCHITECTURE.md`, `BENCHMARK_METHODOLOGY.md`, per-module READMEs) with explicit tenets and data flow.
@@ -149,4 +168,4 @@ The docs are clear and good, but the code contradicts them:
 
 ### TL;DR
 
-The repo is a well-documented scaffold whose **build was broken in three independent places** (Rust edition-2024 FFI errors, a broken Gradle setup with no wrapper, and a no-op model-validation job) — the first two are fixed and the third was **removed by design** in favor of a committed default test model (`zero-dce-int8.tflite`) plus external model submodules under `external/models/`. The **core promise — Kotlin calling the Rust core — is still not implemented** (the FFI is dead code and the same filter logic is duplicated in Kotlin). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) wire the LiteRT model into the pipeline so the benchmark measures inference instead of a memcpy, (3) align the remaining P1 items (blend semantics, metrics, FFI hardening, cbindgen).
+The repo is a well-documented scaffold whose **build was broken in three independent places** (Rust edition-2024 FFI errors, a broken Gradle setup with no wrapper, and a no-op model-validation job) — the first two are fixed and the third was **removed by design** in favor of a committed default test model (`zero-dce-int8.tflite`) plus external model submodules under `external/models/`. The **core promise — Kotlin calling the Rust core — is still not implemented** (the FFI is dead code and the same filter logic is duplicated in Kotlin). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) wire the LiteRT model into the pipeline so the benchmark measures inference instead of a memcpy, (3) align the remaining P1 items (blend semantics, metrics, FFI hardening, cbindgen). The design-level follow-ups from `DESIGN_SUGGESTIONS.md` that were never tracked are now ranked as **P3** in §5 (P3.1–P3.10).
