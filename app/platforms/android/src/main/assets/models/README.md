@@ -1,8 +1,14 @@
 # OpenLLVE Models (app assets)
 
-This directory holds the `.tflite` model files the Android app loads from
-assets. The app is external to model development: it just plugs in a model
-and runs it.
+This directory is where the Android app loads `.tflite` model files from
+assets. The files here are **symlinks** to the single source of truth in
+[`external/models/`](../../../../../../external/models/README.md) — the app
+does not keep its own copies. Gradle's `mergeAssets` task follows symlinks
+(`copyFollowsLinks` defaults to `true`), so the packaged APK contains the real
+model bytes.
+
+The app is external to model development: it just plugs in a model and runs
+it.
 
 ## Default test model
 
@@ -15,12 +21,15 @@ and runs it.
     parameters.
   - ~58 KB.
 
-This is the only model committed as a raw file in the main repo. It exists so
-the app and the benchmark harness always have a real model to test against.
+This is the only model committed to the repo (as a raw file in
+`external/models/` and a symlink here). It exists so the app and the
+benchmark harness always have a real model to test against.
 
 ## Adding more models
 
-New models are pulled in as **external git submodules** under `external/models/`
-at the repo root — see [`external/models/README.md`](../../../../external/models/README.md). After a
-model is validated upstream, copy its `.tflite` here and record its I/O shape
+New models are pulled in as **external git submodules** under
+`external/models/` — see
+[`external/models/README.md`](../../../../../../external/models/README.md).
+`scripts/add-model-submodule.sh` adds the submodule and creates the symlink
+here automatically. After a model is validated upstream, record its I/O shape
 and license in this README.

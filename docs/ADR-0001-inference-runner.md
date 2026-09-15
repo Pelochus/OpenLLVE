@@ -99,6 +99,9 @@ Rejected.
    selection is a future FFI option (NNAPI on Android, GPU where available).
 5. `cargo test` / `cargo bench` run the real model path on a PC once the
    `model` feature is enabled and `libtensorflowlite_c` is available.
+6. The model file's single source of truth is `external/models/zero-dce-int8.tflite`;
+   the app assets entry is a symlink to it, so PC-side runs load the file
+   directly from that path.
 
 ## Follow-ups
 

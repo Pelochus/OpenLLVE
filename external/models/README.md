@@ -1,14 +1,23 @@
 # OpenLLVE Models
 
-Model files are **external to the application**. OpenLLVE is an engine that
+This directory is the **single source of truth** for all model files.
+Model files are external to the application: OpenLLVE is an engine that
 plugs in a `.tflite` model and runs it — model training, conversion, and
 validation happen in the upstream model repository, not in this repo.
 
+The Android app does **not** store its own copy:
+`app/platforms/android/src/main/assets/models/` contains **symlinks** to the
+files here. Gradle's `mergeAssets` task follows symlinks (`copyFollowsLinks`
+defaults to `true`), so the packaged APK still contains the real model bytes.
+On a PC, the Rust core (`ModelRunner`, see `docs/ADR-0001-inference-runner.md`)
+loads the file directly from this path — no asset machinery needed.
+
 ## Default test model
 
-`app/platforms/android/src/main/assets/models/zero-dce-int8.tflite` is the
-single model committed to this repo so the app and the benchmark harness
-always have something real to run against:
+`external/models/zero-dce-int8.tflite` is the single model committed to this
+repo so the app and the benchmark harness always have something real to run
+against (symlinked into app assets as
+`app/platforms/android/src/main/assets/models/zero-dce-int8.tflite`):
 
 | Property | Value |
 | --- | --- |
@@ -29,12 +38,10 @@ scripts/add-model-submodule.sh <name> <repo-url>
 # e.g. scripts/add-model-submodule.sh mblLEN https://github.com/Lvfeifan/MBLLEN
 ```
 
-After adding the submodule:
+The script adds the submodule and creates the symlink in
+`app/platforms/android/src/main/assets/models/` automatically. Afterwards:
 
 1. Validate the model in its upstream repository (e.g. load it with the
    LiteRT/TFLite Python runtime and check the input/output tensor specs).
-2. Copy the chosen `.tflite` into
-   `app/platforms/android/src/main/assets/models/` and commit it, so the app
-   can load it from assets.
-3. Record the model's I/O shape and license next to the file (see
-   `assets/models/README.md`).
+2. Record the model's I/O shape and license in
+   `app/platforms/android/src/main/assets/models/README.md`.

@@ -17,8 +17,9 @@ table in sync.
 - **Rust core**: compiles; 25 tests green; clippy/fmt clean. FFI hardened
   (error codes, `openllve_abi_version`), metrics (median, f64, warm-up),
   blend semantics fixed, `NativeFrameHandle` validated.
-- **Models**: default `zero-dce-int8.tflite` in app assets; external
-  submodules convention under `external/models/`.
+- **Models**: single source of truth in `external/models/` (default
+  `zero-dce-int8.tflite` as a raw file; new models as submodules); app
+  assets hold symlinks to it.
 - **Android app**: compiles as a stub (Compose UI + placeholder pipeline using
   Kotlin `LlieEwmaEnhancer`). **No JNI/Rust wiring** (reverted — premature).
 - **CI**: small `android-ci.yml` (lint, test, assemble) + `rust-core.yml`
