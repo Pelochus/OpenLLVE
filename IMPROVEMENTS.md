@@ -11,10 +11,16 @@ Status of the §5 items after the implementation pass:
 | P0.1 `ffi.rs` edition-2024 + CI gate | ✅ done — `#[unsafe(no_mangle)]`, explicit `unsafe {}` blocks, `# Safety:` docs; pre-existing blend test failure fixed (f32 rounding); `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check` all green |
 | P0.2 Gradle repair | ✅ done — stray root `build.gradle.kts` + fake `gradlew.sh` removed, `include(":core")` dropped, real Gradle wrapper (8.9), plugin pins via `pluginManagement` (AGP 8.5.2, Kotlin 2.0.21), `local.properties` untracked, `gradle.properties` cleaned, manifest fixed (namespace, real `MainActivity`, `res/` with strings/theme/launcher icons), Compose deps added to `app/build.gradle.kts` |
 | P0.3 `model-validation.yml` | ✅ resolved — **removed by design**: model validation is external to the app (the app just plugs in a model). Default test model `zero-dce-int8.tflite` (Zero-DCE, INT8, from raspberrypi/AI_enhance, BSD-2-Clause) committed in assets; new models are added as external submodules under `models/` (see `models/README.md`) |
-| P1.1–P1.7 | ⬜ remaining — see §5 |
-| P1.8 cbindgen header generation | ⬜ proposed — see §5 |
+| P1.1 wire Rust core into Android | ⬜ remaining — the single highest-value step (cross-compile cdylib, Kotlin `external fun`s, delete `LlieEwmaEnhancer.kt`) |
+| P1.2 integrate a real model | ⬜ remaining — default `zero-dce-int8.tflite` now in assets; wiring it into the pipeline (tensor mapping, delegate axis) remains |
+| P1.3 KMP shared layer | ⬜ remaining — see §5 |
+| P1.4 blend semantics | ✅ done — `llie.rs`/`temporal.rs` now blend the *current* raw frame (matching the documented intent); dead `previous_frame`/`state` fields removed; `LlieStrategy::default()` no longer `unwrap`s; state-leak tests added |
+| P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
+| P1.6 metrics API | ✅ done — `f64` accumulation, `median_latency()`, warm-up exclusion (`with_warmup`, budget restored on `reset`), `warmup_count()`; FFI getters now `f64` |
+| P1.7 FFI hardening | ✅ done — `OpenLlveError` codes (not just `bool`), `openllve_abi_version()`, Rust type renamed `OpenLlveStrategyEnum` → `OpenLlveStrategy` to match the C typedef; C header updated (pure C, no C++ guard) |
+| P1.8 cbindgen header generation | ✅ evaluated — cbindgen 0.29.4 parses edition-2024 `#[unsafe(no_mangle)]` fine, but its output uses C++ constructs (`constexpr`, `extern "C"`, `uintptr_t`), omits the `OpenLlveError` enum + include guard, so the hand-maintained pure-C header stays the source of truth |
 | P2.1 CI | ⚠️ partial — clippy/fmt added to `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
-| P2.2 tests | ⬜ remaining |
+| P2.2 tests | ✅ done — FFI round-trip tests (strategy/blend/metrics incl. error codes), metrics edge cases (empty, 1 sample, p99 with ties, warm-up reset), blend-uses-current-frame tests; `cargo test` 25 passed |
 | P2.3 benchmarks | ⬜ remaining |
 | P2.4 dependency refresh | ⬜ remaining |
 | P2.5 docs | ⚠️ partial — README build commands fixed; `ARCHITECTURE.md` tree reconciled with the actual tree; LiteRT/TFLite naming note remaining |
