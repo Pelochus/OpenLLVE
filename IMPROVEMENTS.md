@@ -2,13 +2,33 @@
 
 *Generated from a full read of the repo (Rust core, Android app, docs, CI, build files) plus targeted web verification.*
 
+## 0. Implementation status
+
+Status of the §5 items after the implementation pass:
+
+| Item | Status |
+| --- | --- |
+| P0.1 `ffi.rs` edition-2024 + CI gate | ✅ done — `#[unsafe(no_mangle)]`, explicit `unsafe {}` blocks, `# Safety:` docs; pre-existing blend test failure fixed (f32 rounding); `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check` all green |
+| P0.2 Gradle repair | ✅ done — stray root `build.gradle.kts` + fake `gradlew.sh` removed, `include(":core")` dropped, real Gradle wrapper (8.9), plugin pins via `pluginManagement` (AGP 8.5.2, Kotlin 2.0.21), `local.properties` untracked, `gradle.properties` cleaned, manifest fixed (namespace, real `MainActivity`, `res/` with strings/theme/launcher icons), Compose deps added to `app/build.gradle.kts` |
+| P0.3 `model-validation.yml` | ✅ done — fails fast when no `.tflite` models exist, `tensorflow-cpu==2.16.1` pinned, `tf.lite.interpreter` with correct call order, logic in `scripts/validate_model.py`. Note: the job is **intentionally red** until a real model lands (P1.2) |
+| P1.1–P1.7 | ⬜ remaining — see §5 |
+| P1.8 cbindgen header generation | ⬜ proposed — see §5 |
+| P2.1 CI | ⚠️ partial — clippy/fmt added to `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
+| P2.2 tests | ⬜ remaining |
+| P2.3 benchmarks | ⬜ remaining |
+| P2.4 dependency refresh | ⬜ remaining |
+| P2.5 docs | ⚠️ partial — README build commands fixed; `ARCHITECTURE.md` tree reconciliation + LiteRT/TFLite naming remaining |
+| P2.6 cargo hygiene | ✅ done — dead `std`/`ffi` features removed |
+
+Also done outside §5: version-controlled pre-commit hook (`.githooks/pre-commit`: `cargo fmt --check` on staged Rust, optional `ktlint`), and line endings standardized to LF (industry standard).
+
 ## 1. What this repo is
 
 **OpenLLVE** (*Open Low-Light Video Enhancement*) is an early proof-of-concept for a real-time, on-device low-light video enhancement engine with a CPU/GPU/NPU benchmark harness. The intended layering is:
 
 | Layer | Status |
 | --- | --- |
-| `core/` — Rust crate + C FFI (strategies, filters, metrics) | Real code, but **does not compile** (see §2.1) |
+| `core/` — Rust crate + C FFI (strategies, filters, metrics) | Real code; **compiles and passes CI** (P0.1 done — see §0; §2.1 documents the original failure) |
 | `app/shared/` — KMP shared app logic | **Empty** (READMEs only) |
 | `app/platforms/android/` — Kotlin/Compose app | Stubs: placeholder engine, no-op UI, no camera wiring, **no FFI calls** |
 | `app/platforms/ios/` — iOS | Placeholder README only |
@@ -99,6 +119,7 @@ The docs are clear and good, but the code contradicts them:
 5. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used.
 6. **Metrics API**: add `median()` (promised by `BENCHMARK_METHODOLOGY.md`), consider `f64` accumulation, and add warm-up-frame exclusion support.
 7. **FFI hardening**: return error codes (not just `bool`), add an ABI version function, document single-threaded ownership of strategy handles, and match C typedef names to Rust type names.
+8. **Generate the C header with cbindgen**: `cbindgen` emits `openllve_core.h` from the `#[unsafe(no_mangle)] extern "C"` functions in `ffi.rs`, replacing the hand-maintained header and keeping it in sync. Setup: `cargo install cbindgen` (verify the version parses the edition-2024 `#[unsafe(no_mangle)]` syntax — 0.26+), add `[package.metadata.cbindgen]` to `core/Cargo.toml`, run `cbindgen core -h include/openllve_core.h` (wire into CI or the pre-commit hook). Note: cbindgen only generates the *header* — `ffi.rs` itself stays hand-written, and the Kotlin side still needs hand-written `external fun`s (or JNA).
 
 ### P2 — Quality, tests, and process
 
