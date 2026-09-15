@@ -26,26 +26,35 @@ table in sync.
 
 ## Do next (in order)
 
-1. [ ] **P1.2 — Make the app actually functional (highest priority).**
-   - Wire `zero-dce-int8.tflite` into `LiteRTInferenceEngine.kt`: load from
-     assets, map input/output tensors (CPU delegate).
-   - Make `VideoPipelineManager.processFrame` run the model on a frame.
-   - Goal: frame in → enhanced frame out, runnable on device/emulator.
+1. [ ] **P1.0 — Architecture decision: where does inference live?**
+   - Write a short ADR in `docs/` (e.g. `docs/ADR-0001-inference-runner.md`).
+   - Option A (recommended): in-Rust runner via `tflite-c-rs` (CPU delegate) —
+     satisfies the "cargo bench on a PC" tenet, enables PC-side benchmarking,
+     `LiteRTInferenceEngine.kt` disappears, Kotlin only calls the FFI.
+   - Option B: platform-side LiteRT in Kotlin — simpler short-term, but
+     violates tenet #2 and blocks PC benchmarking.
+   - P1.2 follows whichever option is chosen.
+2. [ ] **P1.2 — Integrate the model where the ADR says (highest priority).**
+   - If Option A: add a `ModelRunner` in the Rust core loading
+     `zero-dce-int8.tflite`; strategies call it; benchmark the model path.
+   - If Option B: wire the model into `LiteRTInferenceEngine.kt` (assets,
+     tensor mapping, CPU delegate) and run it in `VideoPipelineManager`.
+   - Goal: frame in → enhanced frame out.
    - Model I/O is `(H,W,4) → (H,W,24)` (Zero-DCE: RGB + brightness channel in;
      8×RGB curve params out — apply the curves per `models/README.md` /
      raspberrypi/AI_enhance).
-2. [ ] **P1.3 — KMP shared layer.**
+3. [ ] **P1.3 — KMP shared layer.**
    - Create `app/shared/` KMP module: benchmark definitions, UI state
      contracts, strategy/topping config model. (Or soften tenet #1 in docs.)
-3. [ ] **P2.4 — Dependency refresh** in `app/build.gradle.kts`:
+4. [ ] **P2.4 — Dependency refresh** in `app/build.gradle.kts`:
    TFLite 2.12.0 → current, CameraX 1.2.2 → current, Material 1.10.0 → current.
-4. [ ] **P2.1 — CI**: add a ktlint step; add a small release workflow.
-5. [ ] **P2.3 — Benchmarks**: benchmark the *model path* (not memcpy); keep
+5. [ ] **P2.1 — CI**: add a ktlint step; add a small release workflow.
+6. [ ] **P2.3 — Benchmarks**: benchmark the *model path* (not memcpy); keep
    warm-up exclusion; record device/thermal/battery metadata per run.
-6. [ ] **P1.1 — Android native (Rust) wiring** (re-attempt once the app is
+7. [ ] **P1.1 — Android native (Rust) wiring** (re-attempt once the app is
    functional and the NDK is available): cross-compile cdylib (cargo-ndk),
    Kotlin `external fun`s, C JNI glue, package `.so` into the APK.
-7. [ ] **P2.5 — Docs**: standardize LiteRT/TFLite naming.
+8. [ ] **P2.5 — Docs**: standardize LiteRT/TFLite naming.
 
 ## Notes
 
