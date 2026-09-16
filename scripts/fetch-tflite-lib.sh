@@ -25,26 +25,32 @@ os="$(uname -s)"
 arch="$(uname -m)"
 
 case "$os" in
-  Linux)
-    case "$arch" in
-      x86_64) asset="tflite_c_v${version}_linux_amd64.tar.gz" ;;
-      aarch64) asset="tflite_c_v${version}_linux_arm64.tar.gz" ;;
-      *) echo "error: unsupported architecture $arch" >&2; exit 1 ;;
-    esac
-    lib_name="libtensorflowlite_c.so"
-    ;;
-  Darwin)
-    case "$arch" in
-      x86_64) asset="tflite_c_v${version}_darwin_amd64.tar.gz" ;;
-      arm64) asset="tflite_c_v${version}_darwin_arm64.tar.gz" ;;
-      *) echo "error: unsupported architecture $arch" >&2; exit 1 ;;
-    esac
-    lib_name="libtensorflowlite_c.dylib"
-    ;;
+Linux)
+  case "$arch" in
+  x86_64) asset="tflite_c_v${version}_linux_amd64.tar.gz" ;;
+  aarch64) asset="tflite_c_v${version}_linux_arm64.tar.gz" ;;
   *)
-    echo "error: unsupported OS $os (desktop fetch supports Linux/macOS)" >&2
+    echo "error: unsupported architecture $arch" >&2
     exit 1
     ;;
+  esac
+  lib_name="libtensorflowlite_c.so"
+  ;;
+Darwin)
+  case "$arch" in
+  x86_64) asset="tflite_c_v${version}_darwin_amd64.tar.gz" ;;
+  arm64) asset="tflite_c_v${version}_darwin_arm64.tar.gz" ;;
+  *)
+    echo "error: unsupported architecture $arch" >&2
+    exit 1
+    ;;
+  esac
+  lib_name="libtensorflowlite_c.dylib"
+  ;;
+*)
+  echo "error: unsupported OS $os (desktop fetch supports Linux/macOS)" >&2
+  exit 1
+  ;;
 esac
 
 tmp="$(mktemp -d)"

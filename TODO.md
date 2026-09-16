@@ -59,8 +59,23 @@ table in sync.
      into the flatbuffer instead. Verified bit-exact vs upstream+resize under
      LiteRT; the Rust pipeline matches the upstream Python reference (max diff
      ~0.008, XNNPACK-vs-reference kernel).
-   - Follow-up: verify on real (non-synthetic) frames; re-confirm the
-     global-mean brightness channel vs upstream's 4×4 bilinear downscale.
+   - Follow-ups:
+     - Verify on real (non-synthetic) frames; re-confirm the global-mean
+       brightness channel vs upstream's 4×4 bilinear downscale.
+     - **ResizeInputTensor segfault (known workaround, not a fix):** the
+       upstream model ships a static `[1,1,1,4]` input and is meant to be
+       resized at runtime, but `TfLiteInterpreterResizeInputTensor` segfaults
+       in the TFLite C library for this graph (root cause unidentified). The
+       committed `zero-dce-int8.tflite` bakes `[1,256,256,4]` into the
+       flatbuffer instead (in-place patch, verified bit-exact vs
+       upstream+resize). TODO: re-export the model with the correct static
+       shape, or root-cause the resize segfault.
+     - **Performance scope:** the Rust `ModelRunner` runs the TFLite C
+       *reference* kernel (`tflite-c-rs` doesn't expose XNNPACK), so its
+       numbers are for PC benchmarking/validation only, not production
+       throughput. On Android the real runtime uses XNNPACK/GPU/NPU (~5×
+       faster). The model is a 256×256-patch network: real-time at native
+       patch size, but tiling to 720p (≈18 patches) is the dominant cost.
 4. [x] **P3.7 — Rename `Strategy` → `Pipeline` + `TemporalMode` (done with P1.2).** ✅ 2026-09-16
    - Renamed `InferenceStrategy` → `Pipeline`, `LlieStrategy` → `LliePipeline`,
      `LlveTemporalStrategy` → `LlveTemporalPipeline`, and added

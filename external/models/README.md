@@ -46,6 +46,11 @@ Frames larger than 256×256 are handled by the pipeline itself: it tiles them
 into 256×256 patches with 16 px overlap (reflect padding at edges, linear-ramp
 reassembly), mirroring the upstream `network.py`.
 
+> **Known workaround, not a fix.** The resize segfault's root cause is not yet
+> identified. The in-place flatbuffer patch is a workaround. Follow-up: either
+> re-export the model with the correct static input shape, or root-cause the
+> `TfLiteInterpreterResizeInputTensor` segfault (tracked in `TODO.md`, P1.2).
+
 `zero-dce-int8-upstream.tflite` keeps the **original** 1×1×1 file (byte
 identical to upstream) for provenance. It only works with runtimes that
 support `ResizeInputTensor` (e.g. the LiteRT Python runtime); the Rust core
