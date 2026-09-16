@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.OpenLLVE" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+    <!-- Material 3 base theme for the activity. The Compose UI applies the
+         dynamic Material You color scheme at runtime (see OpenLLVETheme). -->
+    <style name="Theme.OpenLLVE" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>
