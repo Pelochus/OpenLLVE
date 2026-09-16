@@ -7,6 +7,6 @@ pub mod strategies;
 
 pub use error::{CoreError, Result};
 pub use filters::{EwmaFilter, FrameBlendFilter};
-pub use frame::NativeFrameHandle;
+pub use frame::{Frame, FrameFormat, FrameRef, NativeFrameHandle, OwnedFrame};
 pub use metrics::BenchmarkMetrics;
 pub use strategies::{InferenceStrategy, LlieStrategy, LlveTemporalStrategy};

@@ -25,40 +25,54 @@ enum OpenLlveError {
     OPENLLVE_ERROR_INTERNAL = 4
 };
 
+// Frame buffers are described by width/height/channels plus a stride in
+// BYTES per row (a multiple of 4, at least width*channels*4) and a pointer
+// to 32-bit float data holding at least stride*height bytes.
+
 // Strategy construction
 OpenLlveStrategy* openllve_strategy_new_llie(void);
 OpenLlveStrategy* openllve_strategy_new_temporal(void);
 void openllve_strategy_free(OpenLlveStrategy* strategy);
 
-// Strategy execution
-int32_t openllve_strategy_process(
+// Strategy execution. Input and output frames are described independently
+// (a model may change the channel count, e.g. Zero-DCE maps 4 channels to 24).
+int32_t openllve_process_frame(
     OpenLlveStrategy* strategy,
-    const float* input_data,
-    size_t input_len,
-    float* output_data,
-    size_t output_len
+    uint32_t in_width,
+    uint32_t in_height,
+    uint32_t in_channels,
+    size_t in_stride,
+    const float* in_data,
+    uint32_t out_width,
+    uint32_t out_height,
+    uint32_t out_channels,
+    size_t out_stride,
+    float* out_data
 );
 
 // Optional toppings
 EwmaFilter* openllve_ewma_filter_new(float alpha);
 int32_t openllve_ewma_filter_apply(
     EwmaFilter* filter,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels,
+    size_t stride,
     const float* input_data,
-    size_t input_len,
-    float* output_data,
-    size_t output_len
+    float* output_data
 );
 void openllve_ewma_filter_free(EwmaFilter* filter);
 
 FrameBlendFilter* openllve_blend_filter_new(float beta);
 int32_t openllve_blend_filter_apply(
     const FrameBlendFilter* filter,
+    uint32_t width,
+    uint32_t height,
+    uint32_t channels,
+    size_t stride,
     const float* raw_data,
-    size_t raw_len,
     const float* enhanced_data,
-    size_t enhanced_len,
-    float* output_data,
-    size_t output_len
+    float* output_data
 );
 void openllve_blend_filter_free(FrameBlendFilter* filter);
 

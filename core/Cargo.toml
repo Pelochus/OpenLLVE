@@ -11,6 +11,7 @@ name = "openllve_core"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
+bytemuck = "1.11"
 thiserror = "1.0"
 
 [dev-dependencies]

@@ -47,6 +47,24 @@ core/
 └── Cargo.lock
 ```
 
+## Frame model
+
+All processing operates on validated frame views, not flat slices:
+
+- `FrameRef` — immutable, zero-copy view of a caller-owned buffer (input frames; C `const float*`).
+- `Frame` — mutable, zero-copy view (output frames; C `float*`).
+- `OwnedFrame` — owned, compact frame (no stride padding) for temporal model state.
+
+Frames carry `width`, `height`, `channels`, `stride` (bytes per row, multiple of the element size, at least `width * channels * element_size`) and a `FrameFormat` (currently `F32`). Constructors validate dimensions and buffer size; mismatches between frames are checked errors (`CoreError::BufferDimensionMismatch`), not silent truncation. `bytemuck` provides typed views from raw byte buffers (`Frame::from_bytes` / `FrameRef::from_bytes`).
+
+The processing API writes into a caller-owned output buffer — no per-frame allocation:
+
+```rust
+fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()>;
+```
+
+Platforms pre-allocate two frame buffers and ping-pong them (double buffering). The FFI mirrors this: `openllve_process_frame(strategy, in_w, in_h, in_ch, in_stride, in, out_w, out_h, out_ch, out_stride, out)` with independent input/output dims (a model may change the channel count, e.g. Zero-DCE 4 → 24).
+
 ## Strategy and topping model
 
 The architecture separates the main model strategy from optional post-processing "toppings":

@@ -5,16 +5,21 @@
 //! by a single thread and freed with its matching `*_free` function.
 //! Functions that can fail return an [`OpenLlveError`] code as `i32`
 //! (`0` = success).
+//!
+//! Frames are passed as explicit dimensions plus raw pointers:
+//! `width`, `height`, `channels`, `stride` (bytes per row), and the data
+//! pointer. Dimension mismatches are checked and reported as error codes.
 
 use std::slice;
 
 use crate::error::CoreError;
 use crate::filters::{EwmaFilter, FrameBlendFilter};
+use crate::frame::{Frame, FrameRef};
 use crate::metrics::BenchmarkMetrics;
 use crate::strategies::{InferenceStrategy, LlieStrategy, LlveTemporalStrategy};
 
 /// C ABI version. Bump when the ABI changes in a breaking way.
-pub const OPENLLVE_ABI_VERSION: u32 = 1;
+pub const OPENLLVE_ABI_VERSION: u32 = 2;
 
 /// Error codes returned by the C ABI. `0` means success.
 #[repr(C)]
@@ -98,48 +103,66 @@ pub unsafe extern "C" fn openllve_strategy_free(strategy: *mut OpenLlveStrategy)
     }
 }
 
-/// Processes a frame with the given strategy.
+/// Processes a frame with the given strategy, writing the result into the
+/// caller-owned output buffer.
 ///
-/// Returns `0` on success, otherwise an [`OpenLlveError`] code. Only the
-/// first `input_len` elements of `output_data` are written.
+/// Input and output frames are described independently (the model may change
+/// the channel count, e.g. Zero-DCE maps 4 channels to 24).
+///
+/// Returns `0` on success, otherwise an [`OpenLlveError`] code.
 ///
 /// # Safety
 /// `strategy` must be a valid, non-null strategy handle owned by the calling
-/// thread. `input_data` must be non-null, aligned, and valid for reads of at
-/// least `input_len` f32 elements; `output_data` must be non-null, aligned,
-/// and valid for writes of at least `input_len` f32 elements (`output_len`
-/// must be >= `input_len`).
+/// thread. `in_data` must be non-null, aligned, and valid for reads of at
+/// least `in_stride * in_height` bytes; `out_data` must be non-null, aligned,
+/// and valid for writes of at least `out_stride * out_height` bytes.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn openllve_strategy_process(
+pub unsafe extern "C" fn openllve_process_frame(
     strategy: *mut OpenLlveStrategy,
-    input_data: *const f32,
-    input_len: usize,
-    output_data: *mut f32,
-    output_len: usize,
+    in_width: u32,
+    in_height: u32,
+    in_channels: u32,
+    in_stride: usize,
+    in_data: *const f32,
+    out_width: u32,
+    out_height: u32,
+    out_channels: u32,
+    out_stride: usize,
+    out_data: *mut f32,
 ) -> i32 {
-    if strategy.is_null() || input_data.is_null() || output_data.is_null() {
+    if strategy.is_null() || in_data.is_null() || out_data.is_null() {
         return OpenLlveError::NullPointer.as_i32();
-    }
-    if output_len < input_len {
-        return OpenLlveError::InvalidParameter.as_i32();
     }
 
     unsafe {
         let strategy = &mut *strategy;
-        let input = slice::from_raw_parts(input_data, input_len);
-        let output = slice::from_raw_parts_mut(output_data, output_len);
+        let input = FrameRef::new(
+            in_width,
+            in_height,
+            in_channels,
+            in_stride,
+            slice::from_raw_parts(in_data, in_stride * in_height as usize / 4),
+        );
+        let output = Frame::new(
+            out_width,
+            out_height,
+            out_channels,
+            out_stride,
+            slice::from_raw_parts_mut(out_data, out_stride * out_height as usize / 4),
+        );
 
-        let processed = match strategy {
-            OpenLlveStrategy::Llie(s) => s.process(input),
-            OpenLlveStrategy::Temporal(s) => s.process(input),
-        };
-
-        match processed {
-            Ok(res) => {
-                output[..input_len].copy_from_slice(&res);
-                0
+        match (input, output) {
+            (Ok(input), Ok(mut output)) => {
+                let result = match strategy {
+                    OpenLlveStrategy::Llie(s) => s.process(&input, &mut output),
+                    OpenLlveStrategy::Temporal(s) => s.process(&input, &mut output),
+                };
+                match result {
+                    Ok(()) => 0,
+                    Err(e) => core_error_to_abi(&e).as_i32(),
+                }
             }
-            Err(e) => core_error_to_abi(&e).as_i32(),
+            (Err(e), _) | (_, Err(e)) => core_error_to_abi(&e).as_i32(),
         }
     }
 }
@@ -159,40 +182,55 @@ pub extern "C" fn openllve_ewma_filter_new(alpha: f32) -> *mut EwmaFilter {
     }
 }
 
-/// Applies the EWMA filter to a frame.
+/// Applies the EWMA filter to a frame, writing into the caller-owned output
+/// buffer. The output frame must have the same dimensions as the input.
 ///
-/// Returns `0` on success, otherwise an [`OpenLlveError`] code. Only the
-/// first `input_len` elements of `output_data` are written.
+/// Returns `0` on success, otherwise an [`OpenLlveError`] code.
 ///
 /// # Safety
 /// `filter` must be a valid, non-null handle returned by
 /// `openllve_ewma_filter_new` and owned by the calling thread. `input_data`
-/// must be non-null, aligned, and valid for reads of at least `input_len` f32
-/// elements; `output_data` must be non-null, aligned, and valid for writes of
-/// at least `input_len` f32 elements (`output_len` must be >= `input_len`).
+/// must be non-null, aligned, and valid for reads of at least `stride *
+/// height` bytes; `output_data` must be non-null, aligned, and valid for
+/// writes of at least `stride * height` bytes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_ewma_filter_apply(
     filter: *mut EwmaFilter,
+    width: u32,
+    height: u32,
+    channels: u32,
+    stride: usize,
     input_data: *const f32,
-    input_len: usize,
     output_data: *mut f32,
-    output_len: usize,
 ) -> i32 {
     if filter.is_null() || input_data.is_null() || output_data.is_null() {
         return OpenLlveError::NullPointer.as_i32();
     }
-    if output_len < input_len {
-        return OpenLlveError::InvalidParameter.as_i32();
-    }
 
     unsafe {
         let filter = &mut *filter;
-        let input = slice::from_raw_parts(input_data, input_len);
-        let output = slice::from_raw_parts_mut(output_data, output_len);
+        let input = FrameRef::new(
+            width,
+            height,
+            channels,
+            stride,
+            slice::from_raw_parts(input_data, stride * height as usize / 4),
+        );
+        let output = Frame::new(
+            width,
+            height,
+            channels,
+            stride,
+            slice::from_raw_parts_mut(output_data, stride * height as usize / 4),
+        );
 
-        let result = filter.apply(input);
-        output[..input_len].copy_from_slice(&result);
-        0
+        match (input, output) {
+            (Ok(input), Ok(mut output)) => match filter.apply(&input, &mut output) {
+                Ok(()) => 0,
+                Err(e) => core_error_to_abi(&e).as_i32(),
+            },
+            (Err(e), _) | (_, Err(e)) => core_error_to_abi(&e).as_i32(),
+        }
     }
 }
 
@@ -223,47 +261,62 @@ pub extern "C" fn openllve_blend_filter_new(beta: f32) -> *mut FrameBlendFilter 
     }
 }
 
-/// Blends a raw frame with an enhanced frame.
+/// Blends a raw frame with an enhanced frame, writing into the caller-owned
+/// output buffer. All three frames must share the same dimensions.
 ///
 /// Returns `0` on success, otherwise an [`OpenLlveError`] code.
 ///
 /// # Safety
 /// `filter` must be a valid, non-null handle returned by
-/// `openllve_blend_filter_new` and owned by the calling thread. `raw_data`
-/// and `enhanced_data` must be non-null, aligned, and valid for reads of at
-/// least `raw_len`/`enhanced_len` f32 elements; `output_data` must be
-/// non-null, aligned, and valid for writes of at least `raw_len` f32
-/// elements (`raw_len` must equal `enhanced_len`, and `output_len` must be >=
-/// `raw_len`).
+/// `openllve_blend_filter_new` and owned by the calling thread. `raw_data`,
+/// `enhanced_data`, and `output_data` must be non-null, aligned, and valid
+/// for reads/writes of at least `stride * height` bytes respectively.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_blend_filter_apply(
     filter: *const FrameBlendFilter,
+    width: u32,
+    height: u32,
+    channels: u32,
+    stride: usize,
     raw_data: *const f32,
-    raw_len: usize,
     enhanced_data: *const f32,
-    enhanced_len: usize,
     output_data: *mut f32,
-    output_len: usize,
 ) -> i32 {
     if filter.is_null() || raw_data.is_null() || enhanced_data.is_null() || output_data.is_null() {
         return OpenLlveError::NullPointer.as_i32();
     }
-    if raw_len != enhanced_len || output_len < raw_len {
-        return OpenLlveError::InvalidParameter.as_i32();
-    }
 
     unsafe {
         let filter = &*filter;
-        let raw = slice::from_raw_parts(raw_data, raw_len);
-        let enhanced = slice::from_raw_parts(enhanced_data, enhanced_len);
-        let output = slice::from_raw_parts_mut(output_data, output_len);
+        let len = stride * height as usize / 4;
+        let raw = FrameRef::new(
+            width,
+            height,
+            channels,
+            stride,
+            slice::from_raw_parts(raw_data, len),
+        );
+        let enhanced = FrameRef::new(
+            width,
+            height,
+            channels,
+            stride,
+            slice::from_raw_parts(enhanced_data, len),
+        );
+        let output = Frame::new(
+            width,
+            height,
+            channels,
+            stride,
+            slice::from_raw_parts_mut(output_data, len),
+        );
 
-        match filter.apply(raw, enhanced) {
-            Ok(result) => {
-                output[..raw_len].copy_from_slice(&result);
-                0
-            }
-            Err(e) => core_error_to_abi(&e).as_i32(),
+        match (raw, enhanced, output) {
+            (Ok(raw), Ok(enhanced), Ok(mut output)) => match filter.apply(&raw, &enhanced, &mut output) {
+                Ok(()) => 0,
+                Err(e) => core_error_to_abi(&e).as_i32(),
+            },
+            (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => core_error_to_abi(&e).as_i32(),
         }
     }
 }
@@ -412,25 +465,37 @@ pub unsafe extern "C" fn openllve_metrics_free(metrics: *mut BenchmarkMetrics) {
 mod ffi_tests {
     use super::*;
 
+    const W: u32 = 4;
+    const H: u32 = 2;
+    const C: u32 = 3;
+    const STRIDE: usize = (W * C) as usize * 4;
+    const N: usize = (W * H * C) as usize;
+
     #[test]
     fn test_abi_version() {
         assert_eq!(openllve_abi_version(), OPENLLVE_ABI_VERSION);
     }
 
     #[test]
-    fn test_strategy_process_roundtrip() {
+    fn test_process_frame_roundtrip() {
         let handle = openllve_strategy_new_llie();
         assert!(!handle.is_null());
 
-        let input = vec![1.0f32, 2.0, 3.0];
-        let mut output = vec![0.0f32; 3];
+        let input: Vec<f32> = (1..=N).map(|i| i as f32).collect();
+        let mut output = vec![0.0f32; N];
         let rc = unsafe {
-            openllve_strategy_process(
+            openllve_process_frame(
                 handle,
+                W,
+                H,
+                C,
+                STRIDE,
                 input.as_ptr(),
-                input.len(),
+                W,
+                H,
+                C,
+                STRIDE,
                 output.as_mut_ptr(),
-                output.len(),
             )
         };
         assert_eq!(rc, OpenLlveError::Ok.as_i32());
@@ -440,35 +505,76 @@ mod ffi_tests {
     }
 
     #[test]
-    fn test_strategy_process_null_handle() {
-        let input = vec![1.0f32];
-        let mut output = vec![0.0f32; 1];
+    fn test_process_frame_null_handle() {
+        let input = vec![1.0f32; N];
+        let mut output = vec![0.0f32; N];
         let rc = unsafe {
-            openllve_strategy_process(
+            openllve_process_frame(
                 std::ptr::null_mut(),
+                W,
+                H,
+                C,
+                STRIDE,
                 input.as_ptr(),
-                input.len(),
+                W,
+                H,
+                C,
+                STRIDE,
                 output.as_mut_ptr(),
-                output.len(),
             )
         };
         assert_eq!(rc, OpenLlveError::NullPointer.as_i32());
     }
 
     #[test]
-    fn test_strategy_process_output_too_small() {
+    fn test_process_frame_output_dim_mismatch() {
         let handle = openllve_strategy_new_temporal();
         assert!(!handle.is_null());
 
-        let input = vec![1.0f32, 2.0];
-        let mut output = vec![0.0f32; 1];
+        let input = vec![1.0f32; N];
+        // Output claims 2x2x3 but the strategy requires the same dims as input.
+        let mut output = vec![0.0f32; N];
         let rc = unsafe {
-            openllve_strategy_process(
+            openllve_process_frame(
                 handle,
+                W,
+                H,
+                C,
+                STRIDE,
                 input.as_ptr(),
-                input.len(),
+                2,
+                2,
+                C,
+                (2 * C) as usize * 4,
                 output.as_mut_ptr(),
-                output.len(),
+            )
+        };
+        assert_eq!(rc, OpenLlveError::BufferDimensionMismatch.as_i32());
+
+        unsafe { openllve_strategy_free(handle) };
+    }
+
+    #[test]
+    fn test_process_frame_stride_too_small() {
+        let handle = openllve_strategy_new_llie();
+        assert!(!handle.is_null());
+
+        let input = vec![1.0f32; N];
+        let mut output = vec![0.0f32; N];
+        // Stride smaller than width*channels*4 is an invalid parameter.
+        let rc = unsafe {
+            openllve_process_frame(
+                handle,
+                W,
+                H,
+                C,
+                12,
+                input.as_ptr(),
+                W,
+                H,
+                C,
+                STRIDE,
+                output.as_mut_ptr(),
             )
         };
         assert_eq!(rc, OpenLlveError::InvalidParameter.as_i32());
@@ -477,28 +583,48 @@ mod ffi_tests {
     }
 
     #[test]
+    fn test_ewma_filter_roundtrip() {
+        let filter = openllve_ewma_filter_new(0.5);
+        assert!(!filter.is_null());
+
+        let input1 = vec![0.0f32; N];
+        let mut out1 = vec![0.0f32; N];
+        let rc = unsafe { openllve_ewma_filter_apply(filter, W, H, C, STRIDE, input1.as_ptr(), out1.as_mut_ptr()) };
+        assert_eq!(rc, OpenLlveError::Ok.as_i32());
+        assert_eq!(out1, input1);
+
+        let input2 = vec![10.0f32; N];
+        let mut out2 = vec![0.0f32; N];
+        let rc = unsafe { openllve_ewma_filter_apply(filter, W, H, C, STRIDE, input2.as_ptr(), out2.as_mut_ptr()) };
+        assert_eq!(rc, OpenLlveError::Ok.as_i32());
+        assert!(out2.iter().all(|v| (v - 5.0).abs() < 1e-4));
+
+        unsafe { openllve_ewma_filter_free(filter) };
+    }
+
+    #[test]
     fn test_blend_filter_roundtrip() {
         let filter = openllve_blend_filter_new(0.5);
         assert!(!filter.is_null());
 
-        let raw = vec![0.0f32, 10.0];
-        let enhanced = vec![10.0f32, 0.0];
-        let mut output = vec![0.0f32; 2];
+        let raw = vec![0.0f32; N];
+        let enhanced = vec![10.0f32; N];
+        let mut output = vec![0.0f32; N];
         let rc = unsafe {
             openllve_blend_filter_apply(
                 filter,
+                W,
+                H,
+                C,
+                STRIDE,
                 raw.as_ptr(),
-                raw.len(),
                 enhanced.as_ptr(),
-                enhanced.len(),
                 output.as_mut_ptr(),
-                output.len(),
             )
         };
         assert_eq!(rc, OpenLlveError::Ok.as_i32());
         // 0.5 * enhanced + 0.5 * raw
-        assert!((output[0] - 5.0).abs() < 1e-4);
-        assert!((output[1] - 5.0).abs() < 1e-4);
+        assert!(output.iter().all(|v| (v - 5.0).abs() < 1e-4));
 
         unsafe { openllve_blend_filter_free(filter) };
     }

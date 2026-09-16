@@ -1,19 +1,28 @@
-use openllve_core::{BenchmarkMetrics, InferenceStrategy, LlieStrategy, LlveTemporalStrategy, NativeFrameHandle};
+use openllve_core::{
+    BenchmarkMetrics, Frame, FrameRef, InferenceStrategy, LlieStrategy, LlveTemporalStrategy, NativeFrameHandle,
+};
 
 #[test]
 fn test_integration_pipeline_llie() {
     let mut strategy = LlieStrategy::new().unwrap();
     let mut metrics = BenchmarkMetrics::with_warmup(3);
 
-    let frame_data = vec![1.0, 2.0, 3.0, 4.0];
+    let w = 4u32;
+    let h = 4u32;
+    let c = 3u32;
+    let stride = (w * c) as usize * 4;
+    let in_data: Vec<f32> = (0..(w * h * c) as usize).map(|i| i as f32 * 0.001).collect();
+    let input = FrameRef::new(w, h, c, stride, &in_data).unwrap();
+    let mut out_data = vec![0.0f32; (w * h * c) as usize];
+    let mut output = Frame::new(w, h, c, stride, &mut out_data).unwrap();
 
     for _ in 0..10 {
         let start = std::time::Instant::now();
-        let res = strategy.process(&frame_data).unwrap();
+        strategy.process(&input, &mut output).unwrap();
         let elapsed = start.elapsed().as_secs_f64() * 1000.0;
 
         metrics.record(elapsed);
-        assert_eq!(res.len(), 4);
+        assert_eq!(output.pixel_count(), (w * h * c) as usize);
     }
 
     // 10 frames with a 3-frame warm-up budget -> 7 counted samples.
@@ -27,10 +36,13 @@ fn test_integration_pipeline_llie() {
 #[test]
 fn test_integration_pipeline_temporal() {
     let mut strategy = LlveTemporalStrategy::new();
-    let frame_data = vec![0.5; 100];
+    let in_data = vec![0.5; 100];
+    let input = FrameRef::new(10, 10, 1, 40, &in_data).unwrap();
+    let mut out_data = vec![0.0; 100];
+    let mut output = Frame::new(10, 10, 1, 40, &mut out_data).unwrap();
 
-    let res = strategy.process(&frame_data).unwrap();
-    assert_eq!(res, frame_data);
+    strategy.process(&input, &mut output).unwrap();
+    assert_eq!(output.as_slice(), &in_data);
     strategy.reset();
 }
 
