@@ -57,7 +57,7 @@ The important architectural rule is that `core/` stays independent from the app 
 ### Rust Core layer
 
 - frame abstraction and buffer compatibility
-- strategy selection (`LlieStrategy`, `LlveTemporalStrategy`)
+- pipeline selection (`LliePipeline`, `LlveTemporalPipeline`)
 - optional post-processing toppings (`EwmaFilter`, `FrameBlendFilter`)
 - benchmark metrics and pure timing logic
 
@@ -71,7 +71,7 @@ The C ABI is the compatibility layer between the app runtime and the Rust core. 
 - **Android platform layer**: Kotlin, Jetpack Compose, CameraX / Media3, Android lifecycle, and device-specific accelerator integration
 - **Future iOS platform layer**: SwiftUI, AVFoundation, and Apple-specific runtime integration
 - **Inference runtimes**: LiteRT / TFLite delegates on Android; Core ML / Metal or MPS on iOS when that platform is implemented
-- **Rust core**: business logic, enhancement strategies, filters, frame abstractions, telemetry, and the C FFI surface
+- **Rust core**: business logic, enhancement pipelines, filters, frame abstractions, telemetry, and the C FFI surface
 
 ## 6. Data Flow
 
@@ -97,14 +97,14 @@ The strategy is responsible for the main inference path. Toppings are optional a
 - may accept a `FrameBlendFilter`
 - usually should not add `EwmaFilter` unless the model explicitly requires it
 
-This is the key architectural decision: **EWMA is a topping for LLIE, not a universal layer for all strategies.**
+This is the key architectural decision: **EWMA is a topping for LLIE, not a universal layer for all pipelines.**
 
 ## 8. Core Components
 
 - `NativeFrameHandle`: abstraction over platform buffer handles
 - `BenchmarkMetrics`: tracks latency, FPS, and p99 values
-- `LlieStrategy`: LLIE execution strategy
-- `LlveTemporalStrategy`: temporal execution strategy
+- `LliePipeline`: LLIE execution pipeline (`TemporalMode::Stateless`)
+- `LlveTemporalPipeline`: temporal execution pipeline (`TemporalMode::Recurrent`)
 - `EwmaFilter`: temporal smoothing filter
 - `FrameBlendFilter`: raw-vs-enhanced blending filter
 - `ffi.rs`: C bridging layer for Android/iOS interop

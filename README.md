@@ -9,7 +9,7 @@ OpenLLVE is currently a proof-of-concept architecture and early implementation. 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) - boundaries, tenets, data flow, and repository structure
-- [Rust core](core/README.md) - modules, strategies, filters, FFI, tests, and benchmarks
+- [Rust core](core/README.md) - modules, pipelines, filters, FFI, tests, and benchmarks
 - [Shared app layer](app/shared/README.md) - KMP responsibilities and shared app conventions
 - [Android platform](app/platforms/android/README.md) - Android source and runtime responsibilities
 - [iOS platform](app/platforms/ios/README.md) - reserved placeholder for future iOS development

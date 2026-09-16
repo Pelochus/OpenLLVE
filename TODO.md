@@ -35,7 +35,7 @@ table in sync.
    - Option B: platform-side LiteRT in Kotlin — simpler short-term, but
      violates tenet #2 and blocks PC benchmarking.
    - P1.2 follows whichever option is chosen.
-2. [x] **P3.4+P3.5 — `Frame` type + out-buffer API (blocks P1.2).** ✅ 2026-09-15 — `core/src/frame.rs` now has validated `Frame`/`FrameRef` (w, h, channels, stride in bytes, `FrameFormat::F32`) + owned `OwnedFrame` for temporal state; `InferenceStrategy::process(input: &FrameRef, output: &mut Frame)` (no per-frame `Vec` churn; blend has an in-place variant); filters take frame views; FFI replaced `openllve_strategy_process` with `openllve_process_frame(strategy, in_w/h/ch/stride, in, out_w/h/ch/stride, out)` (independent in/out dims for P1.2's 4→24 channel mapping), ABI bumped to 2, C header updated; `bytemuck` added (`from_bytes` typed views, P3.3 partial); bench + integration tests use pre-allocated double-buffered frames. Follow-ups: P3.7 `Strategy`→`Pipeline`/`TemporalMode` rename deferred to P1.2 (semantics not final until the model lands); `NativeFrameHandle` still unwired (P1.1).
+2. [x] **P3.4+P3.5 — `Frame` type + out-buffer API (blocks P1.2).** ✅ 2026-09-15 — `core/src/frame.rs` now has validated `Frame`/`FrameRef` (w, h, channels, stride in bytes, `FrameFormat::F32`) + owned `OwnedFrame` for temporal state; `Pipeline::process(input: &FrameRef, output: &mut Frame)` (no per-frame `Vec` churn; blend has an in-place variant); filters take frame views; FFI replaced `openllve_pipeline_process` with `openllve_process_frame(pipeline, in_w/h/ch/stride, in, out_w/h/ch/stride, out)` (independent in/out dims for P1.2's 4→24 channel mapping), ABI bumped to 2 (then 3 with P3.7), C header updated; `bytemuck` added (`from_bytes` typed views, P3.3 partial); bench + integration tests use pre-allocated double-buffered frames. Follow-ups: P3.7 `Strategy`→`Pipeline`/`TemporalMode` rename done with P1.2; `NativeFrameHandle` still unwired (P1.1).
    - Replace flat `&[f32]` with a validated `Frame { width, height, channels,
      stride, data, format }`; `process(input: &Frame, output: &mut Frame)`
      instead of returning `Vec<f32>` per frame (~36 MB churn/frame at 1080p).
@@ -47,8 +47,8 @@ table in sync.
 3. [x] **P1.2 — Integrate the model where the ADR says (highest priority).** ✅ 2026-09-16
    - Option A implemented: `core/src/model.rs` `ModelRunner` (feature `model`)
      loads `zero-dce-int8.tflite` via `tflite-c-rs` (runtime `libloading`, no
-     build-time link); `LlieStrategy::with_model(path, num_threads)` runs it;
-     FFI `openllve_strategy_new_llie_with_model`; model path benchmarked.
+     build-time link); `LliePipeline::with_model(path, num_threads)` runs it;
+     FFI `openllve_pipeline_new_llie_with_model`; model path benchmarked.
    - Frame in → enhanced frame out: RGB `[0,1]` in → enhanced RGB `[0,1]` out
      (4th brightness channel = global mean clamped to 0.5; tiling for >256×256
      with 16 px overlap; 8-curve application per `external/models/README.md`).
@@ -61,14 +61,15 @@ table in sync.
      ~0.008, XNNPACK-vs-reference kernel).
    - Follow-up: verify on real (non-synthetic) frames; re-confirm the
      global-mean brightness channel vs upstream's 4×4 bilinear downscale.
-4. [ ] **P3.7 — Rename `Strategy` → `Pipeline` + `TemporalMode` (do with P1.2).**
-   - Rename `InferenceStrategy` → `Pipeline`, `LlieStrategy` → `LliePipeline`,
-     `LlveTemporalStrategy` → `LlveTemporalPipeline`, and add
-     `TemporalMode { Stateless, Recurrent }` once P1.2's model settles which
-     pipelines are stateful.
-   - Mechanical but wide: core, FFI (opaque `OpenLlveStrategy` handle +
-     `openllve_strategy_*` names), C header, docs, Kotlin. Do it in one commit
-     with (or immediately after) P1.2 to avoid double churn.
+4. [x] **P3.7 — Rename `Strategy` → `Pipeline` + `TemporalMode` (done with P1.2).** ✅ 2026-09-16
+   - Renamed `InferenceStrategy` → `Pipeline`, `LlieStrategy` → `LliePipeline`,
+     `LlveTemporalStrategy` → `LlveTemporalPipeline`, and added
+     `TemporalMode { Stateless, Recurrent }` (`LliePipeline` = `Stateless`,
+     `LlveTemporalPipeline` = `Recurrent`); `Pipeline::mode()` reports it.
+   - `core/src/strategies/` → `core/src/pipelines/`; FFI opaque handle
+     `OpenLlveStrategy` → `OpenLlvePipeline` + `openllve_pipeline_*` names;
+     C header updated; ABI bumped 2 → 3; Kotlin (`VideoPipelineManager.kt`,
+     `LlieEwmaEnhancer.kt`) + docs updated. Done in one commit with P1.2.
 5. [ ] **P3.1 — Model manifest.**
    - `manifest.json` (or a Rust `ModelSpec`) next to each model in
      `external/models/`: id, version, in/out shapes, quantization, supported

@@ -12,7 +12,7 @@ core**, with the rule of thumb: *if it can run on a standard PC with
 `cargo test` / `cargo bench`, it is in the right layer*
 (see `ARCHITECTURE.md` §2).
 
-Today the strategy layer (`LlieStrategy`, `LlveTemporalStrategy`) is an identity
+Today the pipeline layer (`LliePipeline`, `LlveTemporalPipeline`) is an identity
 stub — no model is invoked — and the only model-related code in the repo is
 `LiteRTInferenceEngine.kt`, a broken Kotlin stub that loads a zero-length
 `ByteArray` and is never instantiated. The default test model
@@ -91,7 +91,7 @@ Rejected.
 
 1. **P1.2** implements `ModelRunner` in `core/` (load `zero-dce-int8.tflite`,
    map `(H,W,4) → (H,W,24)`, apply the 8×RGB output curves per
-   `external/models/README.md`), called by the strategies and exposed through the FFI.
+   `external/models/README.md`), called by the pipelines and exposed through the FFI.
 2. `LiteRTInferenceEngine.kt` is deleted as part of P1.2.
 3. The Android app must package `libtensorflowlite_c.so` (from the LiteRT AAR
    or a standalone build) in `jniLibs` next to `libopenllve_core.so`.

@@ -1,6 +1,6 @@
 # OpenLLVE Core (`openllve-core`)
 
-The Rust core for **OpenLLVE** is the portable, performance-sensitive layer that owns strategy execution, frame abstractions, filtering, and telemetry. It is intentionally separate from Android and iOS app code so the same benchmarking logic can run across platforms without duplicating logic.
+The Rust core for **OpenLLVE** is the portable, performance-sensitive layer that owns pipeline execution, frame abstractions, filtering, and telemetry. It is intentionally separate from Android and iOS app code so the same benchmarking logic can run across platforms without duplicating logic.
 
 ## Why the C FFI layer exists
 
@@ -35,10 +35,10 @@ core/
 │   │   ├── ewma.rs                # temporal anti-flicker filter
 │   │   └── blend.rs               # raw/enhanced blending filter
 │   ├── model.rs                  # TFLite ModelRunner (feature `model`)
-│   ├── strategies.rs             # module declaration for llie.rs + temporal.rs
-│   ├── strategies/
-│   │   ├── llie.rs                # LLIE strategy, optionally configured with EWMA
-│   │   └── temporal.rs            # LLVE strategy, optionally configured with blend
+│   ├── pipelines.rs              # module declaration for llie.rs + temporal.rs
+│   ├── pipelines/
+│   │   ├── llie.rs                # LLIE pipeline, optionally configured with EWMA
+│   │   └── temporal.rs            # LLVE pipeline, optionally configured with blend
 │   ├── ffi.rs                    # C ABI bindings
 │   └── lib.rs
 ├── tests/
@@ -64,18 +64,20 @@ The processing API writes into a caller-owned output buffer — no per-frame all
 fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()>;
 ```
 
-Platforms pre-allocate two frame buffers and ping-pong them (double buffering). The FFI mirrors this: `openllve_process_frame(strategy, in_w, in_h, in_ch, in_stride, in, out_w, out_h, out_ch, out_stride, out)` with independent input/output dims (a model may change the channel count, e.g. Zero-DCE 4 → 24).
+Platforms pre-allocate two frame buffers and ping-pong them (double buffering). The FFI mirrors this: `openllve_process_frame(pipeline, in_w, in_h, in_ch, in_stride, in, out_w, out_h, out_ch, out_stride, out)` with independent input/output dims (a model may change the channel count, e.g. Zero-DCE 4 → 24).
 
-## Strategy and topping model
+## Pipeline and topping model
 
-The architecture separates the main model strategy from optional post-processing "toppings":
+The architecture separates the main model pipeline from optional post-processing "toppings":
 
-- `LlieStrategy`: frame-by-frame enhancement, can optionally use `EwmaFilter` as a temporal smoothing layer.
-- `LlveTemporalStrategy`: stateful temporal model, may optionally use `FrameBlendFilter`, but should not usually add EWMA because the model already encodes temporal behavior.
+- `LliePipeline`: frame-by-frame enhancement, can optionally use `EwmaFilter` as a temporal smoothing layer.
+- `LlveTemporalPipeline`: stateful temporal model, may optionally use `FrameBlendFilter`, but should not usually add EWMA because the model already encodes temporal behavior.
+
+Each pipeline reports its `TemporalMode`: `LliePipeline` is `Stateless` and `LlveTemporalPipeline` is `Recurrent`.
 - `FrameBlendFilter`: mixes raw input with processed output for stability and exposure control.
 - `EwmaFilter`: anti-flicker smoothing for LLIE-style pipelines.
 
-This is more flexible than hard-wiring all filters into every strategy.
+This is more flexible than hard-wiring all filters into every pipeline.
 
 ## Model runner (feature `model`)
 
@@ -93,9 +95,9 @@ environment variable, falling back to the default search path.
   larger than 256×256 into overlapping 256×256 patches with 16 px overlap,
   reflect padding, and linear-ramp reassembly — mirroring the upstream
   `network.py`), and applies the 8 learned curves per pixel.
-- `LlieStrategy::with_model(path, num_threads)` attaches a runner; `process`
+- `LliePipeline::with_model(path, num_threads)` attaches a runner; `process`
   then runs the model instead of the identity stub. The FFI exposes it via
-  `openllve_strategy_new_llie_with_model(model_path, num_threads)`.
+  `openllve_pipeline_new_llie_with_model(model_path, num_threads)`.
 
 The feature is off by default so `cargo test` / `cargo clippy` / `cargo fmt`
 pass without the TFLite runtime present. To run the real model path on a PC:
@@ -114,6 +116,6 @@ TFLite shared library (see ADR-0001); Kotlin only calls the FFI.
 ## Design principles
 
 1. **Zero-copy friendly**: frame handles abstract native buffers without redundant copying.
-2. **Modular strategies**: the algorithm strategy is independent from the temporal tuning layer.
+2. **Modular pipelines**: the algorithm pipeline is independent from the temporal tuning layer.
 3. **Benchmark purity**: measure only the pure inference path, excluding camera I/O and UI render latency.
 4. **Cross-platform portability**: Rust logic stays reusable while the app layer handles JVM/Swift integration.

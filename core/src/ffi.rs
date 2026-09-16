@@ -16,10 +16,10 @@ use crate::error::CoreError;
 use crate::filters::{EwmaFilter, FrameBlendFilter};
 use crate::frame::{Frame, FrameRef};
 use crate::metrics::BenchmarkMetrics;
-use crate::strategies::{InferenceStrategy, LlieStrategy, LlveTemporalStrategy};
+use crate::pipelines::{LliePipeline, LlveTemporalPipeline, Pipeline};
 
 /// C ABI version. Bump when the ABI changes in a breaking way.
-pub const OPENLLVE_ABI_VERSION: u32 = 2;
+pub const OPENLLVE_ABI_VERSION: u32 = 3;
 
 /// Error codes returned by the C ABI. `0` means success.
 #[repr(C)]
@@ -48,13 +48,13 @@ fn core_error_to_abi(error: &CoreError) -> OpenLlveError {
     }
 }
 
-/// Strategy handle: LLIE (static frame enhancer) or temporal (sequence model).
+/// Pipeline handle: LLIE (static frame enhancer) or temporal (sequence model).
 ///
-/// The name matches the opaque `OpenLlveStrategy` typedef in
+/// The name matches the opaque `OpenLlvePipeline` typedef in
 /// `include/openllve_core.h`.
-pub enum OpenLlveStrategy {
-    Llie(LlieStrategy),
-    Temporal(LlveTemporalStrategy),
+pub enum OpenLlvePipeline {
+    Llie(LliePipeline),
+    Temporal(LlveTemporalPipeline),
 }
 
 /// Returns the C ABI version.
@@ -63,22 +63,22 @@ pub extern "C" fn openllve_abi_version() -> u32 {
     OPENLLVE_ABI_VERSION
 }
 
-/// Creates a new LLIE strategy handle.
+/// Creates a new LLIE pipeline handle.
 ///
-/// Returns null if the strategy cannot be created.
+/// Returns null if the pipeline cannot be created.
 ///
 /// # Safety
-/// The returned handle must be owned by a single thread: stateful strategies
-/// must not be shared across threads. Free it with `openllve_strategy_free`.
+/// The returned handle must be owned by a single thread: stateful pipelines
+/// must not be shared across threads. Free it with `openllve_pipeline_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn openllve_strategy_new_llie() -> *mut OpenLlveStrategy {
-    match LlieStrategy::new() {
-        Ok(strategy) => Box::into_raw(Box::new(OpenLlveStrategy::Llie(strategy))),
+pub extern "C" fn openllve_pipeline_new_llie() -> *mut OpenLlvePipeline {
+    match LliePipeline::new() {
+        Ok(pipeline) => Box::into_raw(Box::new(OpenLlvePipeline::Llie(pipeline))),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
-/// Creates a new LLIE strategy handle with the Zero-DCE model loaded.
+/// Creates a new LLIE pipeline handle with the Zero-DCE model loaded.
 ///
 /// The model is loaded from `model_path` (a NUL-terminated UTF-8 C string)
 /// and run with `num_threads` threads. Returns null if `model_path` is null,
@@ -87,12 +87,12 @@ pub extern "C" fn openllve_strategy_new_llie() -> *mut OpenLlveStrategy {
 ///
 /// # Safety
 /// `model_path` must be a valid, NUL-terminated C string. The returned handle
-/// must be owned by a single thread and freed with `openllve_strategy_free`.
+/// must be owned by a single thread and freed with `openllve_pipeline_free`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn openllve_strategy_new_llie_with_model(
+pub unsafe extern "C" fn openllve_pipeline_new_llie_with_model(
     model_path: *const std::os::raw::c_char,
     num_threads: std::os::raw::c_int,
-) -> *mut OpenLlveStrategy {
+) -> *mut OpenLlvePipeline {
     use std::ffi::CStr;
     use std::path::Path;
 
@@ -103,38 +103,38 @@ pub unsafe extern "C" fn openllve_strategy_new_llie_with_model(
         Ok(s) => Path::new(s),
         Err(_) => return std::ptr::null_mut(),
     };
-    match LlieStrategy::new().and_then(|s| s.with_model(path, num_threads as u32)) {
-        Ok(strategy) => Box::into_raw(Box::new(OpenLlveStrategy::Llie(strategy))),
+    match LliePipeline::new().and_then(|s| s.with_model(path, num_threads as u32)) {
+        Ok(pipeline) => Box::into_raw(Box::new(OpenLlvePipeline::Llie(pipeline))),
         Err(_) => std::ptr::null_mut(),
     }
 }
 
-/// Creates a new temporal strategy handle.
+/// Creates a new temporal pipeline handle.
 ///
-/// Returns null if the strategy cannot be created.
+/// Returns null if the pipeline cannot be created.
 ///
 /// # Safety
-/// The returned handle must be owned by a single thread: stateful strategies
-/// must not be shared across threads. Free it with `openllve_strategy_free`.
+/// The returned handle must be owned by a single thread: stateful pipelines
+/// must not be shared across threads. Free it with `openllve_pipeline_free`.
 #[unsafe(no_mangle)]
-pub extern "C" fn openllve_strategy_new_temporal() -> *mut OpenLlveStrategy {
-    let strategy = LlveTemporalStrategy::new();
-    Box::into_raw(Box::new(OpenLlveStrategy::Temporal(strategy)))
+pub extern "C" fn openllve_pipeline_new_temporal() -> *mut OpenLlvePipeline {
+    let pipeline = LlveTemporalPipeline::new();
+    Box::into_raw(Box::new(OpenLlvePipeline::Temporal(pipeline)))
 }
 
-/// Frees a strategy handle.
+/// Frees a pipeline handle.
 ///
 /// # Safety
-/// `strategy` must be a non-null handle returned by one of the
-/// `openllve_strategy_new_*` constructors, not yet freed, and not in use.
+/// `pipeline` must be a non-null handle returned by one of the
+/// `openllve_pipeline_new_*` constructors, not yet freed, and not in use.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn openllve_strategy_free(strategy: *mut OpenLlveStrategy) {
-    if !strategy.is_null() {
-        let _ = unsafe { Box::from_raw(strategy) };
+pub unsafe extern "C" fn openllve_pipeline_free(pipeline: *mut OpenLlvePipeline) {
+    if !pipeline.is_null() {
+        let _ = unsafe { Box::from_raw(pipeline) };
     }
 }
 
-/// Processes a frame with the given strategy, writing the result into the
+/// Processes a frame with the given pipeline, writing the result into the
 /// caller-owned output buffer.
 ///
 /// Input and output frames are described independently (the model may change
@@ -143,13 +143,13 @@ pub unsafe extern "C" fn openllve_strategy_free(strategy: *mut OpenLlveStrategy)
 /// Returns `0` on success, otherwise an [`OpenLlveError`] code.
 ///
 /// # Safety
-/// `strategy` must be a valid, non-null strategy handle owned by the calling
+/// `pipeline` must be a valid, non-null pipeline handle owned by the calling
 /// thread. `in_data` must be non-null, aligned, and valid for reads of at
 /// least `in_stride * in_height` bytes; `out_data` must be non-null, aligned,
 /// and valid for writes of at least `out_stride * out_height` bytes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_process_frame(
-    strategy: *mut OpenLlveStrategy,
+    pipeline: *mut OpenLlvePipeline,
     in_width: u32,
     in_height: u32,
     in_channels: u32,
@@ -161,12 +161,12 @@ pub unsafe extern "C" fn openllve_process_frame(
     out_stride: usize,
     out_data: *mut f32,
 ) -> i32 {
-    if strategy.is_null() || in_data.is_null() || out_data.is_null() {
+    if pipeline.is_null() || in_data.is_null() || out_data.is_null() {
         return OpenLlveError::NullPointer.as_i32();
     }
 
     unsafe {
-        let strategy = &mut *strategy;
+        let pipeline = &mut *pipeline;
         let input = FrameRef::new(
             in_width,
             in_height,
@@ -184,9 +184,9 @@ pub unsafe extern "C" fn openllve_process_frame(
 
         match (input, output) {
             (Ok(input), Ok(mut output)) => {
-                let result = match strategy {
-                    OpenLlveStrategy::Llie(s) => s.process(&input, &mut output),
-                    OpenLlveStrategy::Temporal(s) => s.process(&input, &mut output),
+                let result = match pipeline {
+                    OpenLlvePipeline::Llie(s) => s.process(&input, &mut output),
+                    OpenLlvePipeline::Temporal(s) => s.process(&input, &mut output),
                 };
                 match result {
                     Ok(()) => 0,
@@ -509,7 +509,7 @@ mod ffi_tests {
 
     #[test]
     fn test_process_frame_roundtrip() {
-        let handle = openllve_strategy_new_llie();
+        let handle = openllve_pipeline_new_llie();
         assert!(!handle.is_null());
 
         let input: Vec<f32> = (1..=N).map(|i| i as f32).collect();
@@ -532,7 +532,7 @@ mod ffi_tests {
         assert_eq!(rc, OpenLlveError::Ok.as_i32());
         assert_eq!(output, input);
 
-        unsafe { openllve_strategy_free(handle) };
+        unsafe { openllve_pipeline_free(handle) };
     }
 
     #[test]
@@ -559,7 +559,7 @@ mod ffi_tests {
 
     #[test]
     fn test_process_frame_output_dim_mismatch() {
-        let handle = openllve_strategy_new_temporal();
+        let handle = openllve_pipeline_new_temporal();
         assert!(!handle.is_null());
 
         let input = vec![1.0f32; N];
@@ -582,12 +582,12 @@ mod ffi_tests {
         };
         assert_eq!(rc, OpenLlveError::BufferDimensionMismatch.as_i32());
 
-        unsafe { openllve_strategy_free(handle) };
+        unsafe { openllve_pipeline_free(handle) };
     }
 
     #[test]
     fn test_process_frame_stride_too_small() {
-        let handle = openllve_strategy_new_llie();
+        let handle = openllve_pipeline_new_llie();
         assert!(!handle.is_null());
 
         let input = vec![1.0f32; N];
@@ -610,7 +610,7 @@ mod ffi_tests {
         };
         assert_eq!(rc, OpenLlveError::InvalidParameter.as_i32());
 
-        unsafe { openllve_strategy_free(handle) };
+        unsafe { openllve_pipeline_free(handle) };
     }
 
     #[test]

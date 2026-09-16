@@ -11,7 +11,7 @@
 uint32_t openllve_abi_version(void);
 
 // Opaque handles
-typedef struct OpenLlveStrategy OpenLlveStrategy;
+typedef struct OpenLlvePipeline OpenLlvePipeline;
 typedef struct OpenLlveMetrics OpenLlveMetrics;
 typedef struct EwmaFilter EwmaFilter;
 typedef struct FrameBlendFilter FrameBlendFilter;
@@ -29,19 +29,19 @@ enum OpenLlveError {
 // BYTES per row (a multiple of 4, at least width*channels*4) and a pointer
 // to 32-bit float data holding at least stride*height bytes.
 
-// Strategy construction
-OpenLlveStrategy* openllve_strategy_new_llie(void);
-OpenLlveStrategy* openllve_strategy_new_temporal(void);
+// Pipeline construction
+OpenLlvePipeline* openllve_pipeline_new_llie(void);
+OpenLlvePipeline* openllve_pipeline_new_temporal(void);
 // LLIE with the Zero-DCE model loaded. Returns NULL if the `model` cargo
 // feature is not enabled, the TFLite library/model cannot be loaded, or
 // model_path is NULL / num_threads is not positive.
-OpenLlveStrategy* openllve_strategy_new_llie_with_model(const char* model_path, int num_threads);
-void openllve_strategy_free(OpenLlveStrategy* strategy);
+OpenLlvePipeline* openllve_pipeline_new_llie_with_model(const char* model_path, int num_threads);
+void openllve_pipeline_free(OpenLlvePipeline* pipeline);
 
-// Strategy execution. Input and output frames are described independently
+// Pipeline execution. Input and output frames are described independently
 // (a model may change the channel count, e.g. Zero-DCE maps 4 channels to 24).
 int32_t openllve_process_frame(
-    OpenLlveStrategy* strategy,
+    OpenLlvePipeline* pipeline,
     uint32_t in_width,
     uint32_t in_height,
     uint32_t in_channels,

@@ -6,7 +6,7 @@ import openllve.android.data.SystemMonitor
 class VideoPipelineManager(
     private val systemMonitor: SystemMonitor,
     private val benchmarkResult: BenchmarkResult,
-    private val strategy: String = "llie"
+    private val pipeline: String = "llie"
 ) {
     private val llieEnhancer = LlieEwmaEnhancer(alpha = 0.35f, blendAlpha = 0.20f)
 
@@ -20,9 +20,9 @@ class VideoPipelineManager(
     }
 
     fun processFrame(frame: FloatArray): FloatArray {
-        return when (strategy.lowercase()) {
+        return when (pipeline.lowercase()) {
             "llie" -> llieEnhancer.enhance(frame)
-            "temporal" -> frame.copyOf() // Placeholder for future temporal LLVE strategy
+            "temporal" -> frame.copyOf() // Placeholder for future temporal LLVE pipeline
             else -> frame.copyOf()
         }
     }

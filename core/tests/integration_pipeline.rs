@@ -1,5 +1,5 @@
 use openllve_core::{
-    BenchmarkMetrics, Frame, FrameRef, InferenceStrategy, LlieStrategy, LlveTemporalStrategy, NativeFrameHandle,
+    BenchmarkMetrics, Frame, FrameRef, LliePipeline, LlveTemporalPipeline, NativeFrameHandle, Pipeline,
 };
 
 #[cfg(feature = "model")]
@@ -21,7 +21,7 @@ fn test_integration_pipeline_llie_with_model() {
         eprintln!("skipping: libtensorflowlite_c not found (set OPENLLVE_TFLITE_LIB)");
         return;
     }
-    let mut strategy = match LlieStrategy::new().unwrap().with_model(&model_path(), 1) {
+    let mut pipeline = match LliePipeline::new().unwrap().with_model(&model_path(), 1) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("skipping: model load failed: {e}");
@@ -38,7 +38,7 @@ fn test_integration_pipeline_llie_with_model() {
     let mut out_data = vec![0.0f32; (w * h * c) as usize];
     let mut output = Frame::new(w, h, c, stride, &mut out_data).unwrap();
 
-    strategy.process(&input, &mut output).unwrap();
+    pipeline.process(&input, &mut output).unwrap();
 
     // Enhanced frame must be in [0,1], finite, and actually changed.
     assert!(
@@ -58,7 +58,7 @@ fn test_integration_pipeline_llie_with_model() {
 
 #[test]
 fn test_integration_pipeline_llie() {
-    let mut strategy = LlieStrategy::new().unwrap();
+    let mut pipeline = LliePipeline::new().unwrap();
     let mut metrics = BenchmarkMetrics::with_warmup(3);
 
     let w = 4u32;
@@ -72,7 +72,7 @@ fn test_integration_pipeline_llie() {
 
     for _ in 0..10 {
         let start = std::time::Instant::now();
-        strategy.process(&input, &mut output).unwrap();
+        pipeline.process(&input, &mut output).unwrap();
         let elapsed = start.elapsed().as_secs_f64() * 1000.0;
 
         metrics.record(elapsed);
@@ -89,15 +89,15 @@ fn test_integration_pipeline_llie() {
 
 #[test]
 fn test_integration_pipeline_temporal() {
-    let mut strategy = LlveTemporalStrategy::new();
+    let mut pipeline = LlveTemporalPipeline::new();
     let in_data = vec![0.5; 100];
     let input = FrameRef::new(10, 10, 1, 40, &in_data).unwrap();
     let mut out_data = vec![0.0; 100];
     let mut output = Frame::new(10, 10, 1, 40, &mut out_data).unwrap();
 
-    strategy.process(&input, &mut output).unwrap();
+    pipeline.process(&input, &mut output).unwrap();
     assert_eq!(output.as_slice(), &in_data);
-    strategy.reset();
+    pipeline.reset();
 }
 
 #[test]

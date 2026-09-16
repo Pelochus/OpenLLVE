@@ -1,21 +1,22 @@
-use super::InferenceStrategy;
+use super::{Pipeline, TemporalMode};
 use crate::error::Result;
 use crate::filters::FrameBlendFilter;
 use crate::frame::{Frame, FrameRef};
 
-/// Strategy B: LLVE Temporal native (stateful sequence model).
+/// Pipeline B: LLVE Temporal native (stateful sequence model).
 /// It owns temporal state and may optionally accept a raw-vs-output blend
 /// topping, but it deliberately does not use EWMA because the model is
 /// already temporal.
 ///
 /// Note: temporal model state is not implemented yet — it will arrive with a
-/// real temporal model. Until then this strategy is stateless and
-/// [`InferenceStrategy::reset`] is a no-op.
-pub struct LlveTemporalStrategy {
+/// real temporal model. Until then this pipeline is stateless in practice and
+/// [`Pipeline::reset`] is a no-op, but its declared [`TemporalMode`] is
+/// `Recurrent` because it is designed to carry inter-frame state.
+pub struct LlveTemporalPipeline {
     blend: Option<FrameBlendFilter>,
 }
 
-impl LlveTemporalStrategy {
+impl LlveTemporalPipeline {
     pub fn new() -> Self {
         Self { blend: None }
     }
@@ -26,13 +27,13 @@ impl LlveTemporalStrategy {
     }
 }
 
-impl Default for LlveTemporalStrategy {
+impl Default for LlveTemporalPipeline {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl InferenceStrategy for LlveTemporalStrategy {
+impl Pipeline for LlveTemporalPipeline {
     fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()> {
         // Placeholder temporal model: enhanced == raw. P1.2 replaces this
         // with the real temporal model.
@@ -51,6 +52,10 @@ impl InferenceStrategy for LlveTemporalStrategy {
         // No temporal state yet; will reset model state when a real temporal
         // model is integrated.
     }
+
+    fn mode(&self) -> TemporalMode {
+        TemporalMode::Recurrent
+    }
 }
 
 #[cfg(test)]
@@ -67,28 +72,29 @@ mod tests {
     }
 
     #[test]
-    fn test_temporal_strategy() {
-        let mut strategy = LlveTemporalStrategy::new();
+    fn test_temporal_pipeline() {
+        let mut pipeline = LlveTemporalPipeline::new();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 3];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input, 3, 1, 1),
                 &mut frame_mut(&mut output, 3, 1, 1),
             )
             .unwrap();
         assert_eq!(output, input);
-        strategy.reset();
+        assert_eq!(pipeline.mode(), TemporalMode::Recurrent);
+        pipeline.reset();
     }
 
     #[test]
-    fn test_temporal_strategy_with_blend_uses_current_frame() {
+    fn test_temporal_pipeline_with_blend_uses_current_frame() {
         // Without a model the enhanced frame equals the raw frame, so a blend
         // with the current frame leaves the output equal to the input.
-        let mut strategy = LlveTemporalStrategy::new().with_blend(0.5).unwrap();
+        let mut pipeline = LlveTemporalPipeline::new().with_blend(0.5).unwrap();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 3];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input, 3, 1, 1),
                 &mut frame_mut(&mut output, 3, 1, 1),
@@ -97,7 +103,7 @@ mod tests {
         assert_eq!(output, input);
         let input2 = vec![4.0, 5.0, 6.0];
         let mut output2 = vec![0.0; 3];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input2, 3, 1, 1),
                 &mut frame_mut(&mut output2, 3, 1, 1),
@@ -107,11 +113,11 @@ mod tests {
     }
 
     #[test]
-    fn test_temporal_strategy_output_dim_mismatch() {
-        let mut strategy = LlveTemporalStrategy::new();
+    fn test_temporal_pipeline_output_dim_mismatch() {
+        let mut pipeline = LlveTemporalPipeline::new();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 6];
-        let err = strategy
+        let err = pipeline
             .process(
                 &frame_ref(&input, 3, 1, 1),
                 &mut frame_mut(&mut output, 3, 2, 1),

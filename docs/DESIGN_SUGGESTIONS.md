@@ -75,7 +75,7 @@ Consequences:
 
 ## 3. Out-buffer API — stop returning `Vec<f32>` per frame
 
-Current `InferenceStrategy::process(&mut self, input: &[f32]) -> Result<Vec<f32>>` allocates 2–3 full-frame `Vec`s per frame (input copy, EWMA output, blend output) — at 1080p RGB that's ~36 MB of churn per frame. The FFI already has an output buffer; make the Rust API match it:
+Current `Pipeline::process(&mut self, input: &[f32]) -> Result<Vec<f32>>` allocates 2–3 full-frame `Vec`s per frame (input copy, EWMA output, blend output) — at 1080p RGB that's ~36 MB of churn per frame. The FFI already has an output buffer; make the Rust API match it:
 
 ```rust
 fn process(&mut self, input: &Frame, output: &mut Frame) -> Result<()>;
@@ -103,7 +103,7 @@ Design suggestion: document and encode the protocol explicitly —
 
 ## 5. Generalize temporal state
 
-Both strategies hold a single `Option<Vec<f32>>` of the previous frame, and `LlieStrategy` holds *two* temporal states (its own `previous_frame` for blending **and** the EWMA's internal previous frame) — duplicated state that can drift.
+Both strategies hold a single `Option<Vec<f32>>` of the previous frame, and `LliePipeline` holds *two* temporal states (its own `previous_frame` for blending **and** the EWMA's internal previous frame) — duplicated state that can drift.
 
 Suggestions:
 
@@ -144,7 +144,7 @@ impl BenchmarkRun {
 
 The opaque-handle + `Box::into_raw` pattern is the right shape; refine it:
 
-- **Generate the C header with `cbindgen`** instead of hand-writing it — the header's typedef names (`OpenLlveStrategy`) already drift from the Rust types (`OpenLlveStrategyEnum`).
+- **Generate the C header with `cbindgen`** instead of hand-writing it — the header's typedef names (`OpenLlvePipeline`) already drift from the Rust types (`OpenLlvePipelineEnum`).
 - **Error codes**: return `i32` (stable enum) from `process` instead of `bool`, plus `const char* openllve_last_error()` with a documented lifetime (valid until next call). A bool can't distinguish "bad pointer" from "dimension mismatch" from "model failed".
 - **ABI versioning**: `uint32_t openllve_abi_version()` so the app can fail fast on a mismatched `.so`.
 - **Frame-based call** (see #2) instead of flat `len`.

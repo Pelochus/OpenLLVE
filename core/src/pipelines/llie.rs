@@ -1,24 +1,24 @@
-use super::InferenceStrategy;
+use super::{Pipeline, TemporalMode};
 use crate::error::Result;
 use crate::filters::{EwmaFilter, FrameBlendFilter};
 use crate::frame::{Frame, FrameRef};
 use std::path::Path;
 
-/// Strategy A: LLIE (static frame enhancer) with optional temporal toppings.
+/// Pipeline A: LLIE (static frame enhancer) with optional temporal toppings.
 ///
-/// With the `model` feature enabled, this strategy runs the Zero-DCE model
+/// With the `model` feature enabled, this pipeline runs the Zero-DCE model
 /// (`ModelRunner` from ADR-0001): frame in → enhanced frame out. Without the
 /// feature (or without a model), `process` is an identity stub so the core
 /// still builds and tests without the TFLite runtime present.
 #[derive(Default, Debug)]
-pub struct LlieStrategy {
+pub struct LliePipeline {
     ewma: Option<EwmaFilter>,
     blend: Option<FrameBlendFilter>,
     #[cfg(feature = "model")]
     model: Option<crate::model::ModelRunner>,
 }
 
-impl LlieStrategy {
+impl LliePipeline {
     pub fn new() -> Result<Self> {
         Ok(Self {
             ewma: None,
@@ -63,7 +63,7 @@ impl LlieStrategy {
     }
 }
 
-impl InferenceStrategy for LlieStrategy {
+impl Pipeline for LliePipeline {
     fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()> {
         // 1. Enhancement: the model if present, else an identity stub.
         //    (P1.2: the model maps RGB [0,1] in -> enhanced RGB [0,1] out.)
@@ -98,6 +98,10 @@ impl InferenceStrategy for LlieStrategy {
             ewma.reset();
         }
     }
+
+    fn mode(&self) -> TemporalMode {
+        TemporalMode::Stateless
+    }
 }
 
 #[cfg(test)]
@@ -114,25 +118,26 @@ mod tests {
     }
 
     #[test]
-    fn test_llie_strategy() {
-        let mut strategy = LlieStrategy::new().unwrap();
+    fn test_llie_pipeline() {
+        let mut pipeline = LliePipeline::new().unwrap();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 3];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input, 3, 1, 1),
                 &mut frame_mut(&mut output, 3, 1, 1),
             )
             .unwrap();
         assert_eq!(output, input);
+        assert_eq!(pipeline.mode(), TemporalMode::Stateless);
     }
 
     #[test]
-    fn test_llie_strategy_with_ewma() {
-        let mut strategy = LlieStrategy::new().unwrap().with_ewma(0.5).unwrap();
+    fn test_llie_pipeline_with_ewma() {
+        let mut pipeline = LliePipeline::new().unwrap().with_ewma(0.5).unwrap();
         let input = vec![0.0, 10.0];
         let mut out1 = vec![0.0; 2];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input, 2, 1, 1),
                 &mut frame_mut(&mut out1, 2, 1, 1),
@@ -142,7 +147,7 @@ mod tests {
 
         let input2 = vec![10.0, 0.0];
         let mut out2 = vec![0.0; 2];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input2, 2, 1, 1),
                 &mut frame_mut(&mut out2, 2, 1, 1),
@@ -152,13 +157,13 @@ mod tests {
     }
 
     #[test]
-    fn test_llie_strategy_with_blend_uses_current_frame() {
+    fn test_llie_pipeline_with_blend_uses_current_frame() {
         // Without a model the enhanced frame equals the raw frame, so a blend
         // with the current frame leaves the output equal to the input.
-        let mut strategy = LlieStrategy::new().unwrap().with_blend(0.5).unwrap();
+        let mut pipeline = LliePipeline::new().unwrap().with_blend(0.5).unwrap();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 3];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input, 3, 1, 1),
                 &mut frame_mut(&mut output, 3, 1, 1),
@@ -168,7 +173,7 @@ mod tests {
         // A second frame must not leak state from the first frame.
         let input2 = vec![4.0, 5.0, 6.0];
         let mut output2 = vec![0.0; 3];
-        strategy
+        pipeline
             .process(
                 &frame_ref(&input2, 3, 1, 1),
                 &mut frame_mut(&mut output2, 3, 1, 1),
@@ -178,11 +183,11 @@ mod tests {
     }
 
     #[test]
-    fn test_llie_strategy_output_dim_mismatch() {
-        let mut strategy = LlieStrategy::new().unwrap();
+    fn test_llie_pipeline_output_dim_mismatch() {
+        let mut pipeline = LliePipeline::new().unwrap();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 6];
-        let err = strategy
+        let err = pipeline
             .process(
                 &frame_ref(&input, 3, 1, 1),
                 &mut frame_mut(&mut output, 3, 2, 1),
@@ -194,8 +199,8 @@ mod tests {
     #[cfg(not(feature = "model"))]
     #[test]
     fn test_llie_with_model_requires_feature() {
-        let strategy = LlieStrategy::new().unwrap();
-        let err = strategy
+        let pipeline = LliePipeline::new().unwrap();
+        let err = pipeline
             .with_model(std::path::Path::new("nonexistent.tflite"), 1)
             .unwrap_err();
         assert!(matches!(err, CoreError::InferenceFailure(_)));

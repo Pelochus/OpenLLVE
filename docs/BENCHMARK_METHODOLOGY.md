@@ -25,7 +25,7 @@
 
 1. **Isolate core latency**: avoid including color conversion or display time
 2. **Use static test sets**: fixed scenes and frame sequences across runs
-3. **Benchmark all strategies**: LLIE with optional EWMA versus LLVE temporal strategy
+3. **Benchmark all pipelines**: LLIE with optional EWMA versus LLVE temporal pipeline
 4. **Capture environment**: device model, temperature, battery state, and accelerator selection
 
 ## Best practices

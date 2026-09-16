@@ -1,10 +1,10 @@
 package openllve.android.domain
 
 /**
- * LLIE strategy + optional temporal topping.
+ * LLIE pipeline + optional temporal topping.
  *
  * Architectural intent:
- * - `Ewma` is a temporal anti-flicker topping that works well for static LLIE strategies.
+ * - `Ewma` is a temporal anti-flicker topping that works well for static LLIE pipelines.
  * - `Frame blending` is an additional output mixing stage that can be applied to either LLIE or temporal models.
  * - LLVE temporal models already carry state and typically do not need an independent EWMA topper.
  */
