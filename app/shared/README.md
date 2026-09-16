@@ -6,7 +6,6 @@ This directory holds app-neutral logic for the product layer.
 
 - `benchmarking/`: benchmark configuration, metrics aggregation, and shared performance scenarios
 - `ui/`: presentation contracts, state models, and cross-platform UI abstractions
-- `core/`: shared domain logic that should be KMP-friendly and platform-agnostic
 
 ## Rule
 

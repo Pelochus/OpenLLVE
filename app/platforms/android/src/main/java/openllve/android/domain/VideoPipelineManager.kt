@@ -3,13 +3,18 @@ package openllve.android.domain
 import openllve.android.data.BenchmarkResult
 import openllve.android.data.SystemMonitor
 
+/**
+ * Placeholder pipeline manager.
+ *
+ * All real enhancement logic (model inference, EWMA, blending) lives in the
+ * Rust core per the architecture tenets; this class only gains real behavior
+ * once the Rust core is wired in via the C FFI (P1.1).
+ */
 class VideoPipelineManager(
     private val systemMonitor: SystemMonitor,
     private val benchmarkResult: BenchmarkResult,
     private val pipeline: String = "llie"
 ) {
-    private val llieEnhancer = LlieEwmaEnhancer(alpha = 0.35f, blendAlpha = 0.20f)
-
     fun startPipeline() {
         // Initialize the video processing pipeline
         // Set up camera input, inference engine, and output display
@@ -20,11 +25,8 @@ class VideoPipelineManager(
     }
 
     fun processFrame(frame: FloatArray): FloatArray {
-        return when (pipeline.lowercase()) {
-            "llie" -> llieEnhancer.enhance(frame)
-            "temporal" -> frame.copyOf() // Placeholder for future temporal LLVE pipeline
-            else -> frame.copyOf()
-        }
+        // Placeholder until the Rust core is wired in via the C FFI (P1.1).
+        frame.copyOf()
     }
 
     fun getBenchmarkResults(): BenchmarkResult {
@@ -32,6 +34,6 @@ class VideoPipelineManager(
     }
 
     fun monitorSystemPerformance() {
-        systemMonitor.monitor()
+        // Placeholder: no-op until benchmark orchestration is wired (P1.1/P2.3).
     }
 }

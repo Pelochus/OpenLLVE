@@ -7,7 +7,7 @@ use std::path::Path;
 /// Pipeline A: LLIE (static frame enhancer) with optional temporal toppings.
 ///
 /// With the `model` feature enabled, this pipeline runs the Zero-DCE model
-/// (`ModelRunner` from ADR-0001): frame in → enhanced frame out. Without the
+/// (`ModelRunner`, see `docs/ARCHITECTURE.md` §11): frame in → enhanced frame out. Without the
 /// feature (or without a model), `process` is an identity stub so the core
 /// still builds and tests without the TFLite runtime present.
 #[derive(Default, Debug)]

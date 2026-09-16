@@ -127,3 +127,21 @@ Warm-up frames should be excluded from reported averages. See [BENCHMARK_METHODO
 - **Optional toppings** to keep algorithms composable rather than hard-coded
 - **Pure benchmarking** for the inference path only
 - **Cross-platform reuse** of core logic across mobile runtimes
+
+## 11. Inference placement (decision, accepted 2026-09-15)
+
+Inference runs **inside the Rust core**, not on the platform: a `ModelRunner`
+(feature `model` in `core/`) loads the `.tflite` model via `tflite-c-rs`
+(CPU delegate, dynamically loaded at runtime — no build-time link). The
+platform never links TensorFlow Lite directly; Kotlin/Swift only call the C
+FFI. This satisfies tenet 2 and the "cargo bench on a PC" rule: the same
+inference path is benchmarkable on a desktop, and there is one implementation
+for all platforms.
+
+- The model file's single source of truth is `external/models/`; the app
+  assets entry is a symlink to it.
+- On Android, `libtensorflowlite_c.so` is packaged in `jniLibs` alongside the
+  Rust cdylib; on a PC it is loaded from `OPENLLVE_TFLITE_LIB`
+  (`scripts/fetch-tflite-lib.sh`).
+- CPU delegate is the default and the only delegate initially; delegate
+  selection (NNAPI/GPU) is a future FFI option.

@@ -1,4 +1,4 @@
-//! Feature-gated TFLite model runner (ADR-0001).
+//! Feature-gated TFLite model runner (see `docs/ARCHITECTURE.md` §11).
 //!
 //! Enabled with `cargo build --features model`. It loads a `.tflite` model via
 //! `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime
