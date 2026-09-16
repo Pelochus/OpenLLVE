@@ -78,6 +78,37 @@ pub extern "C" fn openllve_strategy_new_llie() -> *mut OpenLlveStrategy {
     }
 }
 
+/// Creates a new LLIE strategy handle with the Zero-DCE model loaded.
+///
+/// The model is loaded from `model_path` (a NUL-terminated UTF-8 C string)
+/// and run with `num_threads` threads. Returns null if `model_path` is null,
+/// `num_threads` is not positive, the `model` cargo feature is not enabled,
+/// or the TFLite library / model file cannot be loaded.
+///
+/// # Safety
+/// `model_path` must be a valid, NUL-terminated C string. The returned handle
+/// must be owned by a single thread and freed with `openllve_strategy_free`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn openllve_strategy_new_llie_with_model(
+    model_path: *const std::os::raw::c_char,
+    num_threads: std::os::raw::c_int,
+) -> *mut OpenLlveStrategy {
+    use std::ffi::CStr;
+    use std::path::Path;
+
+    if model_path.is_null() || num_threads <= 0 {
+        return std::ptr::null_mut();
+    }
+    let path = match unsafe { CStr::from_ptr(model_path) }.to_str() {
+        Ok(s) => Path::new(s),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    match LlieStrategy::new().and_then(|s| s.with_model(path, num_threads as u32)) {
+        Ok(strategy) => Box::into_raw(Box::new(OpenLlveStrategy::Llie(strategy))),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
 /// Creates a new temporal strategy handle.
 ///
 /// Returns null if the strategy cannot be created.

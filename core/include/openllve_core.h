@@ -32,6 +32,10 @@ enum OpenLlveError {
 // Strategy construction
 OpenLlveStrategy* openllve_strategy_new_llie(void);
 OpenLlveStrategy* openllve_strategy_new_temporal(void);
+// LLIE with the Zero-DCE model loaded. Returns NULL if the `model` cargo
+// feature is not enabled, the TFLite library/model cannot be loaded, or
+// model_path is NULL / num_threads is not positive.
+OpenLlveStrategy* openllve_strategy_new_llie_with_model(const char* model_path, int num_threads);
 void openllve_strategy_free(OpenLlveStrategy* strategy);
 
 // Strategy execution. Input and output frames are described independently

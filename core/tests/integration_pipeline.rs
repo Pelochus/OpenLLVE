@@ -2,6 +2,60 @@ use openllve_core::{
     BenchmarkMetrics, Frame, FrameRef, InferenceStrategy, LlieStrategy, LlveTemporalStrategy, NativeFrameHandle,
 };
 
+#[cfg(feature = "model")]
+fn model_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../external/models/zero-dce-int8.tflite")
+}
+
+#[cfg(feature = "model")]
+fn tflite_available() -> bool {
+    // Probe the library without constructing a runner: load_default succeeds
+    // only when libtensorflowlite_c is reachable.
+    tflite_c::TfLiteLibrary::load_default().is_ok()
+}
+
+#[cfg(feature = "model")]
+#[test]
+fn test_integration_pipeline_llie_with_model() {
+    if !tflite_available() {
+        eprintln!("skipping: libtensorflowlite_c not found (set OPENLLVE_TFLITE_LIB)");
+        return;
+    }
+    let mut strategy = match LlieStrategy::new().unwrap().with_model(&model_path(), 1) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("skipping: model load failed: {e}");
+            return;
+        }
+    };
+
+    let w = 256u32;
+    let h = 256u32;
+    let c = 3u32;
+    let stride = (w * c) as usize * 4;
+    let in_data: Vec<f32> = (0..(w * h * c) as usize).map(|i| ((i % 251) as f32) / 250.0).collect();
+    let input = FrameRef::new(w, h, c, stride, &in_data).unwrap();
+    let mut out_data = vec![0.0f32; (w * h * c) as usize];
+    let mut output = Frame::new(w, h, c, stride, &mut out_data).unwrap();
+
+    strategy.process(&input, &mut output).unwrap();
+
+    // Enhanced frame must be in [0,1], finite, and actually changed.
+    assert!(
+        output
+            .as_slice()
+            .iter()
+            .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+    );
+    let changed = (0..output.as_slice().len())
+        .filter(|&idx| (output.as_slice()[idx] - in_data[idx]).abs() > 1e-4)
+        .count();
+    assert!(
+        changed > (w * h * c) as usize / 10,
+        "output too close to input: {changed}"
+    );
+}
+
 #[test]
 fn test_integration_pipeline_llie() {
     let mut strategy = LlieStrategy::new().unwrap();

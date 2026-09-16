@@ -44,15 +44,23 @@ table in sync.
    - Do both together; `ModelRunner` (P1.2) builds on this. Add `bytemuck`
      here for typed views (P3.3). Optionally rename `Strategy` → `Pipeline`
      - `TemporalMode { Stateless, Recurrent }` in the same rework (P3.7).
-3. [ ] **P1.2 — Integrate the model where the ADR says (highest priority).**
-   - If Option A: add a `ModelRunner` in the Rust core loading
-     `zero-dce-int8.tflite`; strategies call it; benchmark the model path.
-   - If Option B: wire the model into `LiteRTInferenceEngine.kt` (assets,
-     tensor mapping, CPU delegate) and run it in `VideoPipelineManager`.
-   - Goal: frame in → enhanced frame out.
-   - Model I/O is `(H,W,4) → (H,W,24)` (Zero-DCE: RGB + brightness channel in;
-     8×RGB curve params out — apply the curves per `external/models/README.md` /
-     raspberrypi/AI_enhance).
+3. [x] **P1.2 — Integrate the model where the ADR says (highest priority).** ✅ 2026-09-16
+   - Option A implemented: `core/src/model.rs` `ModelRunner` (feature `model`)
+     loads `zero-dce-int8.tflite` via `tflite-c-rs` (runtime `libloading`, no
+     build-time link); `LlieStrategy::with_model(path, num_threads)` runs it;
+     FFI `openllve_strategy_new_llie_with_model`; model path benchmarked.
+   - Frame in → enhanced frame out: RGB `[0,1]` in → enhanced RGB `[0,1]` out
+     (4th brightness channel = global mean clamped to 0.5; tiling for >256×256
+     with 16 px overlap; 8-curve application per `external/models/README.md`).
+   - `LiteRTInferenceEngine.kt` deleted (inference lives in the Rust core).
+   - The committed model is a re-derived fixed-256×256 variant (upstream 1×1×1
+     kept as `zero-dce-int8-upstream.tflite`) because the TFLite C runtime
+     segfaults on `ResizeInputTensor` for the original; the input shape is baked
+     into the flatbuffer instead. Verified bit-exact vs upstream+resize under
+     LiteRT; the Rust pipeline matches the upstream Python reference (max diff
+     ~0.008, XNNPACK-vs-reference kernel).
+   - Follow-up: verify on real (non-synthetic) frames; re-confirm the
+     global-mean brightness channel vs upstream's 4×4 bilinear downscale.
 4. [ ] **P3.7 — Rename `Strategy` → `Pipeline` + `TemporalMode` (do with P1.2).**
    - Rename `InferenceStrategy` → `Pipeline`, `LlieStrategy` → `LliePipeline`,
      `LlveTemporalStrategy` → `LlveTemporalPipeline`, and add

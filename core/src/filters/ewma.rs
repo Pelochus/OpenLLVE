@@ -57,6 +57,38 @@ impl EwmaFilter {
         Ok(())
     }
 
+    /// In-place variant: `frame` already holds the current (enhanced) frame
+    /// and is smoothed against the stored previous frame:
+    /// `frame = alpha * frame + (1 - alpha) * previous`.
+    ///
+    /// Unlike [`apply`](Self::apply), this reads and writes the same buffer
+    /// (per pixel, no aliasing), so it needs no temporary frame. The first
+    /// frame of a sequence (or a dimension change) passes through unchanged.
+    pub fn apply_in_place(&mut self, frame: &mut Frame) -> Result<()> {
+        let is_new_sequence = match &self.previous {
+            None => true,
+            Some(prev) => prev.dims() != frame.dims(),
+        };
+
+        let prev = if is_new_sequence { None } else { self.previous.as_ref() };
+
+        if let Some(prev) = prev {
+            let alpha = self.alpha;
+            for y in 0..frame.height() {
+                for x in 0..frame.width() {
+                    for c in 0..frame.channels() {
+                        let cur = frame.pixel(x, y, c);
+                        let prev = prev.pixel(x, y, c);
+                        *frame.pixel_mut(x, y, c) = alpha * cur + (1.0 - alpha) * prev;
+                    }
+                }
+            }
+        }
+
+        self.previous = Some(OwnedFrame::from_frame(&frame.as_ref()));
+        Ok(())
+    }
+
     pub fn reset(&mut self) {
         self.previous = None;
     }
@@ -135,6 +167,20 @@ mod tests {
             .apply(&frame_ref(&f1, 2, 1, 1), &mut frame_mut(&mut out, 2, 2, 1))
             .unwrap_err();
         assert!(matches!(err, CoreError::BufferDimensionMismatch { .. }));
+    }
+
+    #[test]
+    fn test_ewma_apply_in_place() {
+        let mut filter = EwmaFilter::new(0.5).unwrap();
+        // First frame (holds the current enhanced frame) passes through.
+        let mut out1 = vec![0.0, 10.0];
+        filter.apply_in_place(&mut frame_mut(&mut out1, 2, 1, 1)).unwrap();
+        assert_eq!(out1, vec![0.0, 10.0]);
+
+        // Second frame: alpha*curr + (1-alpha)*prev.
+        let mut out2 = vec![10.0, 0.0];
+        filter.apply_in_place(&mut frame_mut(&mut out2, 2, 1, 1)).unwrap();
+        assert_eq!(out2, vec![5.0, 5.0]);
     }
 
     #[test]

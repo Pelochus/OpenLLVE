@@ -34,6 +34,7 @@ core/
 │   ├── filters/
 │   │   ├── ewma.rs                # temporal anti-flicker filter
 │   │   └── blend.rs               # raw/enhanced blending filter
+│   ├── model.rs                  # TFLite ModelRunner (feature `model`)
 │   ├── strategies.rs             # module declaration for llie.rs + temporal.rs
 │   ├── strategies/
 │   │   ├── llie.rs                # LLIE strategy, optionally configured with EWMA
@@ -75,6 +76,40 @@ The architecture separates the main model strategy from optional post-processing
 - `EwmaFilter`: anti-flicker smoothing for LLIE-style pipelines.
 
 This is more flexible than hard-wiring all filters into every strategy.
+
+## Model runner (feature `model`)
+
+Inference runs inside the Rust core per ADR-0001. The `ModelRunner`
+(`src/model.rs`, behind the `model` cargo feature) loads the Zero-DCE model
+via `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime
+(no build-time link). The library path comes from the `OPENLLVE_TFLITE_LIB`
+environment variable, falling back to the default search path.
+
+- `ModelRunner::new(model_path, num_threads)` loads the model and validates its
+  `(1, 256, 256, 4) → (1, 256, 256, 24)` I/O shape.
+- `ModelRunner::run_frame(input, output)` maps an RGB `[0, 1]` frame to an
+  enhanced RGB `[0, 1]` frame: it derives the 4th (brightness) input channel
+  as the frame's global mean clamped to `0.5`, runs the model (tiling frames
+  larger than 256×256 into overlapping 256×256 patches with 16 px overlap,
+  reflect padding, and linear-ramp reassembly — mirroring the upstream
+  `network.py`), and applies the 8 learned curves per pixel.
+- `LlieStrategy::with_model(path, num_threads)` attaches a runner; `process`
+  then runs the model instead of the identity stub. The FFI exposes it via
+  `openllve_strategy_new_llie_with_model(model_path, num_threads)`.
+
+The feature is off by default so `cargo test` / `cargo clippy` / `cargo fmt`
+pass without the TFLite runtime present. To run the real model path on a PC:
+
+```bash
+scripts/fetch-tflite-lib.sh core/native          # downloads libtensorflowlite_c
+OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
+  cargo test --features model
+OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
+  cargo bench --features model
+```
+
+On Android the same cdylib is packaged alongside `libopenllve_core.so` and the
+TFLite shared library (see ADR-0001); Kotlin only calls the FFI.
 
 ## Design principles
 

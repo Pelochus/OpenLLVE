@@ -2,13 +2,20 @@ use super::InferenceStrategy;
 use crate::error::Result;
 use crate::filters::{EwmaFilter, FrameBlendFilter};
 use crate::frame::{Frame, FrameRef};
+use std::path::Path;
 
 /// Strategy A: LLIE (static frame enhancer) with optional temporal toppings.
-/// This is the place where EWMA smoothing can be attached, but not required.
-#[derive(Default)]
+///
+/// With the `model` feature enabled, this strategy runs the Zero-DCE model
+/// (`ModelRunner` from ADR-0001): frame in → enhanced frame out. Without the
+/// feature (or without a model), `process` is an identity stub so the core
+/// still builds and tests without the TFLite runtime present.
+#[derive(Default, Debug)]
 pub struct LlieStrategy {
     ewma: Option<EwmaFilter>,
     blend: Option<FrameBlendFilter>,
+    #[cfg(feature = "model")]
+    model: Option<crate::model::ModelRunner>,
 }
 
 impl LlieStrategy {
@@ -16,7 +23,33 @@ impl LlieStrategy {
         Ok(Self {
             ewma: None,
             blend: None,
+            #[cfg(feature = "model")]
+            model: None,
         })
+    }
+
+    /// Attaches the Zero-DCE model (feature `model`).
+    ///
+    /// # Errors
+    /// Returns [`crate::error::CoreError::InferenceFailure`] if the `model`
+    /// feature is not enabled, or the model/TFLite library cannot be loaded.
+    pub fn with_model(self, model_path: &Path, num_threads: u32) -> Result<Self> {
+        #[cfg(feature = "model")]
+        {
+            let model = crate::model::ModelRunner::new(model_path, num_threads)?;
+            Ok(Self {
+                ewma: self.ewma,
+                blend: self.blend,
+                model: Some(model),
+            })
+        }
+        #[cfg(not(feature = "model"))]
+        {
+            let _ = (model_path, num_threads);
+            Err(crate::error::CoreError::InferenceFailure(
+                "the `model` cargo feature is not enabled; rebuild with --features model".to_string(),
+            ))
+        }
     }
 
     pub fn with_ewma(mut self, alpha: f32) -> Result<Self> {
@@ -32,16 +65,27 @@ impl LlieStrategy {
 
 impl InferenceStrategy for LlieStrategy {
     fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()> {
-        // Placeholder "model": enhanced == raw. P1.2 replaces this with the
-        // ModelRunner from ADR-0001 (zero-dce-int8.tflite).
-        if let Some(ewma) = &mut self.ewma {
-            ewma.apply(input, output)?;
+        // 1. Enhancement: the model if present, else an identity stub.
+        //    (P1.2: the model maps RGB [0,1] in -> enhanced RGB [0,1] out.)
+        #[cfg(feature = "model")]
+        if let Some(model) = &mut self.model {
+            model.run_frame(input, output)?;
         } else {
             output.copy_from(input)?;
         }
+        #[cfg(not(feature = "model"))]
+        {
+            output.copy_from(input)?;
+        }
 
-        // Blend the *current* raw frame with the enhanced frame:
-        // output = beta * enhanced + (1 - beta) * raw
+        // 2. EWMA temporal smoothing of the enhanced frame (in place; no
+        //    per-frame allocation).
+        if let Some(ewma) = &mut self.ewma {
+            ewma.apply_in_place(output)?;
+        }
+
+        // 3. Blend the *current* raw frame with the enhanced frame (in place):
+        //    output = beta * enhanced + (1 - beta) * raw
         if let Some(blend) = &self.blend {
             blend.apply_in_place(input, output)?;
         }
@@ -145,5 +189,15 @@ mod tests {
             )
             .unwrap_err();
         assert!(matches!(err, CoreError::BufferDimensionMismatch { .. }));
+    }
+
+    #[cfg(not(feature = "model"))]
+    #[test]
+    fn test_llie_with_model_requires_feature() {
+        let strategy = LlieStrategy::new().unwrap();
+        let err = strategy
+            .with_model(std::path::Path::new("nonexistent.tflite"), 1)
+            .unwrap_err();
+        assert!(matches!(err, CoreError::InferenceFailure(_)));
     }
 }
