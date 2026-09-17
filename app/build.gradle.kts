@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 repositories {
@@ -46,6 +47,17 @@ android {
         }
     }
 
+    buildFeatures {
+        compose = true
+    }
+
+    composeOptions {
+        // Must match the Kotlin compiler version (2.0.21) to avoid the
+        // "couldn't find inline method" backend error when inlining Compose
+        // functions such as androidx.lifecycle.viewmodel.compose.viewModel.
+        kotlinCompilerExtensionVersion = "2.0.21"
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -85,10 +97,13 @@ dependencies {
     implementation("com.google.android.material:material:1.10.0")
     implementation("androidx.datastore:datastore-preferences:1.1.0")
 
-    // LiteRT (TFLite). The Maven artifact id is still `tensorflow-lite` even
-    // after the rename to LiteRT (see docs/DESIGN_SUGGESTIONS.md §5).
-    implementation("org.tensorflow:tensorflow-lite:2.17.0")
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.17.0")
+    // LiteRT (TFLite). Pinned to the classic `org.tensorflow.lite` API (the last
+    // non-relocated classic artifact line). 2.17.0 is a relocation POM to
+    // `com.google.ai.edge.litert:litert` and does NOT expose the
+    // `org.tensorflow.lite` classes this engine is written against. See
+    // TODO-app.md §4.1 and docs/DESIGN_SUGGESTIONS.md §5.
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

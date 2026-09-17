@@ -4,11 +4,21 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import openllve.android.domain.ComputeTarget
 import openllve.android.domain.EnhancementSettings
+
+/**
+ * DataStore-backed settings. The [Context.settingsDataStore] extension property
+ * is the canonical way to obtain the [DataStore] (the delegate's `getValue`
+ * requires a [Context] as its this-reference, so it cannot be used as a plain
+ * class property).
+ */
+val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "openllve_settings")
 
 /**
  * Persists lightweight user preferences with Jetpack DataStore (Preferences).
@@ -17,7 +27,7 @@ import openllve.android.domain.EnhancementSettings
  * simple key/value settings. No database is needed for this slice.
  */
 class SettingsRepository(context: Context) {
-    private val dataStore: DataStore<androidx.datastore.preferences.Preferences> by context.preferencesDataStore(name = "openllve_settings")
+    private val dataStore: DataStore<Preferences> = context.settingsDataStore
 
     private val computeTargetKey = stringPreferencesKey("compute_target")
     private val ewmaKey = booleanPreferencesKey("ewma_enabled")

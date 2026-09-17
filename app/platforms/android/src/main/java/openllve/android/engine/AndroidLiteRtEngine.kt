@@ -9,9 +9,9 @@ import openllve.android.domain.EnhancementEngine
 import openllve.android.domain.EnhancementSettings
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.TensorBuffer
 import org.tensorflow.lite.gpu.GpuDelegate
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
@@ -43,17 +43,17 @@ class AndroidLiteRtEngine(
 ) : EnhancementEngine {
 
     private var interpreter: Interpreter? = null
-    private var inputBuffer: TensorBuffer? = null
-    private var outputBuffer: TensorBuffer? = null
+    private var inputBuffer: ByteBuffer? = null
+    private var outputBuffer: ByteBuffer? = null
     private var outputIsInt8 = false
     private var outputScale = 1.0f
     private var outputZeroPoint = 0
 
     @Volatile
-    private var lastInferenceMs = 0L
+    private var lastInferenceMsValue = 0L
 
     override val lastInferenceMs: Long
-        get() = lastInferenceMs
+        get() = lastInferenceMsValue
 
     override suspend fun probeBackends(context: Context): BackendProbeResult {
         val modelFile = loadModelFile(context)
@@ -80,18 +80,23 @@ class AndroidLiteRtEngine(
         val (interp, actual, reason) = createInterpreterWithFallback(modelFile, requested, threads)
         interpreter = interp
 
-        inputBuffer = org.tensorflow.lite.TensorBuffer.create(1, PATCH, PATCH, 4, DataType.FLOAT32)
+        // The classic `org.tensorflow.lite` API feeds `Interpreter.run` raw direct
+        // `ByteBuffer`s (there is no `TensorBuffer` class in this artifact). The
+        // input is FLOAT32 `(1, 256, 256, 4)`; the output is `(1, 256, 256, 24)`
+        // and may be FLOAT32 or INT8 (dequantized below), mirroring the Rust
+        // `ModelRunner.run_model` dtype handling.
+        inputBuffer = ByteBuffer.allocateDirect(PATCH * PATCH * 4 * 4).order(ByteOrder.nativeOrder())
         val outTensor = interp.getOutputTensor(0)
-        outputIsInt8 = outTensor.type() == DataType.INT8
+        outputIsInt8 = outTensor.dataType() == DataType.INT8
         if (outputIsInt8) {
-            val q = outTensor.quantization()
-            outputScale = q.scale
-            outputZeroPoint = q.zeroPoint
-            outputBuffer = org.tensorflow.lite.TensorBuffer.create(1, PATCH, PATCH, 24, DataType.INT8)
+            val q = outTensor.quantizationParams()
+            outputScale = q.getScale()
+            outputZeroPoint = q.getZeroPoint()
+            outputBuffer = ByteBuffer.allocateDirect(PATCH * PATCH * 24).order(ByteOrder.nativeOrder())
         } else {
             outputScale = 1.0f
             outputZeroPoint = 0
-            outputBuffer = org.tensorflow.lite.TensorBuffer.create(1, PATCH, PATCH, 24, DataType.FLOAT32)
+            outputBuffer = ByteBuffer.allocateDirect(PATCH * PATCH * 24 * 4).order(ByteOrder.nativeOrder())
         }
         return BackendSelection(requested, actual, reason)
     }
@@ -118,7 +123,7 @@ class AndroidLiteRtEngine(
         }
         val output = FloatArray(width * height * 3)
         applyCurves(input, output, width, height, wPad, accum)
-        this.lastInferenceMs = SystemClock.elapsedRealtime() - start
+        this.lastInferenceMsValue = SystemClock.elapsedRealtime() - start
         return output
     }
 
@@ -214,26 +219,30 @@ class AndroidLiteRtEngine(
 
     private fun runModel(
         interp: Interpreter,
-        inBuf: TensorBuffer,
-        outBuf: TensorBuffer,
+        inBuf: ByteBuffer,
+        outBuf: ByteBuffer,
         patchIn: FloatArray,
         patchOut: FloatArray
     ) {
-        val inBytes = inBuf.getBuffer()
-        inBytes.rewind()
-        inBytes.order(ByteOrder.nativeOrder()).asFloatBuffer().put(patchIn)
+        // Fill the input from position 0. The native input path memcpys from the
+        // direct buffer's start, so the input position does not matter, but we
+        // rewind for clarity.
+        inBuf.rewind()
+        inBuf.asFloatBuffer().put(patchIn)
+        // `Interpreter.run` writes the output tensor into `outBuf` starting at its
+        // current position, so rewind before running and again before reading.
+        outBuf.rewind()
         interp.run(inBuf, outBuf)
-        val outBytes = outBuf.getBuffer()
-        outBytes.rewind()
+        outBuf.rewind()
         if (outputIsInt8) {
             val raw = ByteArray(PATCH * PATCH * 24)
-            outBytes.get(raw)
+            outBuf.get(raw)
             for (i in raw.indices) {
                 patchOut[i] = (raw[i].toInt() - outputZeroPoint) * outputScale
             }
         } else {
             val raw = FloatArray(PATCH * PATCH * 24)
-            outBytes.order(ByteOrder.nativeOrder()).asFloatBuffer().get(raw)
+            outBuf.asFloatBuffer().get(raw)
             System.arraycopy(raw, 0, patchOut, 0, raw.size)
         }
     }

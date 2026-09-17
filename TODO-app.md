@@ -13,10 +13,13 @@ build/runtime blockers, and a prompt to continue the work in a new session.
   structure is in place: UI → ViewModel → domain config → media layer →
   enhancement engine (temporary LiteRT impl). The domain types are shaped so the
   Rust core can consume them later without changing the UI.
-- **The app does NOT yet compile cleanly.** There are remaining Kotlin compile
-  errors in two files (`engine/AndroidLiteRtEngine.kt` and
-  `media/VideoFrameProvider.kt`). They are well-understood and bounded (see
-  §4). The rest of the project compiles.
+- **The app now compiles cleanly.** `./gradlew :app:assembleDebug` is
+  **BUILD SUCCESS** (only deprecation warnings remain, no compile errors).
+  The LiteRT artifact was pinned to the classic `org.tensorflow.lite` API
+  (2.14.0), the engine and media layers were reconciled with the real
+  `org.tensorflow.lite` and `MediaCodec`/`MediaExtractor` APIs, and the
+  Compose Compiler Gradle plugin was added (required by Kotlin 2.0).
+  See §4 for the details of what was fixed.
 - **No Rust files were modified.** No C/C++ bridge was added. No iOS work.
   The LiteRT integration is isolated behind `EnhancementEngine`.
 - **No device/emulator was available in this environment**, so runtime behavior
@@ -140,62 +143,87 @@ build/runtime blockers, and a prompt to continue the work in a new session.
 
 ---
 
-## 4. Known build/runtime blockers (to fix next)
+## 4. Build blockers — RESOLVED (compile) / remaining (runtime)
 
-### 4.1 LiteRT 2.17.0 is a **relocation** (root cause of the engine errors)
+### 4.1 LiteRT artifact — **FIXED**
 
 `org.tensorflow:tensorflow-lite:2.17.0` is **not a real AAR** — its POM
 relocates to `com.google.ai.edge.litert:litert:1.0.1` (the new "LiteRT"
-artifact). Consequences:
+artifact), and the `org.tensorflow.lite` classes the engine was written
+against (including `TensorBuffer`) do not exist in it. **Resolution:**
+pinned to the classic artifact `org.tensorflow:tensorflow-lite:2.14.0` (+
+`tensorflow-lite-gpu:2.14.0`), which still exposes the `org.tensorflow.lite`
+API. The engine was reconciled against the real classic API:
 
-- The class package may have moved from `org.tensorflow.lite` to
-  `com.google.ai.edge.litert`, which is why `TensorBuffer`,
-  `FloatTensorBuffer`, `Int8TensorBuffer`, `getBuffer()` are unresolved in
-  `AndroidLiteRtEngine.kt`.
-- **Fix options (pick one and verify on a device):**
-  1. **Pin the classic artifact** that still exposes the `org.tensorflow.lite`
-     API: use `org.tensorflow:tensorflow-lite:2.14.0` (or the last version
-     before the relocation) — lowest risk, matches the API the code was written
-     against.
-  2. **Adopt the new LiteRT artifact** `com.google.ai.edge.litert:litert:1.0.1`
-     and update imports (`Interpreter`, `TensorBuffer`, delegate classes) to the
-     new `com.google.ai.edge.litert` package. More future-proof but a bigger
-     change.
-- Whichever is chosen, re-verify the delegate API (XNNPACK via
-  `Options.setUseXNNPACK`, NNAPI via `Options.setUseNNAPI`, GPU via
-  `GpuDelegate`) against the chosen artifact's actual classes.
+- `TensorBuffer` / `FloatTensorBuffer` / `Int8TensorBuffer` **do not exist** in
+  any classic `org.tensorflow.lite` version. Replaced all `TensorBuffer`
+  usage with `ByteBuffer.allocateDirect(...)` and `Interpreter.run(Object, Object)`
+  (raw `ByteBuffer` in/out).
+- `tensor.type()` → `tensor.dataType()`; `tensor.quantization()` →
+  `tensor.quantizationParams()`; `.scale` → `.getScale()`; `.zeroPoint` →
+  `.getZeroPoint()`.
+- GPU delegate uses the no-arg `GpuDelegate()` constructor.
+- **Remaining (runtime, §4.4):** verify the model's output tensor dtype
+  (INT8 vs FLOAT32) and the dequantization path on a device.
 
-### 4.2 `engine/AndroidLiteRtEngine.kt` — remaining compile errors
+### 4.2 `engine/AndroidLiteRtEngine.kt` — **FIXED**
 
-- `TensorBuffer` / `getBuffer()` unresolved (see 4.1). The current code uses
-  `TensorBuffer.create(...)` and `getBuffer().asFloatBuffer()`; this must be
-  reconciled with the actual tensor-buffer API of the chosen artifact (e.g.
-  `FloatTensorBuffer(vararg shape)` + `.floatBuffer`, `Int8TensorBuffer` +
-  `.int8Buffer`, or the `ByteBuffer` path).
-- Verify the model's **output tensor dtype** (INT8 vs FLOAT32) at runtime; the
-  dequantization path (`scale`/`zeroPoint`) must match.
+- Reconciled with the classic `org.tensorflow.lite` API (see 4.1).
+- Resolved a conflicting `lastInferenceMs` declaration (the private `var`
+  was renamed to `lastInferenceMsValue`; the public `lastInferenceMs` getter
+  is preserved for the media layer).
 
-### 4.3 `media/VideoFrameProvider.kt` — remaining compile errors
+### 4.3 `media/VideoFrameProvider.kt` — **FIXED**
 
-- `MediaExtractor.setDataSource(...)` has **no `Uri` overload**. Must open the
-  SAF `Uri` via `context.contentResolver.openFileDescriptor(uri, "r")` and call
-  `setDataSource(fd.fileDescriptor, 0, fd.length)` (or convert to a path).
-- `return` inside the `Thread { }` Runnable lambda is a prohibited non-local
-  return — restructure to an `if` block (no `return`).
-- The remaining errors (`prepare`, `setEncodingFlags`, `setPresentationTime`,
-  `BUFFER_FLAG_SYNC_FRAME`, `queueInputBuffer`, `INFO_OUTPUT_EOS`,
-  `getHardwareBuffer`, `Bitmap.createBitmap(...)`) are **cascading** from the
-  `setDataSource` type mismatch; they should resolve once the source is fixed.
-- Verify `Bitmap.wrapHardwareBuffer` + `Bitmap.createBitmap` work for the
-  decoder's output format on a real device (API 26+).
+- `MediaExtractor.setDataSource(...)` has **no `Uri` overload**. Opened the
+  SAF `Uri` via `context.contentResolver.openFileDescriptor(uri, "r")` and
+  called `setDataSource(fd.fileDescriptor, 0, fd.statSize)` (note: it is
+  `fd.statSize`, not `fd.length`).
+- Removed the prohibited non-local `return` in the `Thread { }` lambda
+  (restructured to an `if` block).
+- `MediaExtractor.prepare()` **does not exist** in API 34 — removed the call.
+- `MediaExtractor.BUFFER_FLAG_SYNC_FRAME` → `MediaExtractor.SAMPLE_FLAG_SYNC`
+  (the correct constant name).
+- `codec.queueInputBuffer(...)` takes **5** parameters (index, offset, size,
+  presentationTime, flags) — fixed the call.
+- `MediaCodec.INFO_OUTPUT_EOS` **does not exist** — after feeding the EOS
+  flag, `INFO_TRY_AGAIN_LATER` indicates the decoder has drained every frame.
+- `ByteBuffer.getHardwareBuffer()` / `MediaCodec.OutputFrame.getHardwareBuffer()`
+  and `Surface(HardwareBuffer)` are not available for software output. Switched
+  to **software output** (null surface): the decoded frame comes back as a
+  `ByteBuffer` in the codec's YUV format (NV12/YV12), converted to an
+  ARGB_8888 `Bitmap` via a `yuvToBitmap` helper.
+- `extractor.readSampleData(ByteBuffer, int)` requires a `ByteBuffer` (not a
+  `ByteArray`) — used `ByteBuffer.wrap(ByteArray)` for the input sample.
 
-### 4.4 Runtime verification (not done — no device/emulator)
+### 4.3a `data/SettingsRepository.kt` — **FIXED** (newly discovered)
+
+- `preferencesDataStore(name = "...")` returns a `ReadOnlyProperty<Context,
+  DataStore<Preferences>>`; its `getValue` requires a `Context` this-reference,
+  so it cannot be used as a plain class property. Added a top-level extension
+  property `val Context.settingsDataStore: DataStore<Preferences> by
+  preferencesDataStore(name = "openllve_settings")` and used
+  `context.settingsDataStore` in the class.
+- Added `import androidx.datastore.preferences.core.edit` for the
+  `DataStore<Preferences>.edit` extension.
+
+### 4.3b Compose Compiler Gradle plugin — **FIXED** (newly discovered)
+
+- Kotlin 2.0 **requires** the Compose Compiler Gradle plugin when Compose is
+  enabled. Without it, the build fails with a backend internal error when
+  inlining `androidx.lifecycle.viewmodel.compose.viewModel` ("couldn't find
+  inline method"). Added `id("org.jetbrains.kotlin.plugin.compose")` (version
+  2.0.21, matching the Kotlin compiler) to `settings.gradle.kts` and
+  `app/build.gradle.kts`, plus `buildFeatures { compose = true }` and
+  `composeOptions { kotlinCompilerExtensionVersion = "2.0.21" }`.
+
+### 4.4 Runtime verification (NOT done — no device/emulator)
 
 - Confirm the model actually loads and produces a visibly enhanced frame.
 - Confirm delegate probing reports correct support (esp. NPU/NNAPI, which can
   silently fall back to CPU — documented limitation).
 - Confirm the MediaCodec decode loop runs and produces synchronized
-  original/enhanced frames.
+  original/enhanced frames (the YUV→RGB conversion is untested on a device).
 - Confirm settings persist across app restarts.
 
 ---
@@ -241,30 +269,28 @@ JDK/Android SDK**. A working build environment was set up:
 
 > **Continue the OpenLLVE Android vertical slice.**
 >
+> **Compile status: DONE.** `./gradlew :app:assembleDebug` is **BUILD SUCCESS**
+> (no compile errors; only deprecation warnings). The LiteRT artifact is pinned
+> to the classic `org.tensorflow.lite` API (2.14.0), the engine and media layers
+> are reconciled with the real APIs, and the Compose Compiler Gradle plugin is
+> in place. See §4 for the details.
+>
 > 1. Read `TODO-app.md` (this file), `TODO.md`, `IMPROVEMENTS.md`,
 >    `docs/ARCHITECTURE.md`, and `core/README.md`. Do **not** modify Rust, add
 >    C/C++, or start iOS work.
-> 2. Fix the build blockers in §4, in this order:
->    a. Decide the LiteRT artifact (§4.1): **recommended** — pin
->       `org.tensorflow:tensorflow-lite:2.14.0` (classic `org.tensorflow.lite`
->       API) to match the existing engine code; alternatively adopt
->       `com.google.ai.edge.litert:litert:1.0.1` and update imports.
->    b. Make `engine/AndroidLiteRtEngine.kt` compile against the chosen
->       artifact's tensor-buffer + delegate API; verify the model output dtype
->       and dequantization.
->    c. Make `media/VideoFrameProvider.kt` compile: fix `MediaExtractor`
->       `setDataSource` (use the `FileDescriptor` overload from the SAF `Uri`),
->       remove the prohibited `return` in the `Thread` lambda; confirm the
->       cascading errors clear.
-> 3. Get `./gradlew :app:assembleDebug` to **BUILD SUCCESS** (no compile
->     errors).
-> 4. If a device/emulator is available, run the app and verify: image
->     enhancement produces a visibly enhanced frame; the MP4 decode loop runs and
->     shows synchronized original↔enhanced; delegate selection reports the
->     actual backend (never a silent fallback); settings persist.
-> 5. Update `TODO-app.md` to mark completed items and add any newly discovered
->     app-side work. Keep `TODO.md` (Rust) and `IMPROVEMENTS.md` in sync.
-> 6. Only after the app is functional, consider the deferred items in §3 (e.g.
+> 2. **Runtime verification (§4.4)** — the remaining work. If a device/emulator
+>    is available, run the app and verify:
+>    - The model loads and produces a visibly enhanced frame (image path).
+>    - The MP4 decode loop runs and shows synchronized original↔enhanced frames
+>      (video path); the YUV→RGB conversion is correct.
+>    - Delegate selection reports the actual backend (never a silent fallback;
+>      esp. NPU/NNAPI, which can silently fall back to CPU).
+>    - The model's output tensor dtype (INT8 vs FLOAT32) and the dequantization
+>      path are correct.
+>    - Settings persist across app restarts.
+> 3. Update `TODO-app.md` to mark completed items and add any newly discovered
+>    app-side work. Keep `TODO.md` (Rust) and `IMPROVEMENTS.md` in sync.
+> 4. Only after the app is functional, consider the deferred items in §3 (e.g.
 >    full synchronized enhanced playback with audio, APK signing, KMP lift of the
 >    domain layer).
 >
