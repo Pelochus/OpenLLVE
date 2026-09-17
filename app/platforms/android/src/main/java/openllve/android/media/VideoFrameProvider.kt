@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * decode); see TODO-app.md.
  *
  * The whole decode/process loop runs on a single dedicated thread because the
- * LiteRT interpreter is not thread-safe and the engine must be used from one
- * thread.
+ * LiteRT `CompiledModel` is not thread-safe and the engine must be used from
+ * one thread.
  */
 class VideoFrameProvider(
     private val context: Context,

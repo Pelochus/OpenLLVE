@@ -13,8 +13,8 @@ Status of the remaining §5 items:
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.1 CI | ⚠️ partial — clippy/fmt in `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
 | P2.3 benchmarks | ⬜ remaining |
-| P2.4 dependency refresh | ⬜ remaining |
-| P2.5 docs | ⚠️ partial — LiteRT/TFLite naming note remaining |
+| P2.4 dependency refresh | ⚠️ partial — ML runtime migrated to LiteRT 2.2.0 (app); toolchain bump (AGP/Kotlin/Compose/lifecycle) remains |
+| P2.5 docs | ⚠️ partial — app now uses the real `com.google.ai.edge.litert` artifact; docs naming pass remaining |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `serde`/`serde_json` wait for P3.6, `proptest` for P3.8 |
 
 ## 1. What this repo is
@@ -43,7 +43,7 @@ The docs are clear and good, but the code still contradicts them in places:
 | `VideoPipelineManager.kt` | `startPipeline()`/`stopPipeline()` are empty comments; `processFrame` is a placeholder copy; no engine, no threading, no lifecycle. |
 | `SystemMonitor.kt` | `getCpuUsage()` is a hardcoded `0.0f` placeholder; `getMemoryUsage()` uses the deprecated `ActivityManager.getMemoryInfo` path. |
 | `MainScreen.kt` | Button is a no-op; no camera preview, no result surface, no state. |
-| Naming | "LiteRT" (docs) vs `org.tensorflow:tensorflow-lite` artifacts: Google renamed TensorFlow Lite → **LiteRT** (Sept 2024), but the Maven artifact IDs and APIs are unchanged. Docs/code mix both; pick one and note the artifact ID is still `tensorflow-lite`. |
+| Naming | "LiteRT" (docs) vs `org.tensorflow:tensorflow-lite` artifacts: Google renamed TensorFlow Lite → **LiteRT** (Sept 2024). The app now uses the real LiteRT artifact (`com.google.ai.edge.litert:litert:2.2.0`, `CompiledModel` API), so the app-side naming issue is resolved; remaining: a docs-wide pass to standardize on "LiteRT". |
 
 ## 4. Suggested improvements (prioritized, remaining)
 
@@ -59,8 +59,8 @@ The docs are clear and good, but the code still contradicts them in places:
 
 1. **CI**: add a Kotlin lint step (ktlint); add a release workflow.
 2. **Benchmarks**: benchmark the *model path* (not memcpy), keep warm-up exclusion, and record device/temperature/battery metadata per run as the methodology doc requires.
-3. **Dependency refresh**: TFLite 2.12.0 → current, CameraX 1.2.2 → current, Material → current.
-4. **Docs**: standardize LiteRT vs TFLite naming.
+3. **Dependency refresh**: ML runtime done (LiteRT 2.2.0 `CompiledModel`); remaining: build toolchain bump (Kotlin 2.3.0 → 2.4.20, AGP 9.4.0, Compose BOM, lifecycle 2.11.0 — see `TODO-app.md` §7 Change 2).
+4. **Docs**: standardize LiteRT vs TFLite naming (app-side resolved by the LiteRT migration; docs pass remaining).
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
 

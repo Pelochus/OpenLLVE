@@ -87,6 +87,13 @@ private fun ComputeTargetSelector(
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     }
                 )
+                if (target == ComputeTarget.XNNPACK) {
+                    Text(
+                        text = "no XNNPACK accelerator in LiteRT; runs on CPU",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (!supported && note != null) {
                     Text(
                         text = note,

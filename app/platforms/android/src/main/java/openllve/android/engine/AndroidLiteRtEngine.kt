@@ -2,21 +2,22 @@ package openllve.android.engine
 
 import android.content.Context
 import android.os.SystemClock
+import com.google.ai.edge.litert.Accelerator
+import com.google.ai.edge.litert.CompiledModel
+import com.google.ai.edge.litert.Environment
+import com.google.ai.edge.litert.TensorBuffer
+import com.google.ai.edge.litert.TensorType
 import openllve.android.domain.BackendProbeResult
 import openllve.android.domain.BackendSelection
 import openllve.android.domain.ComputeTarget
 import openllve.android.domain.EnhancementEngine
 import openllve.android.domain.EnhancementSettings
-import org.tensorflow.lite.DataType
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.gpu.GpuDelegate
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
  * Temporary Android implementation of [EnhancementEngine] that runs the
- * Zero-DCE model directly on the LiteRT (TFLite) runtime.
+ * Zero-DCE model directly on the LiteRT 2.2.0 runtime (Google AI Edge) via
+ * the `CompiledModel` API.
  *
  * WHY THIS EXISTS / WHY IT IS TEMPORARY
  * -------------------------------------
@@ -36,18 +37,36 @@ import java.nio.ByteOrder
  * ViewModels only see the domain types. When the Rust engine is wired, a
  * `RustEngine : EnhancementEngine` replaces this class and the UI does not
  * change. See TODO-app.md.
+ *
+ * LiteRT 2.2.0 `CompiledModel` notes
+ * -----------------------------------
+ * - `CompiledModel.create(path, Options(accelerator))` replaces the classic
+ *   `Interpreter(model, options)`; `createInputBuffers()`/`createOutputBuffers()`
+ *   return native [TensorBuffer]s, and `model.run(inputs, outputs)` invokes.
+ * - Accelerators are CPU / GPU / NPU. There is **no separate XNNPACK
+ *   accelerator** in `CompiledModel` (the experimental YNNPACK CPU
+ *   accelerator is a build/runtime flag, not a delegate), so
+ *   [ComputeTarget.XNNPACK] maps to CPU — a documented mapping, not a
+ *   fallback.
+ * - The output dtype is verified up front with `getOutputTensorType`. This
+ *   model outputs FLOAT32 `(1, 256, 256, 24)`. The new runtime does not
+ *   expose INT8 quantization parameters (`scale`/`zeroPoint`), so an INT8
+ *   output could not be dequantized here; such a model is rejected with a
+ *   clear error instead of silently misreading the buffer.
+ * - Backend probing uses the new runtime's dedicated API,
+ *   `Environment.getAvailableAccelerators()`, instead of the classic
+ *   per-delegate `Interpreter` construction. `configure` still verifies
+ *   per-target compilation and reports any fallback with a reason (never
+ *   silent).
  */
 class AndroidLiteRtEngine(
     override val modelAssetPath: String = MODEL_ASSET_PATH,
     override val modelName: String = "zero-dce-int8"
 ) : EnhancementEngine {
 
-    private var interpreter: Interpreter? = null
-    private var inputBuffer: ByteBuffer? = null
-    private var outputBuffer: ByteBuffer? = null
-    private var outputIsInt8 = false
-    private var outputScale = 1.0f
-    private var outputZeroPoint = 0
+    private var compiledModel: CompiledModel? = null
+    private var inputBuffer: TensorBuffer? = null
+    private var outputBuffer: TensorBuffer? = null
 
     @Volatile
     private var lastInferenceMsValue = 0L
@@ -56,16 +75,28 @@ class AndroidLiteRtEngine(
         get() = lastInferenceMsValue
 
     override suspend fun probeBackends(context: Context): BackendProbeResult {
-        val modelFile = loadModelFile(context)
         val supported = mutableSetOf<ComputeTarget>()
         val notes = mutableMapOf<ComputeTarget, String>()
+        // The new runtime exposes a dedicated backend-probing API: the
+        // environment reports which accelerators are available on this
+        // device. (No model compilation needed here; `configure` still
+        // verifies per-target compilation and reports any fallback with a
+        // reason.)
+        val available = Environment.create(context).use { it.getAvailableAccelerators() }
         for (target in ComputeTarget.entries) {
-            try {
-                val options = buildOptions(target)
-                Interpreter(modelFile, options).use { it.close() }
+            val ok = when (target) {
+                // CPU is always available. XNNPACK maps to CPU: LiteRT
+                // `CompiledModel` has no separate XNNPACK accelerator (the
+                // experimental YNNPACK CPU accelerator is a build flag, not a
+                // delegate).
+                ComputeTarget.CPU, ComputeTarget.XNNPACK -> true
+                ComputeTarget.GPU -> Accelerator.GPU in available
+                ComputeTarget.NPU -> Accelerator.NPU in available
+            }
+            if (ok) {
                 supported += target
-            } catch (e: Exception) {
-                notes[target] = "${target.label} unavailable: ${e.message ?: "unknown error"}"
+            } else {
+                notes[target] = "${target.label} unavailable on this device"
             }
         }
         return BackendProbeResult(supported, notes)
@@ -76,33 +107,31 @@ class AndroidLiteRtEngine(
         val requested = settings.computeTarget
         release()
 
-        val threads = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-        val (interp, actual, reason) = createInterpreterWithFallback(modelFile, requested, threads)
-        interpreter = interp
+        val (model, actual, reason) = createModelWithFallback(modelFile, requested, defaultThreads())
+        compiledModel = model
 
-        // The classic `org.tensorflow.lite` API feeds `Interpreter.run` raw direct
-        // `ByteBuffer`s (there is no `TensorBuffer` class in this artifact). The
-        // input is FLOAT32 `(1, 256, 256, 4)`; the output is `(1, 256, 256, 24)`
-        // and may be FLOAT32 or INT8 (dequantized below), mirroring the Rust
-        // `ModelRunner.run_model` dtype handling.
-        inputBuffer = ByteBuffer.allocateDirect(PATCH * PATCH * 4 * 4).order(ByteOrder.nativeOrder())
-        val outTensor = interp.getOutputTensor(0)
-        outputIsInt8 = outTensor.dataType() == DataType.INT8
-        if (outputIsInt8) {
-            val q = outTensor.quantizationParams()
-            outputScale = q.getScale()
-            outputZeroPoint = q.getZeroPoint()
-            outputBuffer = ByteBuffer.allocateDirect(PATCH * PATCH * 24).order(ByteOrder.nativeOrder())
-        } else {
-            outputScale = 1.0f
-            outputZeroPoint = 0
-            outputBuffer = ByteBuffer.allocateDirect(PATCH * PATCH * 24 * 4).order(ByteOrder.nativeOrder())
+        // The input is FLOAT32 `(1, 256, 256, 4)`; the output is
+        // `(1, 256, 256, 24)` and is FLOAT32 for this model (verified against
+        // the asset). `TensorBuffer.readFloat` reads the raw buffer, so the
+        // dtype must be checked before reading: reinterpreting an INT8 buffer
+        // as floats would silently produce garbage.
+        val outType = model.getOutputTensorType(OUTPUT_TENSOR_NAME)
+        if (outType.elementType != TensorType.ElementType.FLOAT) {
+            model.close()
+            compiledModel = null
+            throw IllegalStateException(
+                "unsupported model output dtype ${outType.elementType} (expected FLOAT32; " +
+                    "LiteRT 2.2.0 does not expose INT8 quantization parameters for dequantization)"
+            )
         }
+
+        inputBuffer = model.createInputBuffers().single()
+        outputBuffer = model.createOutputBuffers().single()
         return BackendSelection(requested, actual, reason)
     }
 
     override fun enhanceFrame(input: FloatArray, width: Int, height: Int): FloatArray {
-        val interp = interpreter ?: throw IllegalStateException("engine not configured; call configure() first")
+        val model = compiledModel ?: throw IllegalStateException("engine not configured; call configure() first")
         val inBuf = inputBuffer!!
         val outBuf = outputBuffer!!
 
@@ -110,14 +139,14 @@ class AndroidLiteRtEngine(
         val brightness = brightnessChannel(input)
 
         val patchIn = FloatArray(PATCH * PATCH * 4)
-        val patchOut = FloatArray(PATCH * PATCH * 24)
+        var patchOut = FloatArray(PATCH * PATCH * 24)
         val accum = FloatArray(hPad * wPad * 24)
 
         val start = SystemClock.elapsedRealtime()
         for (i in 0 until numH) {
             for (j in 0 until numW) {
                 preparePatch(input, width, height, j * stride, i * stride, brightness, patchIn)
-                runModel(interp, inBuf, outBuf, patchIn, patchOut)
+                patchOut = runModel(model, inBuf, outBuf, patchIn)
                 accumulate(i, j, numH, numW, wPad, patchOut, accum)
             }
         }
@@ -128,44 +157,49 @@ class AndroidLiteRtEngine(
     }
 
     override fun release() {
-        interpreter?.close()
-        interpreter = null
+        inputBuffer?.close()
         inputBuffer = null
+        outputBuffer?.close()
         outputBuffer = null
+        compiledModel?.close()
+        compiledModel = null
     }
 
     // ---- Model path (mirrors core/src/model.rs) ----
 
-    private fun createInterpreterWithFallback(
+    private fun createModelWithFallback(
         modelFile: File,
         requested: ComputeTarget,
         threads: Int
-    ): Triple<Interpreter, ComputeTarget, String?> {
+    ): Triple<CompiledModel, ComputeTarget, String?> {
+        if (requested == ComputeTarget.XNNPACK) {
+            // XNNPACK is not a separate accelerator in LiteRT `CompiledModel`;
+            // it maps to CPU (documented). Reported as the actual target — a
+            // mapping, not a fallback.
+            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(ComputeTarget.CPU, threads))
+            return Triple(model, ComputeTarget.XNNPACK, null)
+        }
         try {
-            val options = buildOptions(requested)
-            val interp = Interpreter(modelFile, options)
-            return Triple(interp, requested, null)
+            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(requested, threads))
+            return Triple(model, requested, null)
         } catch (e: Exception) {
             // Never silently fall back: report why.
-            val cpuOptions = Interpreter.Options()
-            cpuOptions.setNumThreads(threads)
-            cpuOptions.setUseXNNPACK(false)
-            val interp = Interpreter(modelFile, cpuOptions)
-            return Triple(interp, ComputeTarget.CPU, "${requested.label} delegate unavailable: ${e.message ?: "unknown error"}")
+            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(ComputeTarget.CPU, threads))
+            return Triple(model, ComputeTarget.CPU, "${requested.label} unavailable: ${e.message ?: "unknown error"}")
         }
     }
 
-    private fun buildOptions(target: ComputeTarget): Interpreter.Options {
-        val options = Interpreter.Options()
-        options.setNumThreads(Runtime.getRuntime().availableProcessors().coerceAtLeast(1))
-        when (target) {
-            ComputeTarget.CPU -> options.setUseXNNPACK(false)
-            ComputeTarget.XNNPACK -> options.setUseXNNPACK(true)
-            ComputeTarget.NPU -> options.setUseNNAPI(true)
-            ComputeTarget.GPU -> options.addDelegate(GpuDelegate())
+    private fun buildOptions(target: ComputeTarget, threads: Int): CompiledModel.Options {
+        val options = when (target) {
+            ComputeTarget.CPU, ComputeTarget.XNNPACK -> CompiledModel.Options(Accelerator.CPU)
+            ComputeTarget.GPU -> CompiledModel.Options(Accelerator.GPU)
+            ComputeTarget.NPU -> CompiledModel.Options(Accelerator.NPU)
         }
+        options.cpuOptions = CompiledModel.CpuOptions(numThreads = threads)
         return options
     }
+
+    private fun defaultThreads(): Int = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
 
     /** Patch grid for a (w, h) frame: (stride, numW, numH, wPad, hPad). */
     private fun patchInfo(w: Int, h: Int): IntArray {
@@ -217,34 +251,22 @@ class AndroidLiteRtEngine(
         }
     }
 
+    /**
+     * Runs one patch: writes the input floats into the persistent input
+     * [TensorBuffer], invokes the model, and reads the output floats back.
+     * `TensorBuffer.readFloat()` returns a freshly allocated array (the new
+     * runtime has no in-place read), so the per-patch allocation is inherent
+     * to this API.
+     */
     private fun runModel(
-        interp: Interpreter,
-        inBuf: ByteBuffer,
-        outBuf: ByteBuffer,
-        patchIn: FloatArray,
-        patchOut: FloatArray
-    ) {
-        // Fill the input from position 0. The native input path memcpys from the
-        // direct buffer's start, so the input position does not matter, but we
-        // rewind for clarity.
-        inBuf.rewind()
-        inBuf.asFloatBuffer().put(patchIn)
-        // `Interpreter.run` writes the output tensor into `outBuf` starting at its
-        // current position, so rewind before running and again before reading.
-        outBuf.rewind()
-        interp.run(inBuf, outBuf)
-        outBuf.rewind()
-        if (outputIsInt8) {
-            val raw = ByteArray(PATCH * PATCH * 24)
-            outBuf.get(raw)
-            for (i in raw.indices) {
-                patchOut[i] = (raw[i].toInt() - outputZeroPoint) * outputScale
-            }
-        } else {
-            val raw = FloatArray(PATCH * PATCH * 24)
-            outBuf.asFloatBuffer().get(raw)
-            System.arraycopy(raw, 0, patchOut, 0, raw.size)
-        }
+        model: CompiledModel,
+        inBuf: TensorBuffer,
+        outBuf: TensorBuffer,
+        patchIn: FloatArray
+    ): FloatArray {
+        inBuf.writeFloat(patchIn)
+        model.run(listOf(inBuf), listOf(outBuf))
+        return outBuf.readFloat()
     }
 
     private fun accumulate(
@@ -318,5 +340,12 @@ class AndroidLiteRtEngine(
         const val MODEL_ASSET_PATH = "models/zero-dce-int8.tflite"
         const val PATCH = 256
         const val OVERLAP = 16
+
+        /**
+         * Output tensor name in the model asset (verified: FLOAT32
+         * `(1, 256, 256, 24)`). The `CompiledModel` dtype query is
+         * name-based, so the name must match the asset.
+         */
+        const val OUTPUT_TENSOR_NAME = "StatefulPartitionedCall_1:0"
     }
 }

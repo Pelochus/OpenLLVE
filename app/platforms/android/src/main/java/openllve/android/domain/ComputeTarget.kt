@@ -14,7 +14,14 @@ enum class ComputeTarget {
     /** Plain CPU inference (always available). */
     CPU,
 
-    /** CPU with the XNNPACK delegate (CPU optimization; broadly available). */
+    /**
+     * CPU with the XNNPACK delegate (CPU optimization; broadly available).
+     *
+     * Note: the LiteRT 2.2.0 `CompiledModel` API has no separate XNNPACK
+     * accelerator (the experimental YNNPACK CPU accelerator is a build/runtime
+     * flag, not a delegate), so this target maps to [CPU] in
+     * `AndroidLiteRtEngine` — a documented mapping, not a fallback.
+     */
     XNNPACK,
 
     /** GPU delegate (OpenGL ES). Device/OpenGL dependent. */

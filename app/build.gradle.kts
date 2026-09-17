@@ -51,12 +51,9 @@ android {
         compose = true
     }
 
-    composeOptions {
-        // Must match the Kotlin compiler version (2.0.21) to avoid the
-        // "couldn't find inline method" backend error when inlining Compose
-        // functions such as androidx.lifecycle.viewmodel.compose.viewModel.
-        kotlinCompilerExtensionVersion = "2.0.21"
-    }
+    // Note: from Kotlin 2.0 the Compose compiler is bundled with the Kotlin
+    // compiler (via the `org.jetbrains.kotlin.plugin.compose` plugin), so
+    // `composeOptions.kotlinCompilerExtensionVersion` is no longer needed.
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -97,13 +94,25 @@ dependencies {
     implementation("com.google.android.material:material:1.10.0")
     implementation("androidx.datastore:datastore-preferences:1.1.0")
 
-    // LiteRT (TFLite). Pinned to the classic `org.tensorflow.lite` API (the last
-    // non-relocated classic artifact line). 2.17.0 is a relocation POM to
-    // `com.google.ai.edge.litert:litert` and does NOT expose the
-    // `org.tensorflow.lite` classes this engine is written against. See
-    // TODO-app.md §4.1 and docs/DESIGN_SUGGESTIONS.md §5.
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
+    // LiteRT 2.2.0 (Google AI Edge runtime) — the modern `CompiledModel` API.
+    // The `litert` artifact bundles the native runtime (libLiteRt.so + the GPU
+    // accelerator) plus the classic `org.tensorflow.lite` Interpreter classes;
+    // the `CompiledModel`/`TensorBuffer`/`Accelerator` API comes from the
+    // transitive `litert-api` artifact (which bundles liblitert_jni.so).
+    // See TODO-app.md §7 (Change 1).
+    //
+    // Exclusions: `litert-api` also pulls the Google Play "ai-delivery" stack
+    // (play-services / asset-delivery) and androidx.lifecycle 2.10.x, which
+    // transitively force Compose UI 1.9.0 (requiring AGP 8.6.0+). We only use
+    // the CompiledModel/TensorBuffer path with a model loaded from assets — not
+    // the AiPack `ModelProvider` download path — and the only litert-api classes
+    // referencing the excluded groups are `ModelProvider`/`ModelSelector`/`AiPackModelProvider`.
+    // The app keeps its own lifecycle stack (2.8.7 here; bumped in Change 2).
+    implementation("com.google.ai.edge.litert:litert:2.2.0") {
+        exclude(group = "com.google.android.play")
+        exclude(group = "com.google.android.gms")
+        exclude(group = "androidx.lifecycle")
+    }
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

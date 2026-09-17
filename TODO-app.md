@@ -11,14 +11,17 @@ the work in a new session.
 
 - **The app compiles cleanly.** `./gradlew :app:assembleDebug` is **BUILD
   SUCCESS** (only deprecation warnings, no compile errors).
-- **Currently on the classic `org.tensorflow.lite` API (2.14.0).** The engine
-  and media layers are reconciled with the real `org.tensorflow.lite`,
-  `MediaCodec`/`MediaExtractor`, and DataStore APIs. The Compose Compiler
-  Gradle plugin is in place (required by Kotlin 2.0).
-- **Next work: two state-of-the-art dependency upgrades (§7):** (1) migrate the
-  engine to LiteRT 2.2.0 `CompiledModel`, (2) bump the build toolchain
-  (Kotlin 2.4.20 / AGP 9.4.0 / Compose BOM / lifecycle 2.11.0). Ordered
-  easy→hard.
+- **Currently on the LiteRT 2.2.0 `CompiledModel` API**
+  (`com.google.ai.edge.litert:litert:2.2.0`). The engine is rewritten against
+  `CompiledModel`/`TensorBuffer`/`Accelerator`; backend probing uses the new
+  runtime's `Environment.getAvailableAccelerators()`. Kotlin was bumped
+  2.0.21 → 2.3.0 as a prerequisite (the `litert-api` classes carry Kotlin
+  2.3.0 metadata). The classic `org.tensorflow.lite` (2.14.0) dependency is
+  gone; the APK shrank ~177 MB → ~42.5 MB (NNAPI delegate + TFLite GPU libs
+  dropped).
+- **Next work: Change 2 (§7) — bump the build toolchain** (Kotlin 2.3.0 →
+  2.4.20 / AGP 8.5.2 → 9.4.0 / Compose BOM → latest / lifecycle 2.8.7 →
+  2.11.0).
 - **No Rust files were modified.** No C/C++ bridge. No iOS work. The LiteRT
   integration is isolated behind `EnhancementEngine`.
 - **No device/emulator was available**, so runtime behavior (actual inference
@@ -48,8 +51,9 @@ the work in a new session.
 The compile is done (BUILD SUCCESS). The remaining runtime work:
 
 - Confirm the model actually loads and produces a visibly enhanced frame.
-- Confirm delegate probing reports correct support (esp. NPU/NNAPI, which can
-  silently fall back to CPU — documented limitation).
+- Confirm backend probing (`Environment.getAvailableAccelerators()`) reports
+  correct support, and that `configure`'s requested-vs-actual report (with
+  reason) surfaces any per-target compile failure.
 - Confirm the MediaCodec decode loop runs and produces synchronized
   original/enhanced frames (the YUV→RGB conversion is untested on a device).
 - Confirm settings persist across app restarts.
@@ -99,38 +103,28 @@ JDK/Android SDK**. A working build environment was set up:
 > upgrades.**
 >
 > **Compile status: DONE.** `./gradlew :app:assembleDebug` is **BUILD SUCCESS**
-> (no compile errors; only deprecation warnings). The app currently uses the
-> classic `org.tensorflow.lite` API (2.14.0). The next work is the two planned
-> upgrades in §7, in order (easy→hard).
+> (no compile errors; only deprecation warnings). **Change 1 (§7) is DONE:**
+> the engine runs on LiteRT 2.2.0 `CompiledModel`. The remaining work is
+> Change 2 (toolchain bump) and runtime verification.
 >
 > 1. Read `TODO-app.md` (this file), `TODO.md`, `IMPROVEMENTS.md`,
 >    `docs/ARCHITECTURE.md`, and `core/README.md`. Do **not** modify Rust, add
 >    C/C++, or start iOS work.
-> 2. **Change 1 (§7, do FIRST): migrate the engine to LiteRT 2.2.0
->    `CompiledModel`.**
->    - Replace `org.tensorflow:tensorflow-lite:2.14.0` (and the `-gpu` dep)
->      with `com.google.ai.edge.litert:litert:2.2.0`.
->    - Rewrite `AndroidLiteRtEngine` against the `CompiledModel` API
->      (`CompiledModel.create`, `createInputBuffers`/`createOutputBuffers`,
->      `run`). Map `ComputeTarget` to LiteRT `Accelerator` (CPU/GPU/NPU;
->      XNNPACK → CPU, documented).
->    - Verify the model's output dtype (INT8 vs FLOAT32) and the dequantization
->      path (`scale`/`zeroPoint`).
->    - Re-derive delegate probing (requested vs actual, never a silent
->      fallback).
->    - Keep the 256×256 patch tiling, reflect padding, linear-ramp reassembly,
->      and the 8 learned curves (model logic, not runtime logic).
->    - Commit as its own commit with an accurate message.
-> 3. **Change 2 (§7, do SECOND): bump the build toolchain.**
->    - Kotlin 2.0.21 → 2.4.20; AGP 8.5.2 → 9.4.0; Compose BOM → latest
->      (UI 1.12.1 line); lifecycle 2.8.7 → 2.11.0; Compose Compiler plugin →
->      2.4.20 (and `composeOptions { kotlinCompilerExtensionVersion }` must
->      match).
+> 2. ~~Change 1 (§7): migrate the engine to LiteRT 2.2.0 `CompiledModel`.~~
+>    **DONE** — see the "as-implemented" notes under §7 Change 1.
+> 3. **Change 2 (§7): bump the build toolchain.**
+>    - Kotlin 2.3.0 → 2.4.20 (2.3.0 was already bumped as a Change 1
+>      prerequisite); AGP 8.5.2 → 9.4.0; Compose BOM → latest (UI 1.12.1
+>      line); lifecycle 2.8.7 → 2.11.0; Compose Compiler plugin → 2.4.20.
 >    - Handle AGP 9.x breaking changes (namespace, source-set, DSL).
+>    - Re-check the `litert` dependency exclusions against the new toolchain
+>      (the exclusions exist because `litert-api` transitively forces Compose
+>      UI 1.9.0 / AGP 8.6.0+ via lifecycle 2.10.x; with a newer Compose BOM
+>      the conflict shape may change).
 >    - Commit as its own commit.
 > 4. **Runtime verification (§3)** — if a device/emulator is available, verify:
 >    model loads + visibly enhanced frame; MP4 decode loop synchronized
->    original↔enhanced; delegate selection reports the actual backend; settings
+>    original↔enhanced; backend selection reports the actual backend; settings
 >    persist.
 > 5. Update `TODO-app.md` to mark completed items. Keep `TODO.md` (Rust) and
 >    `IMPROVEMENTS.md` in sync.
@@ -151,7 +145,38 @@ delegate mapping verified on a device).
 Two separate changes/commits, ordered from **easier/better** (do first) to
 **harder/can-wait** (do second).
 
-### Change 1 — easier / better (do FIRST): migrate the engine to LiteRT 2.2.0 `CompiledModel`
+### Change 1 — easier / better (do FIRST): migrate the engine to LiteRT 2.2.0 `CompiledModel` — **DONE**
+
+**As-implemented notes (what actually happened vs the plan):**
+
+- **Prerequisite discovered:** Kotlin had to move 2.0.21 → **2.3.0** — every
+  class in `litert-api:2.2.0` carries Kotlin 2.3.0 metadata, unreadable by
+  older compilers. This is committed as part of Change 1 (Change 2 then
+  continues 2.3.0 → 2.4.20).
+- **Transitive-dependency exclusions:** `litert-api` pulls the Google Play
+  "ai-delivery" stack (play-services/asset-delivery) and androidx.lifecycle
+  2.10.x, which transitively force Compose UI 1.9.0 (requiring AGP 8.6.0+).
+  The app only uses the `CompiledModel`/`TensorBuffer` path with a model from
+  assets — not the AiPack `ModelProvider` download path — so
+  `com.google.android.play`, `com.google.android.gms`, and `androidx.lifecycle`
+  are excluded from the `litert` dependency (verified: only
+  `ModelProvider`/`ModelSelector`/`AiPackModelProvider` reference them). The
+  app keeps its own lifecycle stack (2.8.7).
+- **Probing:** uses the new runtime's dedicated API,
+  `Environment.getAvailableAccelerators()`, instead of per-delegate
+  `Interpreter` construction. `configure` still verifies per-target
+  compilation and reports requested-vs-actual with a reason (never silent).
+- **Output dtype:** verified FLOAT32 `(1, 256, 256, 24)` for
+  `zero-dce-int8.tflite`; the new runtime does not expose INT8 quantization
+  parameters (`scale`/`zeroPoint`), so an INT8 output is rejected with a clear
+  error rather than misread.
+- **XNNPACK:** mapped to CPU (documented in `ComputeTarget`, the engine, and
+  the settings UI annotation) — a mapping, not a fallback.
+- **Result:** BUILD SUCCESS; APK ~177 MB → ~42.5 MB (NNAPI delegate + TFLite
+  GPU libs dropped); `libLiteRt.so`, `libLiteRtClGlAccelerator.so`, and
+  `liblitert_jni.so` packaged for all ABIs.
+- **Still unverified:** on-device runtime (model inference, probe accuracy,
+  decode loop, settings persistence) — no device/emulator available.
 
 - **Why:** LiteRT **2.2.0** (released 2026-08-14) is the current Google AI Edge
   runtime. The classic `org.tensorflow.lite` API (2.14.0) is superseded. The
@@ -193,7 +218,8 @@ Two separate changes/commits, ordered from **easier/better** (do first) to
 - **Why:** the toolchain is several versions behind the latest stable. Bumping
   it keeps the app modern and picks up security/perf fixes.
 - **What changes (coupled — do as ONE commit):**
-  - **Kotlin** 2.0.21 → **2.4.20** (latest stable, 2026-09-07).
+  - **Kotlin** 2.3.0 → **2.4.20** (latest stable, 2026-09-07). 2.3.0 was
+    already bumped as a Change 1 prerequisite (`litert-api` metadata).
   - **AGP** 8.5.2 → **9.4.0** (latest stable, Sept 2026). AGP 9.x has
     **breaking changes** (namespace, source-set, and DSL changes) — expect to
     adjust `app/build.gradle.kts` and `settings.gradle.kts`.
@@ -224,13 +250,10 @@ Two separate changes/commits, ordered from **easier/better** (do first) to
 ### Also missing / to keep in mind
 
 - **Model compatibility:** the `.tflite` (Zero-DCE, int8) is unchanged; confirm
-  it loads and infers correctly on LiteRT 2.2.0 (op coverage, dtype, dequant).
-- **XNNPACK mapping:** LiteRT `CompiledModel` has no XNNPACK accelerator; decide
-  whether `ComputeTarget.XNNPACK` maps to CPU (documented) or is removed from the
-  selector. Update the UI annotation accordingly.
-- **Delegate probing API:** the new runtime's backend-probing API differs from the
-  classic `org.tensorflow.lite` one; re-derive the "requested vs actual" report
-  so it never silently falls back.
-- **Commit hygiene:** each change is its own commit with an accurate message
-  (the current HEAD is already `Android vertical slice: fix build to BUILD
-  SUCCESS (commit 2/2)`).
+  it loads and infers correctly on LiteRT 2.2.0 (op coverage, dtype, dequant)
+  **on a device** — compile-level only so far.
+- ~~**XNNPACK mapping:**~~ resolved — `ComputeTarget.XNNPACK` maps to CPU,
+  documented in `ComputeTarget`, the engine, and the settings UI annotation.
+- ~~**Delegate probing API:**~~ resolved — `Environment.getAvailableAccelerators()`
+  + requested-vs-actual reporting in `configure` (never silent).
+- **Commit hygiene:** each change is its own commit with an accurate message.
