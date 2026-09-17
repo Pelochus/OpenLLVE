@@ -1,133 +1,33 @@
 # OpenLLVE — Android App TODO (app-side only)
 
 This file tracks **Android/app-side** work only. It does not duplicate the
-general Rust TODOs in `TODO.md`. It records what the current Android-first
-vertical-slice session implemented, what is intentionally deferred, the known
-build/runtime blockers, and a prompt to continue the work in a new session.
+general Rust TODOs in `TODO.md`. It records the current status, what is
+intentionally deferred, the remaining runtime work, and a prompt to continue
+the work in a new session.
 
 ---
 
 ## 1. Current status (TL;DR)
 
-- **Architecture and UI are complete and coherent.** The full vertical-slice
-  structure is in place: UI → ViewModel → domain config → media layer →
-  enhancement engine (temporary LiteRT impl). The domain types are shaped so the
-  Rust core can consume them later without changing the UI.
-- **The app now compiles cleanly.** `./gradlew :app:assembleDebug` is
-  **BUILD SUCCESS** (only deprecation warnings remain, no compile errors).
-  The LiteRT artifact was pinned to the classic `org.tensorflow.lite` API
-  (2.14.0), the engine and media layers were reconciled with the real
-  `org.tensorflow.lite` and `MediaCodec`/`MediaExtractor` APIs, and the
-  Compose Compiler Gradle plugin was added (required by Kotlin 2.0).
-  See §4 for the details of what was fixed.
-- **No Rust files were modified.** No C/C++ bridge was added. No iOS work.
-  The LiteRT integration is isolated behind `EnhancementEngine`.
-- **No device/emulator was available in this environment**, so runtime behavior
-  (actual inference output, video decode, delegate selection) is **unverified**.
-  Everything is verified only at the compile level.
+- **The app compiles cleanly.** `./gradlew :app:assembleDebug` is **BUILD
+  SUCCESS** (only deprecation warnings, no compile errors).
+- **Currently on the classic `org.tensorflow.lite` API (2.14.0).** The engine
+  and media layers are reconciled with the real `org.tensorflow.lite`,
+  `MediaCodec`/`MediaExtractor`, and DataStore APIs. The Compose Compiler
+  Gradle plugin is in place (required by Kotlin 2.0).
+- **Next work: two state-of-the-art dependency upgrades (§7):** (1) migrate the
+  engine to LiteRT 2.2.0 `CompiledModel`, (2) bump the build toolchain
+  (Kotlin 2.4.20 / AGP 9.4.0 / Compose BOM / lifecycle 2.11.0). Ordered
+  easy→hard.
+- **No Rust files were modified.** No C/C++ bridge. No iOS work. The LiteRT
+  integration is isolated behind `EnhancementEngine`.
+- **No device/emulator was available**, so runtime behavior (actual inference
+  output, video decode, delegate selection) is **unverified**. Everything is
+  verified only at the compile level.
 
 ---
 
-## 2. What was implemented
-
-### Build configuration
-
-- Fixed two **pre-existing** build blockers that prevented *any* build:
-  - `settings.gradle.kts`: `pluginManagement.plugins { }` used the wrong DSL
-    (`id("...") { id = ...; version = ... }`). Changed to
-    `id("...") version "..."`.
-  - `app/build.gradle.kts`: the `:app` module had **no `repositories { }`
-    block**. Added `google()` + `mavenCentral()`.
-- Refreshed dependencies toward a modern toolchain:
-  - `org.tensorflow:tensorflow-lite` 2.12.0 → **2.17.0**
-  - `org.tensorflow:tensorflow-lite-gpu` 2.12.0 → **2.17.0**
-  - Added: `navigation-compose`, `lifecycle-runtime-compose`,
-    `lifecycle-viewmodel-compose`, `datastore-preferences`,
-    `material-icons-core`, `compose foundation`.
-  - Removed unused: CameraX, `constraintlayout`, `tensorflow-lite-support`.
-  - `minSdk` 21 → **26** (Android 8.0): floor for hardware-buffer frame
-    decoding and the NNAPI (NPU) delegate.
-- `AndroidManifest.xml`: fixed the launcher activity name (was
-  `.ui.MainActivity` → resolved to the wrong package; now the fully-qualified
-  `openllve.android.ui.MainActivity`), registered `OpenLLVEApp`, and removed the
-  now-unneeded storage/camera permissions (media is selected via the Storage
-  Access Framework).
-- `res/values/themes.xml`: switched to `Theme.Material3.DayNight.NoActionBar`.
-
-### Domain layer (`openllve.android.domain`) — the Rust seam
-
-- `ComputeTarget` — enum `CPU / XNNPACK / GPU / NPU` (OpenLLVE concept, not a
-  LiteRT delegate class).
-- `EnhancementSettings` — `computeTarget`, `ewmaEnabled`,
-  `flickerReductionEnabled`. Shaped so the Rust core can consume it directly.
-- `MediaInput` — sealed `ImageInput` / `VideoInput` (image and video paths stay
-  separate).
-- `BackendSelection` — `requested` vs `actual` backend + `reason` (never a
-  silent fallback).
-- `ProcessingMetrics` — frame count, inference ms, avg/frame, FPS, resolution,
-  backend, model, and a `realtimeFactor` (faster/slower than realtime for
-  video).
-- `EnhancementEngine` — the interface the UI depends on. **This is the seam**
-  that a future `RustEngine` (via the C FFI) will implement without changing the
-  UI.
-
-### Engine (`openllve.android.engine`) — temporary LiteRT implementation
-
-- `AndroidLiteRtEngine : EnhancementEngine` — loads the Zero-DCE model from
-  assets, creates a LiteRT interpreter with the requested delegate
-  (CPU / XNNPACK / GPU / NNAPI), probes available backends, and runs the model
-  path **mirroring the Rust `ModelRunner`** (`core/src/model.rs`): 256×256 patch
-  tiling with 16px overlap, reflect padding, linear-ramp reassembly, and the 8
-  learned curves. Clearly documented as temporary.
-
-### Media layer (`openllve.android.media`)
-
-- `FramePixels` — `Bitmap` ↔ row-major RGB float `[0,1]` conversion (shared by
-  image and video paths).
-- `ImageFrameProvider` — loads a SAF-selected image into a `Bitmap`.
-- `VideoMetadata` / `VideoMetadataReader` — basic video metadata via
-  `MediaMetadataRetriever` (duration, resolution, mime, size).
-- `VideoFrameProvider` — decodes an MP4 with the platform hardware
-  `MediaCodec` (demuxed via `MediaExtractor`) and runs each decoded frame
-  through the engine, producing paired (original, enhanced) bitmaps on a single
-  background thread. Audio is dropped (video-only decode).
-
-### Data (`openllve.android.data`)
-
-- `SettingsRepository` — persists `EnhancementSettings` with Jetpack DataStore
-  (Preferences). No database.
-
-### UI (`openllve.android.ui`) — Material 3 / Material You
-
-- `OpenLLVETheme` — dynamic (wallpaper-derived) Material You colors on
-  Android 12+, base palette fallback otherwise.
-- `MainActivity` — single launcher activity; wires `OpenLLVEApp` components into
-  the ViewModel; Compose `NavHost` with four destinations.
-- `Destination` — `HOME / SETTINGS / IMAGE_RESULT / VIDEO_RESULT`.
-- `UiState` — flat presentation state.
-- `EnhancementViewModel` — orchestrates settings (persisted), backend probing,
-  image enhancement, and the video decode/enhance loop. Exposes only domain
-  types.
-- Screens: `HomeScreen` (select image/MP4 + settings), `SettingsScreen`,
-  `ImageResultScreen` (comparison + metrics + backend + re-run),
-  `VideoResultScreen` (metadata + settings + start/stop + live comparison +
-  metrics).
-- Components: `ComparisonSlider` (original ↔ enhanced crossfade), `MetricsCard`,
-  `BackendInfoCard` (requested vs actual + reason), `SettingsCard` (compute
-  target selector with unsupported targets disabled/annotated, EWMA + flicker
-  toggles labelled "prototype — applied by the native pipeline"), `StatusViews`
-  (processing / error / empty states).
-- `OpenLLVEApp` — lightweight application-scoped wiring (no DI framework).
-
-### Removed (old stubs)
-
-- `domain/VideoPipelineManager.kt`, `data/BenchmarkResult.kt`,
-  `data/SystemMonitor.kt`, `ui/MainScreen.kt`, and the placeholder
-  `ui/components` file.
-
----
-
-## 3. What was intentionally NOT implemented (deferred)
+## 2. What was intentionally NOT implemented (deferred)
 
 | Item | Why deferred |
 | --- | --- |
@@ -138,86 +38,14 @@ build/runtime blockers, and a prompt to continue the work in a new session.
 | **Camera capture** | Not part of this vertical slice (media is file-selected via SAF). CameraX deps removed. |
 | **Full synchronized enhanced playback with audio** | The video path decodes video-only (audio dropped) and processes frames live. Full frame-by-frame synchronized *enhanced* playback with the original audio track is deferred to the Rust/native pipeline. |
 | **KMP shared module** | Deliberately not created to avoid speculative multiplatform abstractions with no second platform. The domain layer is KMP-ready and can be lifted into `app/shared/` later. |
-| **APK signing / `build-apk.sh`** | Not completed — no signing credentials available and not invented. See §5. |
+| **APK signing / `build-apk.sh`** | Not completed — no signing credentials available and not invented. See §4. |
 | **`proguard-rules.pro`** | Referenced by the release build type but not required for `assembleDebug`; left as-is. |
 
 ---
 
-## 4. Build blockers — RESOLVED (compile) / remaining (runtime)
+## 3. Runtime verification (NOT done — no device/emulator)
 
-### 4.1 LiteRT artifact — **FIXED**
-
-`org.tensorflow:tensorflow-lite:2.17.0` is **not a real AAR** — its POM
-relocates to `com.google.ai.edge.litert:litert:1.0.1` (the new "LiteRT"
-artifact), and the `org.tensorflow.lite` classes the engine was written
-against (including `TensorBuffer`) do not exist in it. **Resolution:**
-pinned to the classic artifact `org.tensorflow:tensorflow-lite:2.14.0` (+
-`tensorflow-lite-gpu:2.14.0`), which still exposes the `org.tensorflow.lite`
-API. The engine was reconciled against the real classic API:
-
-- `TensorBuffer` / `FloatTensorBuffer` / `Int8TensorBuffer` **do not exist** in
-  any classic `org.tensorflow.lite` version. Replaced all `TensorBuffer`
-  usage with `ByteBuffer.allocateDirect(...)` and `Interpreter.run(Object, Object)`
-  (raw `ByteBuffer` in/out).
-- `tensor.type()` → `tensor.dataType()`; `tensor.quantization()` →
-  `tensor.quantizationParams()`; `.scale` → `.getScale()`; `.zeroPoint` →
-  `.getZeroPoint()`.
-- GPU delegate uses the no-arg `GpuDelegate()` constructor.
-- **Remaining (runtime, §4.4):** verify the model's output tensor dtype
-  (INT8 vs FLOAT32) and the dequantization path on a device.
-
-### 4.2 `engine/AndroidLiteRtEngine.kt` — **FIXED**
-
-- Reconciled with the classic `org.tensorflow.lite` API (see 4.1).
-- Resolved a conflicting `lastInferenceMs` declaration (the private `var`
-  was renamed to `lastInferenceMsValue`; the public `lastInferenceMs` getter
-  is preserved for the media layer).
-
-### 4.3 `media/VideoFrameProvider.kt` — **FIXED**
-
-- `MediaExtractor.setDataSource(...)` has **no `Uri` overload**. Opened the
-  SAF `Uri` via `context.contentResolver.openFileDescriptor(uri, "r")` and
-  called `setDataSource(fd.fileDescriptor, 0, fd.statSize)` (note: it is
-  `fd.statSize`, not `fd.length`).
-- Removed the prohibited non-local `return` in the `Thread { }` lambda
-  (restructured to an `if` block).
-- `MediaExtractor.prepare()` **does not exist** in API 34 — removed the call.
-- `MediaExtractor.BUFFER_FLAG_SYNC_FRAME` → `MediaExtractor.SAMPLE_FLAG_SYNC`
-  (the correct constant name).
-- `codec.queueInputBuffer(...)` takes **5** parameters (index, offset, size,
-  presentationTime, flags) — fixed the call.
-- `MediaCodec.INFO_OUTPUT_EOS` **does not exist** — after feeding the EOS
-  flag, `INFO_TRY_AGAIN_LATER` indicates the decoder has drained every frame.
-- `ByteBuffer.getHardwareBuffer()` / `MediaCodec.OutputFrame.getHardwareBuffer()`
-  and `Surface(HardwareBuffer)` are not available for software output. Switched
-  to **software output** (null surface): the decoded frame comes back as a
-  `ByteBuffer` in the codec's YUV format (NV12/YV12), converted to an
-  ARGB_8888 `Bitmap` via a `yuvToBitmap` helper.
-- `extractor.readSampleData(ByteBuffer, int)` requires a `ByteBuffer` (not a
-  `ByteArray`) — used `ByteBuffer.wrap(ByteArray)` for the input sample.
-
-### 4.3a `data/SettingsRepository.kt` — **FIXED** (newly discovered)
-
-- `preferencesDataStore(name = "...")` returns a `ReadOnlyProperty<Context,
-  DataStore<Preferences>>`; its `getValue` requires a `Context` this-reference,
-  so it cannot be used as a plain class property. Added a top-level extension
-  property `val Context.settingsDataStore: DataStore<Preferences> by
-  preferencesDataStore(name = "openllve_settings")` and used
-  `context.settingsDataStore` in the class.
-- Added `import androidx.datastore.preferences.core.edit` for the
-  `DataStore<Preferences>.edit` extension.
-
-### 4.3b Compose Compiler Gradle plugin — **FIXED** (newly discovered)
-
-- Kotlin 2.0 **requires** the Compose Compiler Gradle plugin when Compose is
-  enabled. Without it, the build fails with a backend internal error when
-  inlining `androidx.lifecycle.viewmodel.compose.viewModel` ("couldn't find
-  inline method"). Added `id("org.jetbrains.kotlin.plugin.compose")` (version
-  2.0.21, matching the Kotlin compiler) to `settings.gradle.kts` and
-  `app/build.gradle.kts`, plus `buildFeatures { compose = true }` and
-  `composeOptions { kotlinCompilerExtensionVersion = "2.0.21" }`.
-
-### 4.4 Runtime verification (NOT done — no device/emulator)
+The compile is done (BUILD SUCCESS). The remaining runtime work:
 
 - Confirm the model actually loads and produces a visibly enhanced frame.
 - Confirm delegate probing reports correct support (esp. NPU/NNAPI, which can
@@ -228,10 +56,10 @@ API. The engine was reconciled against the real classic API:
 
 ---
 
-## 5. APK build / signing (deferred, documented)
+## 4. APK build / signing (deferred, documented)
 
-- **Debug build** works via `./gradlew :app:assembleDebug` once §4 is fixed
-  (output: `app/build/outputs/apk/debug/app-debug.apk`).
+- **Debug build** works via `./gradlew :app:assembleDebug` (output:
+  `app/build/outputs/apk/debug/app-debug.apk`).
 - **Signed release APK** is intentionally **not** done:
   - No signing credentials are available and none were invented.
   - A `build-apk.sh` can be added later; it should:
@@ -242,7 +70,7 @@ API. The engine was reconciled against the real classic API:
 
 ---
 
-## 6. How to build / run (environment notes)
+## 5. How to build / run (environment notes)
 
 The dev machine here is a Fedora-based (Bazzite/UBI) host with **no system
 JDK/Android SDK**. A working build environment was set up:
@@ -265,34 +93,144 @@ JDK/Android SDK**. A working build environment was set up:
 
 ---
 
-## 7. Continuation prompt (for a new session)
+## 6. Continuation prompt (for a new session)
 
-> **Continue the OpenLLVE Android vertical slice.**
+> **Continue the OpenLLVE Android vertical slice — state-of-the-art dependency
+> upgrades.**
 >
 > **Compile status: DONE.** `./gradlew :app:assembleDebug` is **BUILD SUCCESS**
-> (no compile errors; only deprecation warnings). The LiteRT artifact is pinned
-> to the classic `org.tensorflow.lite` API (2.14.0), the engine and media layers
-> are reconciled with the real APIs, and the Compose Compiler Gradle plugin is
-> in place. See §4 for the details.
+> (no compile errors; only deprecation warnings). The app currently uses the
+> classic `org.tensorflow.lite` API (2.14.0). The next work is the two planned
+> upgrades in §7, in order (easy→hard).
 >
 > 1. Read `TODO-app.md` (this file), `TODO.md`, `IMPROVEMENTS.md`,
 >    `docs/ARCHITECTURE.md`, and `core/README.md`. Do **not** modify Rust, add
 >    C/C++, or start iOS work.
-> 2. **Runtime verification (§4.4)** — the remaining work. If a device/emulator
->    is available, run the app and verify:
->    - The model loads and produces a visibly enhanced frame (image path).
->    - The MP4 decode loop runs and shows synchronized original↔enhanced frames
->      (video path); the YUV→RGB conversion is correct.
->    - Delegate selection reports the actual backend (never a silent fallback;
->      esp. NPU/NNAPI, which can silently fall back to CPU).
->    - The model's output tensor dtype (INT8 vs FLOAT32) and the dequantization
->      path are correct.
->    - Settings persist across app restarts.
-> 3. Update `TODO-app.md` to mark completed items and add any newly discovered
->    app-side work. Keep `TODO.md` (Rust) and `IMPROVEMENTS.md` in sync.
-> 4. Only after the app is functional, consider the deferred items in §3 (e.g.
->    full synchronized enhanced playback with audio, APK signing, KMP lift of the
->    domain layer).
+> 2. **Change 1 (§7, do FIRST): migrate the engine to LiteRT 2.2.0
+>    `CompiledModel`.**
+>    - Replace `org.tensorflow:tensorflow-lite:2.14.0` (and the `-gpu` dep)
+>      with `com.google.ai.edge.litert:litert:2.2.0`.
+>    - Rewrite `AndroidLiteRtEngine` against the `CompiledModel` API
+>      (`CompiledModel.create`, `createInputBuffers`/`createOutputBuffers`,
+>      `run`). Map `ComputeTarget` to LiteRT `Accelerator` (CPU/GPU/NPU;
+>      XNNPACK → CPU, documented).
+>    - Verify the model's output dtype (INT8 vs FLOAT32) and the dequantization
+>      path (`scale`/`zeroPoint`).
+>    - Re-derive delegate probing (requested vs actual, never a silent
+>      fallback).
+>    - Keep the 256×256 patch tiling, reflect padding, linear-ramp reassembly,
+>      and the 8 learned curves (model logic, not runtime logic).
+>    - Commit as its own commit with an accurate message.
+> 3. **Change 2 (§7, do SECOND): bump the build toolchain.**
+>    - Kotlin 2.0.21 → 2.4.20; AGP 8.5.2 → 9.4.0; Compose BOM → latest
+>      (UI 1.12.1 line); lifecycle 2.8.7 → 2.11.0; Compose Compiler plugin →
+>      2.4.20 (and `composeOptions { kotlinCompilerExtensionVersion }` must
+>      match).
+>    - Handle AGP 9.x breaking changes (namespace, source-set, DSL).
+>    - Commit as its own commit.
+> 4. **Runtime verification (§3)** — if a device/emulator is available, verify:
+>    model loads + visibly enhanced frame; MP4 decode loop synchronized
+>    original↔enhanced; delegate selection reports the actual backend; settings
+>    persist.
+> 5. Update `TODO-app.md` to mark completed items. Keep `TODO.md` (Rust) and
+>    `IMPROVEMENTS.md` in sync.
 >
 > **Constraints (unchanged):** no Rust changes, no C/C++, no iOS, no speculative
 > KMP abstractions, no DI framework, no custom decoder, no invented credentials.
+
+---
+
+## 7. Planned upgrades — state-of-the-art dependencies (two changes, ordered)
+
+**Goal:** keep the app **state-of-the-art**. The ML side moves to the new
+**LiteRT** runtime (the classic `org.tensorflow.lite` line is superseded), and
+the build toolchain moves to the latest stable versions. The `.tflite` model
+asset is **unchanged**; we will make it run on the new runtime (dtype/dequant +
+delegate mapping verified on a device).
+
+Two separate changes/commits, ordered from **easier/better** (do first) to
+**harder/can-wait** (do second).
+
+### Change 1 — easier / better (do FIRST): migrate the engine to LiteRT 2.2.0 `CompiledModel`
+
+- **Why:** LiteRT **2.2.0** (released 2026-08-14) is the current Google AI Edge
+  runtime. The classic `org.tensorflow.lite` API (2.14.0) is superseded. The
+  `CompiledModel` API is the modern standard (CPU/GPU/NPU) and is the
+  state-of-the-art path. (The new runtime's `Interpreter` API is **CPU only** —
+  no XNNPACK/GPU/NNAPI — so `CompiledModel` is the correct target, not
+  `Interpreter`.)
+- **What changes:**
+  - `app/build.gradle.kts`: replace `org.tensorflow:tensorflow-lite:2.14.0`
+    (+ `tensorflow-lite-gpu:2.14.0`) with `com.google.ai.edge.litert:litert:2.2.0`.
+  - `engine/AndroidLiteRtEngine.kt`: rewrite against the `CompiledModel` API:
+    - `CompiledModel.create(modelPath, CompiledModel.Options(Accelerator.X))`
+      instead of `Interpreter(model, options)`.
+    - `createInputBuffers()` / `createOutputBuffers()` +
+      `compiledModel.run(inputBuffers, outputBuffers)` instead of raw
+      `ByteBuffer` + `Interpreter.run(Object, Object)`.
+    - Map the `ComputeTarget` enum (CPU / XNNPACK / GPU / NPU) to LiteRT
+      `Accelerator` values (CPU / GPU / NPU). **Note:** LiteRT `CompiledModel`
+      does not expose XNNPACK as a separate accelerator; the experimental
+      YNNPACK CPU accelerator is a build/runtime flag, not a delegate. So
+      `XNNPACK` maps to CPU (documented) or is dropped/annotated in the UI.
+    - Re-verify the model's **output dtype** (INT8 vs FLOAT32) and the
+      dequantization path (`scale`/`zeroPoint`) against the new runtime.
+    - Re-verify **delegate probing** (the engine probes available backends and
+      reports requested vs actual — the probing API differs on the new runtime;
+      never a silent fallback).
+  - **Carry over unchanged:** the 256×256 patch tiling, 16px overlap, reflect
+    padding, linear-ramp reassembly, and the 8 learned curves (mirroring the
+    Rust `ModelRunner`) — that is model logic, not runtime logic.
+- **Risk:** contained (behind the `EnhancementEngine` seam). UI/ViewModel/domain
+  are untouched. Main risk is the model running correctly on the new runtime
+  (dtype/dequant + delegate mapping) — verify on a device.
+- **Verify:** `./gradlew :app:assembleDebug` BUILD SUCCESS **and** on-device:
+  model loads, produces a visibly enhanced frame, delegate probing reports the
+  actual backend.
+
+### Change 2 — harder / can wait (do SECOND): bump the build toolchain
+
+- **Why:** the toolchain is several versions behind the latest stable. Bumping
+  it keeps the app modern and picks up security/perf fixes.
+- **What changes (coupled — do as ONE commit):**
+  - **Kotlin** 2.0.21 → **2.4.20** (latest stable, 2026-09-07).
+  - **AGP** 8.5.2 → **9.4.0** (latest stable, Sept 2026). AGP 9.x has
+    **breaking changes** (namespace, source-set, and DSL changes) — expect to
+    adjust `app/build.gradle.kts` and `settings.gradle.kts`.
+  - **Compose BOM** 2024.09.02 (Compose UI 1.7.x) → latest (Compose UI **1.12.1**
+    line).
+  - **lifecycle** 2.8.7 → **2.11.0** (latest stable, 2026-06-17). Requires
+    Compose UI 1.7.0+ **and AGP 9.2.0+** (satisfied by the AGP 9.4.0 bump).
+  - **Compose Compiler plugin** version must track the Kotlin version
+    (`org.jetbrains.kotlin.plugin.compose` → **2.4.20**), and
+    `composeOptions { kotlinCompilerExtensionVersion }` must match.
+- **Risk:** higher — AGP 9.x is a major bump with breaking changes, and the
+  bumps are coupled (lifecycle 2.11.0 needs AGP 9.2.0+; Compose BOM needs a
+  matching compiler plugin; Kotlin 2.4.x may surface new warnings/strictness).
+  Can wait; do it **after** Change 1 so the ML migration is isolated and
+  verifiable on its own.
+- **Verify:** `./gradlew :app:assembleDebug` BUILD SUCCESS **and** on-device
+  smoke test (UI navigation, settings persistence, image + video enhancement).
+
+### Ordering rationale
+
+- **Change 1 first** — it is the *better* change (state-of-the-art ML) and is
+  self-contained (isolated behind `EnhancementEngine`), so it can be verified on
+  its own.
+- **Change 2 second** — it is the *harder* change (coupled AGP 9.x + Kotlin +
+  Compose + lifecycle bumps with breaking changes) and can wait; doing it after
+  Change 1 keeps the two concerns separate and each independently verifiable.
+
+### Also missing / to keep in mind
+
+- **Model compatibility:** the `.tflite` (Zero-DCE, int8) is unchanged; confirm
+  it loads and infers correctly on LiteRT 2.2.0 (op coverage, dtype, dequant).
+- **XNNPACK mapping:** LiteRT `CompiledModel` has no XNNPACK accelerator; decide
+  whether `ComputeTarget.XNNPACK` maps to CPU (documented) or is removed from the
+  selector. Update the UI annotation accordingly.
+- **Delegate probing API:** the new runtime's backend-probing API differs from the
+  classic `org.tensorflow.lite` one; re-derive the "requested vs actual" report
+  so it never silently falls back.
+- **Commit hygiene:** each change is its own commit with an accurate message
+  (the current HEAD is already `Android vertical slice: fix build to BUILD
+  SUCCESS (commit 2/2)`).
