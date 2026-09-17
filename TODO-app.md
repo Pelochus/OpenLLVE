@@ -113,14 +113,32 @@ JDK/Android SDK**. A working build environment was set up:
 > 2. ~~Change 1 (§7): migrate the engine to LiteRT 2.2.0 `CompiledModel`.~~
 >    **DONE** — see the "as-implemented" notes under §7 Change 1.
 > 3. **Change 2 (§7): bump the build toolchain.**
->    - Kotlin 2.3.0 → 2.4.20 (2.3.0 was already bumped as a Change 1
->      prerequisite); AGP 8.5.2 → 9.4.0; Compose BOM → latest (UI 1.12.1
->      line); lifecycle 2.8.7 → 2.11.0; Compose Compiler plugin → 2.4.20.
->    - Handle AGP 9.x breaking changes (namespace, source-set, DSL).
+>    - First verify the latest stable versions at execution time (the numbers
+>      below were current as of 2026-09):
+>      - **Kotlin** 2.3.0 → 2.4.20 (2.3.0 was already bumped as a Change 1
+>        prerequisite for `litert-api` metadata).
+>      - **AGP** 8.5.2 → 9.4.0.
+>      - **Gradle wrapper** 8.9 → **≥ 9.6.0** (AGP 9.4.0 hard requirement;
+>        update `gradle/wrapper/gradle-wrapper.properties`, then
+>        `./gradlew wrapper --gradle-version <x>`).
+>      - **Compose BOM** 2024.09.02 (UI 1.7.x) → latest (UI 1.12.1 line).
+>      - **lifecycle** 2.8.7 → 2.11.0 (requires Compose UI 1.7.0+ and
+>        AGP 9.2.0+ — satisfied by the AGP bump).
+>      - Compose compiler: bundled with the Kotlin compiler since Kotlin 2.0
+>        (`org.jetbrains.kotlin.plugin.compose` version tracks Kotlin; the
+>        `composeOptions { kotlinCompilerExtensionVersion }` property was
+>        already removed in Change 1 — do not re-add it).
+>      - JDK 17 is still sufficient (AGP 9.x minimum/default); the portable
+>        JDK in §5 works.
+>    - Handle AGP 9.x breaking changes: `android.newDsl` defaults to `true`
+>      (legacy `BaseExtension`/`applicationVariants` APIs removed — use
+>      `androidComponents`), source-set provider restrictions,
+>      `android.uniquePackageNames` defaulting to `true`.
 >    - Re-check the `litert` dependency exclusions against the new toolchain
->      (the exclusions exist because `litert-api` transitively forces Compose
->      UI 1.9.0 / AGP 8.6.0+ via lifecycle 2.10.x; with a newer Compose BOM
->      the conflict shape may change).
+>      (they exist because `litert-api` transitively forces Compose UI 1.9.0
+>      / AGP 8.6.0+ via lifecycle 2.10.x; with a newer Compose BOM the
+>      conflict shape may change — if the exclusions are no longer needed,
+>      drop them and note it).
 >    - Commit as its own commit.
 > 4. **Runtime verification (§3)** — if a device/emulator is available, verify:
 >    model loads + visibly enhanced frame; MP4 decode loop synchronized
@@ -223,13 +241,15 @@ Two separate changes/commits, ordered from **easier/better** (do first) to
   - **AGP** 8.5.2 → **9.4.0** (latest stable, Sept 2026). AGP 9.x has
     **breaking changes** (namespace, source-set, and DSL changes) — expect to
     adjust `app/build.gradle.kts` and `settings.gradle.kts`.
+  - **Gradle wrapper** 8.9 → **≥ 9.6.0** (hard requirement of AGP 9.4.0).
   - **Compose BOM** 2024.09.02 (Compose UI 1.7.x) → latest (Compose UI **1.12.1**
     line).
   - **lifecycle** 2.8.7 → **2.11.0** (latest stable, 2026-06-17). Requires
     Compose UI 1.7.0+ **and AGP 9.2.0+** (satisfied by the AGP 9.4.0 bump).
-  - **Compose Compiler plugin** version must track the Kotlin version
-    (`org.jetbrains.kotlin.plugin.compose` → **2.4.20**), and
-    `composeOptions { kotlinCompilerExtensionVersion }` must match.
+  - **Compose compiler:** bundled with the Kotlin compiler since Kotlin 2.0,
+    so `org.jetbrains.kotlin.plugin.compose` just tracks the Kotlin version
+    and `composeOptions { kotlinCompilerExtensionVersion }` is **not** needed
+    (already removed in Change 1).
 - **Risk:** higher — AGP 9.x is a major bump with breaking changes, and the
   bumps are coupled (lifecycle 2.11.0 needs AGP 9.2.0+; Compose BOM needs a
   matching compiler plugin; Kotlin 2.4.x may surface new warnings/strictness).
