@@ -19,9 +19,13 @@ the work in a new session.
   2.3.0 metadata). The classic `org.tensorflow.lite` (2.14.0) dependency is
   gone; the APK shrank ~177 MB → ~42.5 MB (NNAPI delegate + TFLite GPU libs
   dropped).
-- **Next work: Change 2 (§7) — bump the build toolchain** (Kotlin 2.3.0 →
-  2.4.20 / AGP 8.5.2 → 9.4.0 / Compose BOM → latest / lifecycle 2.8.7 →
-  2.11.0).
+- **Build toolchain bumped (Change 2, §7 — DONE):** AGP 9.4.0, Kotlin (KGP)
+  2.4.20, Compose BOM 2026.06.01 (UI 1.11.4), Gradle wrapper 9.7.1,
+  compileSdk 36, activity 1.13.0, navigation 2.9.7, lifecycle 2.10.0.
+  (lifecycle 2.11.0 / Compose BOM 2026.08.00 (UI 1.12.x) / navigation
+  2.10.x / core 1.19.x all require compileSdk 37, which is not yet
+  published — stable channel tops out at android-36.1.)
+- **Next work: runtime verification (§3)** — needs a device/emulator.
 - **No Rust files were modified.** No C/C++ bridge. No iOS work. The LiteRT
   integration is isolated behind `EnhancementEngine`.
 - **No device/emulator was available**, so runtime behavior (actual inference
@@ -42,7 +46,7 @@ the work in a new session.
 | **Full synchronized enhanced playback with audio** | The video path decodes video-only (audio dropped) and processes frames live. Full frame-by-frame synchronized *enhanced* playback with the original audio track is deferred to the Rust/native pipeline. |
 | **KMP shared module** | Deliberately not created to avoid speculative multiplatform abstractions with no second platform. The domain layer is KMP-ready and can be lifted into `app/shared/` later. |
 | **APK signing / `build-apk.sh`** | Not completed — no signing credentials available and not invented. See §4. |
-| **`proguard-rules.pro`** | Referenced by the release build type but not required for `assembleDebug`; left as-is. |
+| **Real `proguard-rules.pro` rules** | A placeholder file now exists (AGP 9.x fails the build when a declared ProGuard file is missing — `android.proguard.failOnMissingFiles` defaults to true). Real keep rules are only needed when R8/minification is enabled. |
 
 ---
 
@@ -104,42 +108,17 @@ JDK/Android SDK**. A working build environment was set up:
 >
 > **Compile status: DONE.** `./gradlew :app:assembleDebug` is **BUILD SUCCESS**
 > (no compile errors; only deprecation warnings). **Change 1 (§7) is DONE:**
-> the engine runs on LiteRT 2.2.0 `CompiledModel`. The remaining work is
-> Change 2 (toolchain bump) and runtime verification.
+> the engine runs on LiteRT 2.2.0 `CompiledModel`. **Change 2 (§7) is DONE:**
+> the toolchain is bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01,
+> Gradle 9.7.1, compileSdk 36). The remaining work is runtime verification.
 >
 > 1. Read `TODO-app.md` (this file), `TODO.md`, `IMPROVEMENTS.md`,
 >    `docs/ARCHITECTURE.md`, and `core/README.md`. Do **not** modify Rust, add
 >    C/C++, or start iOS work.
 > 2. ~~Change 1 (§7): migrate the engine to LiteRT 2.2.0 `CompiledModel`.~~
 >    **DONE** — see the "as-implemented" notes under §7 Change 1.
-> 3. **Change 2 (§7): bump the build toolchain.**
->    - First verify the latest stable versions at execution time (the numbers
->      below were current as of 2026-09):
->      - **Kotlin** 2.3.0 → 2.4.20 (2.3.0 was already bumped as a Change 1
->        prerequisite for `litert-api` metadata).
->      - **AGP** 8.5.2 → 9.4.0.
->      - **Gradle wrapper** 8.9 → **≥ 9.6.0** (AGP 9.4.0 hard requirement;
->        update `gradle/wrapper/gradle-wrapper.properties`, then
->        `./gradlew wrapper --gradle-version <x>`).
->      - **Compose BOM** 2024.09.02 (UI 1.7.x) → latest (UI 1.12.1 line).
->      - **lifecycle** 2.8.7 → 2.11.0 (requires Compose UI 1.7.0+ and
->        AGP 9.2.0+ — satisfied by the AGP bump).
->      - Compose compiler: bundled with the Kotlin compiler since Kotlin 2.0
->        (`org.jetbrains.kotlin.plugin.compose` version tracks Kotlin; the
->        `composeOptions { kotlinCompilerExtensionVersion }` property was
->        already removed in Change 1 — do not re-add it).
->      - JDK 17 is still sufficient (AGP 9.x minimum/default); the portable
->        JDK in §5 works.
->    - Handle AGP 9.x breaking changes: `android.newDsl` defaults to `true`
->      (legacy `BaseExtension`/`applicationVariants` APIs removed — use
->      `androidComponents`), source-set provider restrictions,
->      `android.uniquePackageNames` defaulting to `true`.
->    - Re-check the `litert` dependency exclusions against the new toolchain
->      (they exist because `litert-api` transitively forces Compose UI 1.9.0
->      / AGP 8.6.0+ via lifecycle 2.10.x; with a newer Compose BOM the
->      conflict shape may change — if the exclusions are no longer needed,
->      drop them and note it).
->    - Commit as its own commit.
+> 3. ~~Change 2 (§7): bump the build toolchain.~~ **DONE** — see the
+>    "as-implemented" notes under §7 Change 2.
 > 4. **Runtime verification (§3)** — if a device/emulator is available, verify:
 >    model loads + visibly enhanced frame; MP4 decode loop synchronized
 >    original↔enhanced; backend selection reports the actual backend; settings
@@ -231,7 +210,49 @@ Two separate changes/commits, ordered from **easier/better** (do first) to
   model loads, produces a visibly enhanced frame, delegate probing reports the
   actual backend.
 
-### Change 2 — harder / can wait (do SECOND): bump the build toolchain
+### Change 2 — harder / can wait (do SECOND): bump the build toolchain — **DONE**
+
+**As-implemented notes (what actually happened vs the plan):**
+
+- **AGP 9.4.0** (latest stable, Sept 2026), **Gradle wrapper 8.9 → 9.7.1**
+  (≥ 9.6.0 requirement satisfied).
+- **AGP 9.x built-in Kotlin:** the `org.jetbrains.kotlin.android` plugin is
+  no longer applied (incompatible with the AGP 9 new DSL). KGP is pinned to
+  **2.4.20** via a `buildscript { classpath(...) }` block in
+  `app/build.gradle.kts` (it must be on the module buildscript, not the root,
+  so KGP and AGP share a buildscript classloader). The Compose compiler
+  plugin tracks the KGP version (`org.jetbrains.kotlin.plugin.compose:2.4.20`).
+- **`kotlin { compilerOptions { jvmTarget } }` block removed** — with AGP 9.x
+  built-in Kotlin, `jvmTarget` defaults to `android.compileOptions
+  .targetCompatibility` (17). Kotlin source dirs moved from `java.srcDirs`
+  to `kotlin.srcDirs`; the empty `test`/`androidTest` source-set overrides
+  were dropped.
+- **compileSdk 34 → 36** (required by e.g. activity-compose 1.13.0);
+  `targetSdk` stays 34. **JDK 17** still works.
+- **Compose BOM 2024.09.02 → 2026.06.01 (UI 1.11.4)** — the newest BOM usable
+  with the newest stable SDK platform (android-36). BOM 2026.08.00
+  (UI 1.12.x) requires compileSdk 37, not yet published.
+- **Bumped to the latest lines usable with compileSdk 36:** activity
+  1.9.2 → 1.13.0, navigation 2.8.5 → 2.9.7, lifecycle 2.8.7 → 2.10.0,
+  core-ktx 1.12.0 → 1.18.0, material 1.10.0 → 1.14.0, datastore-preferences
+  1.1.0 → 1.2.1, test ext junit 1.1.5 → 1.3.0, espresso 3.5.1 → 3.7.0.
+  (lifecycle 2.11.0 / navigation 2.10.x / core 1.19.x / Compose UI 1.12.x all
+  require compileSdk 37 — deferred until android-37 is published.)
+- **`androidx.lifecycle` exclusion dropped from the `litert` dependency** —
+  no longer needed now that the app declares its own (newer) lifecycle and
+  Compose versions; the `com.google.android.play` / `com.google.android.gms`
+  exclusions remain (AiPack download path unused).
+- **AGP 9.x breaking changes handled:** `android.enableJetifier` dropped
+  (deprecated in AGP 9, app uses only AndroidX); `android.uniquePackageNames`
+  set to `false` in `gradle.properties` because `litert` and `litert-api`
+  (both from `litert:2.2.0`) share the namespace `com.google.ai.edge.litert`,
+  which fails manifest merger while it defaults to `true`.
+- **`app/proguard-rules.pro` placeholder added** — AGP 9.x fails the build when
+  a declared ProGuard file is missing (`android.proguard.failOnMissingFiles`
+  defaults to `true`); no real keep rules yet (`isMinifyEnabled = false`).
+- **Result:** `./gradlew :app:assembleDebug` **BUILD SUCCESS** (only
+  deprecation warnings); APK ~43.5 MB (`app-debug.apk`).
+- **Still unverified:** on-device runtime — no device/emulator available.
 
 - **Why:** the toolchain is several versions behind the latest stable. Bumping
   it keeps the app modern and picks up security/perf fixes.
@@ -255,8 +276,9 @@ Two separate changes/commits, ordered from **easier/better** (do first) to
   matching compiler plugin; Kotlin 2.4.x may surface new warnings/strictness).
   Can wait; do it **after** Change 1 so the ML migration is isolated and
   verifiable on its own.
-- **Verify:** `./gradlew :app:assembleDebug` BUILD SUCCESS **and** on-device
-  smoke test (UI navigation, settings persistence, image + video enhancement).
+- **Verify:** `./gradlew :app:assembleDebug` BUILD SUCCESS — **DONE** (see
+  as-implemented notes above) **and** on-device smoke test (UI navigation,
+  settings persistence, image + video enhancement) — pending a device.
 
 ### Ordering rationale
 

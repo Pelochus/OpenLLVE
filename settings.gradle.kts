@@ -5,13 +5,14 @@ pluginManagement {
         gradlePluginPortal()
     }
     plugins {
-        id("com.android.application") version "8.5.2"
-        // Kotlin 2.3.0: required by `litert-api:2.2.0` (its classes carry
-        // Kotlin 2.3.0 metadata, unreadable by older compilers). This is a
-        // prerequisite for the LiteRT migration (TODO-app.md §7 Change 1);
-        // the rest of the toolchain bump is Change 2.
-        id("org.jetbrains.kotlin.android") version "2.3.0"
-        id("org.jetbrains.kotlin.plugin.compose") version "2.3.0"
+        id("com.android.application") version "9.4.0"
+        // AGP 9.x enables built-in Kotlin by default: the
+        // `org.jetbrains.kotlin.android` plugin is no longer applied (and is
+        // incompatible with the AGP 9 new DSL). The Kotlin compiler / Kotlin
+        // Gradle Plugin (KGP) version is pinned to 2.4.20 (latest stable)
+        // via the buildscript classpath in app/build.gradle.kts.
+        // The Compose compiler plugin tracks the KGP version.
+        id("org.jetbrains.kotlin.plugin.compose") version "2.4.20"
     }
 }
 

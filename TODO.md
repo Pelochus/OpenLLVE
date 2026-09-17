@@ -50,8 +50,12 @@ table in sync.
 5. [ ] **P1.3 — KMP shared layer.**
    - Create `app/shared/` KMP module: benchmark definitions, UI state
      contracts, pipeline/topping config model. (Or soften tenet #1 in docs.)
-6. [ ] **P2.4 — Dependency refresh** in `app/build.gradle.kts`:
-   TFLite 2.12.0 → current, CameraX 1.2.2 → current, Material 1.10.0 → current.
+6. [~] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: ML runtime
+   done (LiteRT 2.2.0 `CompiledModel`) and toolchain bump done (AGP 9.4.0,
+   KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36 — see
+   `TODO-app.md` §7 Change 2). Remaining: the compileSdk 37 lines
+   (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x)
+   once android-37 is published.
 7. [ ] **P2.1 — CI**: add a ktlint step; add a small release workflow.
 8. [ ] **P3.6 — `BenchmarkRun` record + persistence.**
    - `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples,

@@ -13,7 +13,7 @@ Status of the remaining §5 items:
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.1 CI | ⚠️ partial — clippy/fmt in `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
 | P2.3 benchmarks | ⬜ remaining |
-| P2.4 dependency refresh | ⚠️ partial — ML runtime migrated to LiteRT 2.2.0 (app); toolchain bump (AGP/Kotlin/Compose/lifecycle) remains |
+| P2.4 dependency refresh | ✅ done — ML runtime migrated to LiteRT 2.2.0 (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain |
 | P2.5 docs | ⚠️ partial — app now uses the real `com.google.ai.edge.litert` artifact; docs naming pass remaining |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `serde`/`serde_json` wait for P3.6, `proptest` for P3.8 |
 
@@ -59,7 +59,7 @@ The docs are clear and good, but the code still contradicts them in places:
 
 1. **CI**: add a Kotlin lint step (ktlint); add a release workflow.
 2. **Benchmarks**: benchmark the *model path* (not memcpy), keep warm-up exclusion, and record device/temperature/battery metadata per run as the methodology doc requires.
-3. **Dependency refresh**: ML runtime done (LiteRT 2.2.0 `CompiledModel`); remaining: build toolchain bump (Kotlin 2.3.0 → 2.4.20, AGP 9.4.0, Compose BOM, lifecycle 2.11.0 — see `TODO-app.md` §7 Change 2).
+3. **Dependency refresh**: done — ML runtime on LiteRT 2.2.0 `CompiledModel` and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36 — see `TODO-app.md` §7 Change 2). Only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x).
 4. **Docs**: standardize LiteRT vs TFLite naming (app-side resolved by the LiteRT migration; docs pass remaining).
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
