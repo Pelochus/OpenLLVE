@@ -23,7 +23,7 @@ import openllve.android.domain.EnhancementSettings
  * reduction toggles.
  *
  * The toggles are exposed and persisted here. In this prototype the actual
- * temporal processing is deferred to the Rust core (see TODO-app.md), so they
+ * temporal processing is deferred to the Rust core (see TODO.md P1.1), so they
  * are labelled as "applied by the native pipeline".
  */
 @Composable

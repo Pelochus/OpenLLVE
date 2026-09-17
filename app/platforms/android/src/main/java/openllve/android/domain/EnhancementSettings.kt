@@ -13,7 +13,7 @@ package openllve.android.domain
  * are **not** implemented in Kotlin (that logic belongs in the Rust core per
  * the architecture tenets). The toggles are exposed, persisted, and passed
  * through here so the UI and configuration are real; the actual temporal
- * processing is deferred to the Rust pipeline (see TODO-app.md).
+ * processing is deferred to the Rust pipeline (see TODO.md P1.1).
  */
 data class EnhancementSettings(
     val computeTarget: ComputeTarget = ComputeTarget.CPU,

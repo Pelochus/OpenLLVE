@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * This is Android-native media handling (no custom decoder). It produces, per
  * decoded frame, a paired (original, enhanced) bitmap so the UI can compare
  * them in sync. Audio is intentionally dropped in this prototype (video-only
- * decode); see TODO-app.md.
+ * decode).
  *
  * The whole decode/process loop runs on a single dedicated thread because the
  * LiteRT `CompiledModel` is not thread-safe and the engine must be used from

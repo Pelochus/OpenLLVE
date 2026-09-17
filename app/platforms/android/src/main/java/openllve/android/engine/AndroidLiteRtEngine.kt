@@ -36,7 +36,7 @@ import java.io.File
  * It is deliberately isolated behind [EnhancementEngine]: the UI and
  * ViewModels only see the domain types. When the Rust engine is wired, a
  * `RustEngine : EnhancementEngine` replaces this class and the UI does not
- * change. See TODO-app.md.
+ * change.
  *
  * LiteRT 2.2.0 `CompiledModel` notes
  * -----------------------------------

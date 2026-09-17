@@ -28,3 +28,5 @@ Thumbs.db
 # Generated / temp
 *.tmp
 *.temp
+.kotlin/
+.ruff_cache/

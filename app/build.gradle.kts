@@ -36,7 +36,7 @@ android {
     defaultConfig {
         applicationId = "com.example.openllve"
         // 26 (Android 8.0): floor for hardware-buffer frame decoding and the
-        // NNAPI (NPU) delegate. See TODO-app.md for the rationale.
+        // NNAPI (NPU) delegate.
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -124,7 +124,6 @@ dependencies {
     // accelerator) plus the classic `org.tensorflow.lite` Interpreter classes;
     // the `CompiledModel`/`TensorBuffer`/`Accelerator` API comes from the
     // transitive `litert-api` artifact (which bundles liblitert_jni.so).
-    // See TODO-app.md §7 (Change 1).
     //
     // Exclusions: `litert-api` also pulls the Google Play "ai-delivery" stack
     // (play-services / asset-delivery). We only use the CompiledModel/TensorBuffer

@@ -42,7 +42,7 @@ import openllve.android.ui.viewmodel.EnhancementViewModel
  * The enhanced playback is produced by the MediaCodec decode + enhance loop
  * (see [openllve.android.media.VideoFrameProvider]). Full frame-by-frame
  * synchronized *enhanced* playback with the original audio track is deferred
- * to the Rust/native pipeline; see TODO-app.md.
+ * to the Rust/native pipeline (see TODO.md P1.1).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -59,7 +59,7 @@ The docs are clear and good, but the code still contradicts them in places:
 
 1. **CI**: add a Kotlin lint step (ktlint); add a release workflow.
 2. **Benchmarks**: benchmark the *model path* (not memcpy), keep warm-up exclusion, and record device/temperature/battery metadata per run as the methodology doc requires.
-3. **Dependency refresh**: done — ML runtime on LiteRT 2.2.0 `CompiledModel` and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36 — see `TODO-app.md` §7 Change 2). Only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x).
+3. **Dependency refresh**: done — ML runtime on LiteRT 2.2.0 `CompiledModel` and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36). Only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x).
 4. **Docs**: standardize LiteRT vs TFLite naming (app-side resolved by the LiteRT migration; docs pass remaining).
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`

@@ -86,7 +86,7 @@ fun SettingsScreen(
                 Text(
                     text = "The compute target and toppings are persisted. The EWMA and flicker " +
                         "toggles are exposed and passed through the configuration; the actual temporal " +
-                        "processing is provided by the Rust core in a later phase (see TODO-app.md).",
+                        "processing is provided by the Rust core in a later phase.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
