@@ -9,12 +9,9 @@ import openllve.shared.media.FrameImage
 import openllve.shared.media.VideoMetadata
 
 /**
- * Presentation state for the enhancement flow. A single flat state (rather
- * than a deep sealed hierarchy) keeps the screens simple: each screen reads
- * the fields it needs.
- *
- * Frames are held as the platform-neutral [FrameImage] (ARGB_8888 ints);
- * each host platform converts to its native pixel type only at render time.
+ * Presentation state for the enhancement flow: one flat state, each screen
+ * reads the fields it needs. Frames are the platform-neutral [FrameImage];
+ * each host converts to its native pixel type only at render time.
  */
 data class UiState(
     val settings: EnhancementSettings,

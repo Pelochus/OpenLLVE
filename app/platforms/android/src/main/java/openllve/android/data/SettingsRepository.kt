@@ -13,19 +13,12 @@ import openllve.shared.domain.ComputeTarget
 import openllve.shared.domain.EnhancementSettings
 
 /**
- * DataStore-backed settings. The [Context.settingsDataStore] extension property
- * is the canonical way to obtain the [DataStore] (the delegate's `getValue`
- * requires a [Context] as its this-reference, so it cannot be used as a plain
- * class property).
+ * DataStore-backed settings. The delegate's `getValue` needs a [Context]
+ * this-reference, so the store is obtained via this extension property.
  */
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "openllve_settings")
 
-/**
- * Persists lightweight user preferences with Jetpack DataStore (Preferences).
- *
- * This is the modern, KMP-friendly persistence mechanism recommended for
- * simple key/value settings. No database is needed for this slice.
- */
+/** Persists user preferences with Jetpack DataStore (key/value, no database). */
 class SettingsRepository(context: Context) {
     private val dataStore: DataStore<Preferences> = context.settingsDataStore
 

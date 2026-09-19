@@ -1,7 +1,5 @@
-// KMP shared app layer (P1.3): platform-neutral domain models, UI state
-// contracts, and pixel/frame abstractions shared by the Android and (future)
-// iOS platforms. Performance-sensitive compute stays in the Rust `core/`
-// crate; this module holds app-side contracts only.
+// KMP shared app layer: platform-neutral domain models, UI state, and
+// frame/pixel abstractions. Compute stays in the Rust `core/` crate.
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -16,8 +14,7 @@ repositories {
 }
 
 kotlin {
-    // Android target: consumed by :app (AGP) as a plain AAR dependency.
-    // On AGP 9 the Android target config lives in `kotlin { android { ... } }`.
+    // Android target: consumed by :app as a plain AAR dependency.
     android {
         namespace = "openllve.shared"
         compileSdk = 36
@@ -27,9 +24,7 @@ kotlin {
         }
     }
 
-    // iOS targets: only buildable on macOS (Xcode is required). They are
-    // declared by default on macOS hosts; on other hosts enable them with
-    // -Pkmp.ios.enabled=true if the Kotlin/Native toolchain is available.
+    // iOS targets need Xcode (macOS); enable elsewhere with -Pkmp.ios.enabled=true.
     val enableIosTargets =
         (project.findProperty("kmp.ios.enabled") as? String)?.toBoolean()
             ?: org.gradle.internal.os.OperatingSystem.current().isMacOsX()

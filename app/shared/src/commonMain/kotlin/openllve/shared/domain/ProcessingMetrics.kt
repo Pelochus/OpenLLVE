@@ -3,11 +3,9 @@ package openllve.shared.domain
 import kotlin.math.roundToLong
 
 /**
- * Minimal, useful performance metrics for a processing run.
- *
- * Kept isolated (plain data) so the numbers can later be replaced by
- * Rust/native measurements from the core's `BenchmarkMetrics` without
- * changing the UI.
+ * Performance metrics for a processing run. Plain data so the numbers can be
+ * replaced by Rust/native measurements from the core's `BenchmarkMetrics`
+ * without changing the UI.
  */
 data class ProcessingMetrics(
     val frameCount: Int,

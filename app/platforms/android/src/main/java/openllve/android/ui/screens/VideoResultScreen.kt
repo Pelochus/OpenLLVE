@@ -38,12 +38,8 @@ import openllve.shared.ui.UiState
 
 /**
  * Video result: metadata, configuration, and (once started) synchronized
- * original ↔ enhanced playback with live metrics.
- *
- * The enhanced playback is produced by the MediaCodec decode + enhance loop
- * (see [openllve.android.media.VideoFrameProvider]). Full frame-by-frame
- * synchronized *enhanced* playback with the original audio track is deferred
- * to the Rust/native pipeline (see TODO.md P1.1).
+ * original ↔ enhanced playback with live metrics. Synchronized playback with
+ * audio is deferred to the Rust/native pipeline (TODO.md P1.1).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

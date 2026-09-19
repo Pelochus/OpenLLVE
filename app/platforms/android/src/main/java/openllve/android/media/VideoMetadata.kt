@@ -5,11 +5,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import openllve.shared.media.VideoMetadata
 
-/**
- * Fetches lightweight metadata from a video via [MediaMetadataRetriever]
- * (an Android-native API). Used to display basic info and to compute the
- * realtime factor for the processing metrics.
- */
+/** Fetches video metadata via [MediaMetadataRetriever]. */
 object VideoMetadataReader {
     fun read(context: Context, uri: Uri): VideoMetadata {
         val retriever = MediaMetadataRetriever()

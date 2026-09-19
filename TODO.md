@@ -21,9 +21,10 @@ table in sync.
 - **Models**: single source of truth in `external/models/` (default
   `zero-dce-int8.tflite` as a raw file; new models as submodules); app
   assets hold symlinks to it.
-- **Android app**: compiles as a stub (Compose UI + placeholder pipeline
-  manager; all enhancement logic lives in the Rust core). **No JNI/Rust
-  wiring** (reverted — premature; re-attempt in P1.1).
+- **Android app**: functional vertical slice (Compose UI, LiteRT engine,
+  MediaCodec decode, DataStore settings); domain/UI-state/media contracts
+  live in the `:shared` KMP module. **No JNI/Rust wiring** (re-attempt in
+  P1.1).
 - **CI**: small `android-ci.yml` (lint, test, assemble) + `rust-core.yml`
   (test, clippy, fmt).
 
@@ -48,20 +49,11 @@ table in sync.
      `[min(prev,curr), max(prev,curr)]` per pixel and blend output is a convex
      combination. (Golden-frame and FFI-fuzz tests wait for P1.1.)
 5. [~] **P1.3 — KMP shared layer.**
-   - Done: `app/shared/` KMP module created (`:shared`, KGP 2.4.20,
-     `androidTarget` + iOS targets on macOS hosts) with the platform-neutral
-     contracts extracted from the Android vertical slice: domain
-     (`ComputeTarget`, `EnhancementSettings`, `MediaInput`, `BackendSelection`,
-     `ProcessingMetrics`, `EnhancementEngine`/`BackendProbeResult`), media
-     (`FrameImage`, `FramePixels`, `VideoMetadata`), and UI state (`UiState`).
-     Android rewired to consume `:shared` with thin adapters
-     (`BitmapFrameAdapter`, `MediaInput.sourceUri()`); engine interface is now
-     host-type-free (no `Context`), `MediaInput` uses a URI string, `UiState`
-     holds `FrameImage` instead of `Bitmap`.
-   - Remaining: benchmark definitions (`BenchmarkConfig`/`BenchmarkRun`, P3.6)
-     and the settings persistence contract (DataStore stays Android for now;
-     an iOS-equivalent adapter will implement the same `EnhancementSettings`
-     flow).
+   - Done: `:shared` KMP module with the platform-neutral contracts from the
+     Android vertical slice (domain, `FrameImage`/`FramePixels`/`VideoMetadata`,
+     `UiState`); Android consumes it via thin adapters.
+   - Remaining: benchmark definitions (P3.6) and a platform-neutral settings
+     persistence contract.
 6. [~] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: ML runtime
    done (LiteRT 2.2.0 `CompiledModel`) and toolchain bump done (AGP 9.4.0,
    KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36).

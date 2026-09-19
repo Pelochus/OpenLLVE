@@ -5,11 +5,7 @@ import android.net.Uri
 import openllve.shared.domain.MediaInput
 import openllve.shared.media.FrameImage
 
-/**
- * Android boundary adapter between [Bitmap] (ARGB_8888) and the shared
- * [FrameImage]. The pure pixel math lives in
- * [openllve.shared.media.FramePixels]; only the Bitmap glue is here.
- */
+/** Android boundary between [Bitmap] and the shared [FrameImage]. */
 object BitmapFrameAdapter {
 
     fun toFrame(bitmap: Bitmap): FrameImage {

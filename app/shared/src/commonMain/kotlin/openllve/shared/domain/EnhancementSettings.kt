@@ -1,19 +1,13 @@
 package openllve.shared.domain
 
 /**
- * User-facing enhancement configuration, expressed in OpenLLVE concepts.
+ * User-facing enhancement configuration, shaped so the Rust core can consume
+ * it directly: [computeTarget] -> delegate selection, [ewmaEnabled] ->
+ * `EwmaFilter` topping, [flickerReductionEnabled] -> anti-flicker.
  *
- * This is the configuration shape the eventual Rust core should be able to
- * consume without changing the UI. The Rust pipeline would map:
- * - [computeTarget] -> delegate selection (Rust `ModelRunner` / FFI option),
- * - [ewmaEnabled] -> attach the `EwmaFilter` topping,
- * - [flickerReductionEnabled] -> anti-flicker behaviour.
- *
- * NOTE (prototype): in this slice the EWMA / flicker toppings are **not**
- * implemented in Kotlin (that logic belongs in the Rust core per the
- * architecture tenets). The toggles are exposed, persisted, and passed through
- * here so the UI and configuration are real; the actual temporal processing is
- * deferred to the Rust pipeline (see TODO.md P1.1).
+ * Prototype: the EWMA/flicker toppings are not implemented in Kotlin (that
+ * logic belongs in the Rust core); the toggles are exposed, persisted, and
+ * passed through so the UI and configuration are real.
  */
 data class EnhancementSettings(
     val computeTarget: ComputeTarget = ComputeTarget.CPU,

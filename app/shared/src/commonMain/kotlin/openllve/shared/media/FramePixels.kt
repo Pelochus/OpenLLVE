@@ -2,10 +2,7 @@ package openllve.shared.media
 
 /**
  * Converts between [FrameImage] (ARGB_8888 ints) and the engine's working
- * format: row-major RGB floats in `[0, 1]` (size `width * height * 3`).
- *
- * Shared by both the image and video paths so the pixel format is consistent
- * at the [openllve.shared.domain.EnhancementEngine] boundary.
+ * format: row-major RGB floats in `[0, 1]`.
  */
 object FramePixels {
 

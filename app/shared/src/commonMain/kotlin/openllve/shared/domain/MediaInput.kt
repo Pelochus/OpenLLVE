@@ -1,12 +1,10 @@
 package openllve.shared.domain
 
 /**
- * The kind of media the user selected. The UI must always know whether the
- * current input is an [ImageInput] or a [VideoInput] and the two processing
- * paths stay separate (image = single frame; video = decoded frame stream).
- *
- * [source] is a platform-neutral URI string; each host platform converts it
- * to its own URI type (Android `android.net.Uri`, iOS `NSURL`).
+ * The kind of media the user selected; the two processing paths stay separate
+ * (image = single frame, video = decoded frame stream). [source] is a
+ * platform-neutral URI string; each host converts it to its own URI type
+ * (Android `Uri`, iOS `NSURL`).
  */
 sealed interface MediaInput {
     val source: String

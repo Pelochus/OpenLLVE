@@ -28,6 +28,24 @@ fun ProcessingIndicator(label: String, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Empty state (no media selected yet). Placeholder: no screen renders it
+ * yet; kept for the upcoming empty-state UI.
+ */
+@Composable
+fun EmptyState(message: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 /** A clear, non-silent error state. */
 @Composable
 fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
@@ -44,17 +62,3 @@ fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** Empty state (no media selected yet). */
-@Composable
-fun EmptyState(message: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}

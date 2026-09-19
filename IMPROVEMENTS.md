@@ -9,7 +9,7 @@ Status of the remaining §5 items:
 | Item | Status |
 | --- | --- |
 | P1.1 wire Rust core into Android | ⬜ remaining — the single highest-value step (cross-compile cdylib, Kotlin `external fun`s) |
-| P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module created with domain/UI-state/media contracts extracted from the Android vertical slice; benchmark definitions (P3.6) still remaining |
+| P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts; benchmark definitions (P3.6) remaining |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.1 CI | ⚠️ partial — clippy/fmt in `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
 | P2.3 benchmarks | ⬜ remaining |
@@ -24,8 +24,8 @@ Status of the remaining §5 items:
 | Layer | Status |
 | --- | --- |
 | `core/` — Rust crate + C FFI (pipelines, filters, metrics) | Real code; **compiles and passes CI** |
-| `app/shared/` — KMP shared app logic | **Empty** (READMEs only) |
-| `app/platforms/android/` — Kotlin/Compose app | Stubs: placeholder pipeline manager, no-op UI, no camera wiring, **no FFI calls** |
+| `app/shared/` — KMP shared app logic | Real module (`:shared`): domain/UI-state/media contracts |
+| `app/platforms/android/` — Kotlin/Compose app | Functional vertical slice (LiteRT engine, media decode, Compose UI); **no FFI calls** |
 | `app/platforms/ios/` — iOS | Placeholder README only |
 
 ## 2. Architecture: stated tenets vs. actual code
@@ -33,7 +33,7 @@ Status of the remaining §5 items:
 The docs are clear and good, but the code still contradicts them in places:
 
 1. **"All business logic must live in the Rust core"** — the C FFI is never called from anywhere in the Android app; the entire `ffi.rs` surface is dead code today (P1.1).
-2. **"KMP for all shared app logic"** — `app/shared/` is now a real KMP module (`:shared`): domain contracts (`ComputeTarget`, `EnhancementSettings`, `MediaInput`, `BackendSelection`, `ProcessingMetrics`, `EnhancementEngine`), UI state (`UiState` with the platform-neutral `FrameImage`), and pixel/frame abstractions. Remaining shared work: benchmark definitions (P3.6) and a platform-neutral settings persistence contract.
+2. **"KMP for all shared app logic"** — `app/shared/` is now a real KMP module (`:shared`) with the domain, UI-state, and media contracts. Remaining: benchmark definitions (P3.6) and a platform-neutral settings persistence contract.
 3. **"Zero-copy frame handles"** — `NativeFrameHandle` exists but is **never used by the FFI** (the FFI takes raw `float*` + dimensions) and has no lifetime/aliasing story for the raw `*mut u8`.
 
 ## 3. Concrete code-level bugs & smells

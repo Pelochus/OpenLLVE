@@ -31,12 +31,9 @@ import openllve.shared.media.FramePixels
 import openllve.shared.ui.UiState
 
 /**
- * Presentation logic for the enhancement flow. Owns the application state and
- * orchestrates the media layer and the [EnhancementEngine]. It depends only on
- * domain types — the UI never sees LiteRT classes.
- *
- * The engine is shared between the image and video paths; only one is active
- * at a time (selecting media resets the other).
+ * Presentation logic for the enhancement flow: owns the application state and
+ * orchestrates the media layer and the [EnhancementEngine]. The engine is
+ * shared between the image and video paths; selecting media resets the other.
  */
 class EnhancementViewModel(
     private val context: Context,
@@ -50,7 +47,10 @@ class EnhancementViewModel(
     private val _uiState = MutableStateFlow(UiState(settings = EnhancementSettings()))
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    /** Model display name (domain value; the engine stays hidden from the UI). */
+    /**
+     * Model display name (domain value; the engine stays hidden from the UI).
+     * Placeholder: no screen reads it yet; kept for the upcoming model-info UI.
+     */
     val modelName: String
         get() = engine.modelName
 

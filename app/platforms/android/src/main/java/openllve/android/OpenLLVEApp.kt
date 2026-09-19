@@ -6,12 +6,9 @@ import openllve.android.engine.AndroidLiteRtEngine
 import openllve.shared.domain.EnhancementEngine
 
 /**
- * Application-scoped wiring.
- *
- * Deliberately lightweight (no DI framework): the two long-lived components
- * (the enhancement engine and the settings repository) are created once and
- * handed to the Activity/ViewModels. The engine is the seam that will later be
- * swapped for a Rust-backed implementation without touching the UI.
+ * Application-scoped wiring: the engine and settings repository are created
+ * once and handed to the Activity/ViewModels. The engine is the seam that
+ * will later be swapped for a Rust-backed implementation.
  */
 class OpenLLVEApp : Application() {
 
@@ -20,9 +17,7 @@ class OpenLLVEApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Temporary Android LiteRT implementation. Replace with a Rust-backed
-        // engine (via the C FFI) in a later phase; the UI depends only on
-        // EnhancementEngine, so this is the only line that changes.
+        // Temporary LiteRT implementation; a Rust-backed engine replaces it later.
         enhancementEngine = AndroidLiteRtEngine(this)
         settingsRepository = SettingsRepository(this)
     }

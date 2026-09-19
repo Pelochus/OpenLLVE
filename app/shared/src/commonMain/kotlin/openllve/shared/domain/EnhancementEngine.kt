@@ -1,24 +1,13 @@
 package openllve.shared.domain
 
 /**
- * The seam between the UI and the inference backend.
+ * The seam between the UI and the inference backend: the UI depends only on
+ * this interface and the domain types, and never sees LiteRT/TFLite or CoreML
+ * classes. The interface is host-type-free; implementations receive what they
+ * need (e.g. an Android `Context`) at construction time.
  *
- * The UI depends only on this interface and the domain types
- * ([ComputeTarget], [EnhancementSettings], [BackendSelection],
- * [ProcessingMetrics]) — it never sees LiteRT/TFLite or CoreML classes.
- *
- * Current (temporary) implementation:
- * [openllve.android.engine.AndroidLiteRtEngine], which runs the model directly
- * on the LiteRT runtime on Android.
- *
- * Later: a `RustEngine` implementation of this same interface will call the
- * Rust core via the C FFI (`openllve_*`), and the UI will not change. The
- * domain configuration ([EnhancementSettings]) is shaped so the Rust core can
- * consume it directly (delegate selection, EWMA/flicker toppings).
- *
- * Platform-neutral: the interface takes no host types (no Android `Context`,
- * no iOS `URLSession`); a host implementation receives what it needs at
- * construction time.
+ * Temporary Android implementation: `AndroidLiteRtEngine`. Later: a
+ * `RustEngine` calling the Rust core via the C FFI; the UI will not change.
  */
 interface EnhancementEngine {
 

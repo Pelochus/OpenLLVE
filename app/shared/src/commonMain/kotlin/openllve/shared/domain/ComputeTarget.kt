@@ -1,26 +1,17 @@
 package openllve.shared.domain
 
 /**
- * Compute backends the enhancement engine can run on.
- *
- * Shared OpenLLVE domain concept, intentionally **not** tied to any
- * LiteRT/TFLite or CoreML delegate class. The UI and the eventual Rust core
- * both reason in terms of [ComputeTarget]; the concrete delegate wiring lives
- * behind [EnhancementEngine] (on Android today:
- * `openllve.android.engine.AndroidLiteRtEngine`, a temporary implementation
- * slated to be replaced by the Rust engine via the C FFI).
+ * Compute backends the enhancement engine can run on. Not tied to any
+ * LiteRT/TFLite or CoreML delegate class; concrete wiring lives behind
+ * [EnhancementEngine].
  */
 enum class ComputeTarget {
     /** Plain CPU inference (always available). */
     CPU,
 
     /**
-     * CPU with the XNNPACK delegate (CPU optimization; broadly available).
-     *
-     * Note: the LiteRT 2.2.0 `CompiledModel` API has no separate XNNPACK
-     * accelerator (the experimental YNNPACK CPU accelerator is a build/runtime
-     * flag, not a delegate), so this target maps to [CPU] in
-     * `AndroidLiteRtEngine` — a documented mapping, not a fallback.
+     * CPU with the XNNPACK delegate. LiteRT `CompiledModel` has no separate
+     * XNNPACK accelerator, so this maps to [CPU] in `AndroidLiteRtEngine`.
      */
     XNNPACK,
 

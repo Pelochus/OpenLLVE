@@ -18,18 +18,11 @@ import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Decodes an MP4 with the platform's hardware [MediaCodec] (via
- * [MediaExtractor] for demuxing) and runs each decoded frame through the
- * [EnhancementEngine].
- *
- * This is Android-native media handling (no custom decoder). It produces, per
- * decoded frame, a paired (original, enhanced) bitmap so the UI can compare
- * them in sync. Audio is intentionally dropped in this prototype (video-only
- * decode).
- *
- * The whole decode/process loop runs on a single dedicated thread because the
- * LiteRT `CompiledModel` is not thread-safe and the engine must be used from
- * one thread.
+ * Decodes an MP4 with the platform's hardware [MediaCodec] (demuxed via
+ * [MediaExtractor]) and runs each decoded frame through the
+ * [EnhancementEngine], producing paired (original, enhanced) bitmaps. Audio
+ * is dropped (video-only decode). Runs on a single dedicated thread: the
+ * LiteRT `CompiledModel` is not thread-safe.
  */
 class VideoFrameProvider(
     private val context: Context,
@@ -84,10 +77,8 @@ class VideoFrameProvider(
     }
 
     private fun decodeAndEnhance(uri: Uri, selection: BackendSelection) {
-        // MediaExtractor.setDataSource has no Uri overload. Open the SAF Uri via
-        // the ContentResolver and use the FileDescriptor overload. The extractor
-        // dups the descriptor internally, but we keep ours open for the whole
-        // decode and close it on teardown.
+        // MediaExtractor has no Uri overload; open the SAF Uri via the
+        // ContentResolver and keep the descriptor open for the whole decode.
         val fd = context.contentResolver.openFileDescriptor(uri, "r")
             ?: throw IllegalStateException("Could not open a file descriptor for $uri")
 
@@ -179,7 +170,7 @@ class VideoFrameProvider(
                                 val outBuffer = codec.getOutputBuffer(idx)
                                 if (outBuffer != null) {
                                     val original = yuvToBitmap(outBuffer, frameWidth, frameHeight, colorFormat)
-                                    val enhanced = enhanceBitmap(original, selection)
+                                    val enhanced = enhanceBitmap(original)
                                     latestOriginal.value = original
                                     latestEnhanced.value = enhanced
                                     frameCount.value += 1
@@ -204,10 +195,8 @@ class VideoFrameProvider(
     }
 
     /**
-     * Converts a software-decoded YUV frame (NV12 or YV12, as produced by the
-     * hardware [MediaCodec] with a null output surface) into an ARGB_8888
-     * [Bitmap]. Row stride is assumed to equal the frame width (no row padding),
-     * which holds for the common NV12/YV12 layouts.
+     * Converts a software-decoded YUV frame (NV12 or YV12) into an ARGB_8888
+     * [Bitmap]; row stride equals the frame width (no padding).
      */
     private fun yuvToBitmap(buffer: ByteBuffer, width: Int, height: Int, colorFormat: Int): Bitmap {
         val yPlane = ByteArray(width * height)
@@ -255,7 +244,7 @@ class VideoFrameProvider(
         return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
     }
 
-    private fun enhanceBitmap(original: Bitmap, selection: BackendSelection): Bitmap {
+    private fun enhanceBitmap(original: Bitmap): Bitmap {
         val frame = BitmapFrameAdapter.toFrame(original)
         val w = frame.width
         val h = frame.height
