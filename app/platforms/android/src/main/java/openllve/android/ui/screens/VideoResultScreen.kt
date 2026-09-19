@@ -24,16 +24,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import openllve.android.domain.ProcessingMetrics
-import openllve.android.media.VideoMetadata
 import openllve.android.ui.components.BackendInfoCard
 import openllve.android.ui.components.ComparisonSlider
 import openllve.android.ui.components.ErrorBanner
 import openllve.android.ui.components.MetricsCard
 import openllve.android.ui.components.ProcessingIndicator
 import openllve.android.ui.components.SettingsCard
-import openllve.android.ui.state.UiState
 import openllve.android.ui.viewmodel.EnhancementViewModel
+import openllve.android.media.toBitmap
+import openllve.shared.domain.ProcessingMetrics
+import openllve.shared.media.VideoMetadata
+import openllve.shared.ui.UiState
 
 /**
  * Video result: metadata, configuration, and (once started) synchronized
@@ -51,8 +52,8 @@ fun VideoResultScreen(
     uiState: UiState,
     onBack: () -> Unit
 ) {
-    val original = uiState.videoOriginal
-    val enhanced = uiState.videoEnhanced
+    val original = uiState.videoOriginal?.toBitmap()
+    val enhanced = uiState.videoEnhanced?.toBitmap()
     val metrics = videoMetrics(uiState)
 
     Scaffold(

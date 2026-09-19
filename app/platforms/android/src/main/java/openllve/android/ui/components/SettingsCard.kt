@@ -13,9 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import openllve.android.domain.BackendProbeResult
-import openllve.android.domain.ComputeTarget
-import openllve.android.domain.EnhancementSettings
+import openllve.shared.domain.BackendProbeResult
+import openllve.shared.domain.ComputeTarget
+import openllve.shared.domain.EnhancementSettings
 
 /**
  * User-facing enhancement configuration: compute target selector (with

@@ -1,22 +1,17 @@
-package openllve.android.media
-
-import android.graphics.Bitmap
+package openllve.shared.media
 
 /**
- * Converts between Android [Bitmap] (ARGB_8888) and the engine's working
+ * Converts between [FrameImage] (ARGB_8888 ints) and the engine's working
  * format: row-major RGB floats in `[0, 1]` (size `width * height * 3`).
  *
  * Shared by both the image and video paths so the pixel format is consistent
- * at the [openllve.android.domain.EnhancementEngine] boundary.
+ * at the [openllve.shared.domain.EnhancementEngine] boundary.
  */
 object FramePixels {
 
-    fun bitmapToFloatRgb(bitmap: Bitmap): FloatArray {
-        val w = bitmap.width
-        val h = bitmap.height
-        val pixels = IntArray(w * h)
-        bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
-        val out = FloatArray(w * h * 3)
+    /** ARGB_8888 ints -> row-major RGB floats in `[0, 1]`. */
+    fun argbToFloatRgb(pixels: IntArray): FloatArray {
+        val out = FloatArray(pixels.size * 3)
         for (i in pixels.indices) {
             val argb = pixels[i]
             val idx = i * 3
@@ -27,7 +22,8 @@ object FramePixels {
         return out
     }
 
-    fun floatRgbToBitmap(floats: FloatArray, width: Int, height: Int): Bitmap {
+    /** Row-major RGB floats in `[0, 1]` -> ARGB_8888 ints. */
+    fun floatRgbToArgb(floats: FloatArray, width: Int, height: Int): IntArray {
         val pixels = IntArray(width * height)
         for (i in pixels.indices) {
             val idx = i * 3
@@ -36,8 +32,6 @@ object FramePixels {
             val b = (floats[idx + 2] * 255f).toInt().coerceIn(0, 255)
             pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
         }
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        return bitmap
+        return pixels
     }
 }

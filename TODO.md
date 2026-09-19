@@ -47,9 +47,21 @@ table in sync.
    - Add `proptest`; assert EWMA output stays within
      `[min(prev,curr), max(prev,curr)]` per pixel and blend output is a convex
      combination. (Golden-frame and FFI-fuzz tests wait for P1.1.)
-5. [ ] **P1.3 — KMP shared layer.**
-   - Create `app/shared/` KMP module: benchmark definitions, UI state
-     contracts, pipeline/topping config model. (Or soften tenet #1 in docs.)
+5. [~] **P1.3 — KMP shared layer.**
+   - Done: `app/shared/` KMP module created (`:shared`, KGP 2.4.20,
+     `androidTarget` + iOS targets on macOS hosts) with the platform-neutral
+     contracts extracted from the Android vertical slice: domain
+     (`ComputeTarget`, `EnhancementSettings`, `MediaInput`, `BackendSelection`,
+     `ProcessingMetrics`, `EnhancementEngine`/`BackendProbeResult`), media
+     (`FrameImage`, `FramePixels`, `VideoMetadata`), and UI state (`UiState`).
+     Android rewired to consume `:shared` with thin adapters
+     (`BitmapFrameAdapter`, `MediaInput.sourceUri()`); engine interface is now
+     host-type-free (no `Context`), `MediaInput` uses a URI string, `UiState`
+     holds `FrameImage` instead of `Bitmap`.
+   - Remaining: benchmark definitions (`BenchmarkConfig`/`BenchmarkRun`, P3.6)
+     and the settings persistence contract (DataStore stays Android for now;
+     an iOS-equivalent adapter will implement the same `EnhancementSettings`
+     flow).
 6. [~] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: ML runtime
    done (LiteRT 2.2.0 `CompiledModel`) and toolchain bump done (AGP 9.4.0,
    KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36).

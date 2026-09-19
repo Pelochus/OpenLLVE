@@ -12,7 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import openllve.android.domain.ProcessingMetrics
+import openllve.shared.domain.ProcessingMetrics
 
 /**
  * Minimal, useful performance metrics: total inference time, frame count,

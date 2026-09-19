@@ -91,6 +91,9 @@ android {
 // explicit `kotlin { compilerOptions { ... } }` block is needed.
 
 dependencies {
+    // KMP shared app layer (domain contracts, UI state, frame/pixel abstractions).
+    implementation(project(":shared"))
+
     // Compose BOM 2026.06.01 (Compose UI 1.11.4): the newest BOM that is
     // usable with the newest stable SDK platform (android-36). The newer
     // BOM 2026.08.00 (Compose UI 1.12.0) requires compileSdk 37, which is

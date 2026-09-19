@@ -3,26 +3,7 @@ package openllve.android.media
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-
-/** Basic, practical metadata for a selected video. */
-data class VideoMetadata(
-    val durationMs: Long,
-    val width: Int,
-    val height: Int,
-    val mimeType: String,
-    val fileSizeBytes: Long
-) {
-    val resolution: String
-        get() = "${width}×${height}"
-
-    val durationLabel: String
-        get() {
-        val totalSeconds = (durationMs + 500) / 1000
-        val minutes = totalSeconds / 60
-        val seconds = totalSeconds % 60
-        return "%d:%02d".format(minutes, seconds)
-    }
-}
+import openllve.shared.media.VideoMetadata
 
 /**
  * Fetches lightweight metadata from a video via [MediaMetadataRetriever]

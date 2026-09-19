@@ -1,4 +1,4 @@
-package openllve.android.domain
+package openllve.shared.domain
 
 /**
  * User-facing enhancement configuration, expressed in OpenLLVE concepts.
@@ -9,11 +9,11 @@ package openllve.android.domain
  * - [ewmaEnabled] -> attach the `EwmaFilter` topping,
  * - [flickerReductionEnabled] -> anti-flicker behaviour.
  *
- * NOTE (prototype): in this Android-first slice the EWMA / flicker toppings
- * are **not** implemented in Kotlin (that logic belongs in the Rust core per
- * the architecture tenets). The toggles are exposed, persisted, and passed
- * through here so the UI and configuration are real; the actual temporal
- * processing is deferred to the Rust pipeline (see TODO.md P1.1).
+ * NOTE (prototype): in this slice the EWMA / flicker toppings are **not**
+ * implemented in Kotlin (that logic belongs in the Rust core per the
+ * architecture tenets). The toggles are exposed, persisted, and passed through
+ * here so the UI and configuration are real; the actual temporal processing is
+ * deferred to the Rust pipeline (see TODO.md P1.1).
  */
 data class EnhancementSettings(
     val computeTarget: ComputeTarget = ComputeTarget.CPU,

@@ -27,8 +27,9 @@ import openllve.android.ui.components.ErrorBanner
 import openllve.android.ui.components.MetricsCard
 import openllve.android.ui.components.ProcessingIndicator
 import openllve.android.ui.components.SettingsCard
-import openllve.android.ui.state.UiState
 import openllve.android.ui.viewmodel.EnhancementViewModel
+import openllve.android.media.toBitmap
+import openllve.shared.ui.UiState
 
 /**
  * Image result: original ↔ enhanced comparison, metrics, backend info, and a
@@ -41,8 +42,9 @@ fun ImageResultScreen(
     uiState: UiState,
     onBack: () -> Unit
 ) {
-    val original = uiState.imageOriginal
-    val enhanced = uiState.imageEnhanced
+    val original = uiState.imageOriginal?.toBitmap()
+    val enhanced = uiState.imageEnhanced?.toBitmap()
+    val error = uiState.error // local copy: cross-module smart casts are not allowed
 
     Scaffold(
         topBar = {
@@ -67,7 +69,7 @@ fun ImageResultScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when {
-                uiState.error != null -> ErrorBanner(uiState.error)
+                error != null -> ErrorBanner(error)
                 uiState.processing -> ProcessingIndicator("Enhancing image…")
                 original != null && enhanced != null -> {
                     ComparisonSlider(original = original, enhanced = enhanced)

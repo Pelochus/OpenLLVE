@@ -28,8 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import openllve.android.ui.components.SettingsCard
-import openllve.android.ui.state.UiState
 import openllve.android.ui.viewmodel.EnhancementViewModel
+import openllve.shared.ui.UiState
 
 /**
  * Entry screen: select an image or MP4, and configure the enhancement

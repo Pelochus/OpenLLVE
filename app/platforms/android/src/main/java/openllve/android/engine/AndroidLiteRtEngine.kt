@@ -7,11 +7,11 @@ import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.Environment
 import com.google.ai.edge.litert.TensorBuffer
 import com.google.ai.edge.litert.TensorType
-import openllve.android.domain.BackendProbeResult
-import openllve.android.domain.BackendSelection
-import openllve.android.domain.ComputeTarget
-import openllve.android.domain.EnhancementEngine
-import openllve.android.domain.EnhancementSettings
+import openllve.shared.domain.BackendProbeResult
+import openllve.shared.domain.BackendSelection
+import openllve.shared.domain.ComputeTarget
+import openllve.shared.domain.EnhancementEngine
+import openllve.shared.domain.EnhancementSettings
 import java.io.File
 
 /**
@@ -60,6 +60,7 @@ import java.io.File
  *   silent).
  */
 class AndroidLiteRtEngine(
+    private val context: Context,
     override val modelAssetPath: String = MODEL_ASSET_PATH,
     override val modelName: String = "zero-dce-int8"
 ) : EnhancementEngine {
@@ -74,7 +75,7 @@ class AndroidLiteRtEngine(
     override val lastInferenceMs: Long
         get() = lastInferenceMsValue
 
-    override suspend fun probeBackends(context: Context): BackendProbeResult {
+    override suspend fun probeBackends(): BackendProbeResult {
         val supported = mutableSetOf<ComputeTarget>()
         val notes = mutableMapOf<ComputeTarget, String>()
         // The new runtime exposes a dedicated backend-probing API: the
@@ -102,7 +103,7 @@ class AndroidLiteRtEngine(
         return BackendProbeResult(supported, notes)
     }
 
-    override suspend fun configure(context: Context, settings: EnhancementSettings): BackendSelection {
+    override suspend fun configure(settings: EnhancementSettings): BackendSelection {
         val modelFile = loadModelFile(context)
         val requested = settings.computeTarget
         release()

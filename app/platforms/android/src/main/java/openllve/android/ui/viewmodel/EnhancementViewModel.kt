@@ -13,18 +13,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import openllve.android.data.SettingsRepository
-import openllve.android.domain.BackendSelection
-import openllve.android.domain.EnhancementEngine
-import openllve.android.domain.EnhancementSettings
-import openllve.android.domain.ImageInput
-import openllve.android.domain.MediaInput
-import openllve.android.domain.ProcessingMetrics
-import openllve.android.domain.VideoInput
-import openllve.android.media.FramePixels
+import openllve.android.media.BitmapFrameAdapter
 import openllve.android.media.ImageFrameProvider
 import openllve.android.media.VideoFrameProvider
 import openllve.android.media.VideoMetadataReader
-import openllve.android.ui.state.UiState
+import openllve.android.media.mediaSource
+import openllve.android.media.sourceUri
+import openllve.shared.domain.BackendSelection
+import openllve.shared.domain.EnhancementEngine
+import openllve.shared.domain.EnhancementSettings
+import openllve.shared.domain.ImageInput
+import openllve.shared.domain.MediaInput
+import openllve.shared.domain.ProcessingMetrics
+import openllve.shared.domain.VideoInput
+import openllve.shared.media.FrameImage
+import openllve.shared.media.FramePixels
+import openllve.shared.ui.UiState
 
 /**
  * Presentation logic for the enhancement flow. Owns the application state and
@@ -57,7 +61,7 @@ class EnhancementViewModel(
             }
         }
         viewModelScope.launch {
-            val probe = withContext(Dispatchers.Default) { engine.probeBackends(context) }
+            val probe = withContext(Dispatchers.Default) { engine.probeBackends() }
             _uiState.update { it.copy(backendProbe = probe) }
         }
     }
@@ -72,17 +76,22 @@ class EnhancementViewModel(
 
     fun selectImage(uri: Uri, name: String) {
         resetResult()
-        _uiState.update { it.copy(input = ImageInput(uri, name)) }
+        _uiState.update { it.copy(input = ImageInput(uri.mediaSource(), name)) }
         viewModelScope.launch {
             _uiState.update { it.copy(processing = true, error = null) }
             try {
                 val result = withContext(Dispatchers.Default) {
                     val bitmap = imageProvider.loadBitmap(uri)
-                    val floats = FramePixels.bitmapToFloatRgb(bitmap)
-                    val selection = engine.configure(context, _uiState.value.settings)
+                    val original = BitmapFrameAdapter.toFrame(bitmap)
+                    val floats = FramePixels.argbToFloatRgb(original.pixels)
+                    val selection = engine.configure(_uiState.value.settings)
                     val enhanced = engine.enhanceFrame(floats, bitmap.width, bitmap.height)
-                    val enhancedBitmap = FramePixels.floatRgbToBitmap(enhanced, bitmap.width, bitmap.height)
-                    EnhancedImageResult(bitmap, enhancedBitmap, selection, engine.lastInferenceMs)
+                    val enhancedFrame = FrameImage(
+                        bitmap.width,
+                        bitmap.height,
+                        FramePixels.floatRgbToArgb(enhanced, bitmap.width, bitmap.height)
+                    )
+                    EnhancedImageResult(original, enhancedFrame, selection, engine.lastInferenceMs)
                 }
                 val metrics = ProcessingMetrics(
                     frameCount = 1,
@@ -110,7 +119,7 @@ class EnhancementViewModel(
 
     fun rerunImage() {
         val input = _uiState.value.input as? ImageInput ?: return
-        selectImage(input.uri, input.displayName)
+        selectImage(input.sourceUri(), input.displayName)
     }
 
     // ---- Video path ----
@@ -118,7 +127,7 @@ class EnhancementViewModel(
     fun selectVideo(uri: Uri, name: String) {
         stopVideo()
         resetResult()
-        _uiState.update { it.copy(input = VideoInput(uri, name)) }
+        _uiState.update { it.copy(input = VideoInput(uri.mediaSource(), name)) }
         viewModelScope.launch {
             val metadata = withContext(Dispatchers.Default) { VideoMetadataReader.read(context, uri) }
             _uiState.update { it.copy(videoMetadata = metadata) }
@@ -138,7 +147,7 @@ class EnhancementViewModel(
                 error = null
             )
         }
-        videoProvider.start(input.uri, _uiState.value.settings)
+        videoProvider.start(input.sourceUri(), _uiState.value.settings)
         collectVideoState()
     }
 
@@ -155,10 +164,14 @@ class EnhancementViewModel(
             videoProvider.isPlaying.collect { playing -> _uiState.update { it.copy(videoPlaying = playing) } }
         }
         viewModelScope.launch {
-            videoProvider.latestOriginal.collect { b -> _uiState.update { it.copy(videoOriginal = b) } }
+            videoProvider.latestOriginal.collect { b ->
+                _uiState.update { it.copy(videoOriginal = b?.let { frame -> BitmapFrameAdapter.toFrame(frame) }) }
+            }
         }
         viewModelScope.launch {
-            videoProvider.latestEnhanced.collect { b -> _uiState.update { it.copy(videoEnhanced = b) } }
+            videoProvider.latestEnhanced.collect { b ->
+                _uiState.update { it.copy(videoEnhanced = b?.let { frame -> BitmapFrameAdapter.toFrame(frame) }) }
+            }
         }
         viewModelScope.launch {
             videoProvider.frameCount.collect { c -> _uiState.update { it.copy(videoFrameCount = c) } }
@@ -196,10 +209,10 @@ class EnhancementViewModel(
         engine.release()
     }
 
-    /** Result of a single image enhancement. */
+    /** Result of a single image enhancement (shared [FrameImage] pixels). */
     private data class EnhancedImageResult(
-        val original: android.graphics.Bitmap,
-        val enhanced: android.graphics.Bitmap,
+        val original: FrameImage,
+        val enhanced: FrameImage,
         val selection: BackendSelection,
         val inferenceMs: Long
     )

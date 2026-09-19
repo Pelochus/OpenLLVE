@@ -9,9 +9,11 @@ import android.media.MediaFormat
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
-import openllve.android.domain.BackendSelection
-import openllve.android.domain.EnhancementEngine
-import openllve.android.domain.EnhancementSettings
+import openllve.shared.domain.BackendSelection
+import openllve.shared.domain.EnhancementEngine
+import openllve.shared.domain.EnhancementSettings
+import openllve.shared.media.FrameImage
+import openllve.shared.media.FramePixels
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -57,7 +59,7 @@ class VideoFrameProvider(
         val worker = Thread {
             if (running.compareAndSet(false, true)) {
                 try {
-                    val selection = runBlocking { engine.configure(context, settings) }
+                    val selection = runBlocking { engine.configure(settings) }
                     backendSelection.value = selection
                     isPlaying.value = true
                     decodeAndEnhance(uri, selection)
@@ -254,11 +256,13 @@ class VideoFrameProvider(
     }
 
     private fun enhanceBitmap(original: Bitmap, selection: BackendSelection): Bitmap {
-        val w = original.width
-        val h = original.height
-        val floats = FramePixels.bitmapToFloatRgb(original)
+        val frame = BitmapFrameAdapter.toFrame(original)
+        val w = frame.width
+        val h = frame.height
+        val floats = FramePixels.argbToFloatRgb(frame.pixels)
         val enhanced = engine.enhanceFrame(floats, w, h)
-        return FramePixels.floatRgbToBitmap(enhanced, w, h)
+        val argb = FramePixels.floatRgbToArgb(enhanced, w, h)
+        return BitmapFrameAdapter.toBitmap(FrameImage(w, h, argb))
     }
 
     private fun findVideoTrack(extractor: MediaExtractor): Int? {

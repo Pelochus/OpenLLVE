@@ -23,8 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import openllve.android.ui.components.SettingsCard
-import openllve.android.ui.state.UiState
 import openllve.android.ui.viewmodel.EnhancementViewModel
+import openllve.shared.ui.UiState
 
 /**
  * Settings screen: the same enhancement configuration as the home screen plus

@@ -1,4 +1,4 @@
-package openllve.android.domain
+package openllve.shared.domain
 
 /**
  * The backend that was actually used for inference, compared to the one the

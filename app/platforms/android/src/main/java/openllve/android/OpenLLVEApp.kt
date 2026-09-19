@@ -2,8 +2,8 @@ package openllve.android
 
 import android.app.Application
 import openllve.android.data.SettingsRepository
-import openllve.android.domain.EnhancementEngine
 import openllve.android.engine.AndroidLiteRtEngine
+import openllve.shared.domain.EnhancementEngine
 
 /**
  * Application-scoped wiring.
@@ -23,7 +23,7 @@ class OpenLLVEApp : Application() {
         // Temporary Android LiteRT implementation. Replace with a Rust-backed
         // engine (via the C FFI) in a later phase; the UI depends only on
         // EnhancementEngine, so this is the only line that changes.
-        enhancementEngine = AndroidLiteRtEngine()
+        enhancementEngine = AndroidLiteRtEngine(this)
         settingsRepository = SettingsRepository(this)
     }
 }

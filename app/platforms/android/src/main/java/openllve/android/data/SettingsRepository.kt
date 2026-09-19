@@ -9,8 +9,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import openllve.android.domain.ComputeTarget
-import openllve.android.domain.EnhancementSettings
+import openllve.shared.domain.ComputeTarget
+import openllve.shared.domain.EnhancementSettings
 
 /**
  * DataStore-backed settings. The [Context.settingsDataStore] extension property

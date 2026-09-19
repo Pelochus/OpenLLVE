@@ -1,14 +1,14 @@
-package openllve.android.domain
+package openllve.shared.domain
 
 /**
  * Compute backends the enhancement engine can run on.
  *
- * This is an OpenLLVE domain concept, intentionally **not** tied to any
- * LiteRT/TFLite delegate class. The UI and the eventual Rust core both
- * reason in terms of [ComputeTarget]; the concrete delegate wiring lives
- * behind [EnhancementEngine] (see `engine/AndroidLiteRtEngine`, which is a
- * temporary Android implementation slated to be replaced by the Rust engine
- * via the C FFI).
+ * Shared OpenLLVE domain concept, intentionally **not** tied to any
+ * LiteRT/TFLite or CoreML delegate class. The UI and the eventual Rust core
+ * both reason in terms of [ComputeTarget]; the concrete delegate wiring lives
+ * behind [EnhancementEngine] (on Android today:
+ * `openllve.android.engine.AndroidLiteRtEngine`, a temporary implementation
+ * slated to be replaced by the Rust engine via the C FFI).
  */
 enum class ComputeTarget {
     /** Plain CPU inference (always available). */

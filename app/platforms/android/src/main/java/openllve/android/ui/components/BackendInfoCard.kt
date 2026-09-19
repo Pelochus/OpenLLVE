@@ -10,7 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import openllve.android.domain.BackendSelection
+import openllve.shared.domain.BackendSelection
 
 /**
  * Reports which backend was actually used vs. requested. Never silent: when

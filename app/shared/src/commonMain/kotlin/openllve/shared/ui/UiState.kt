@@ -1,17 +1,20 @@
-package openllve.android.ui.state
+package openllve.shared.ui
 
-import android.graphics.Bitmap
-import openllve.android.domain.BackendProbeResult
-import openllve.android.domain.BackendSelection
-import openllve.android.domain.EnhancementSettings
-import openllve.android.domain.MediaInput
-import openllve.android.domain.ProcessingMetrics
-import openllve.android.media.VideoMetadata
+import openllve.shared.domain.BackendProbeResult
+import openllve.shared.domain.BackendSelection
+import openllve.shared.domain.EnhancementSettings
+import openllve.shared.domain.MediaInput
+import openllve.shared.domain.ProcessingMetrics
+import openllve.shared.media.FrameImage
+import openllve.shared.media.VideoMetadata
 
 /**
  * Presentation state for the enhancement flow. A single flat state (rather
  * than a deep sealed hierarchy) keeps the screens simple: each screen reads
  * the fields it needs.
+ *
+ * Frames are held as the platform-neutral [FrameImage] (ARGB_8888 ints);
+ * each host platform converts to its native pixel type only at render time.
  */
 data class UiState(
     val settings: EnhancementSettings,
@@ -19,13 +22,13 @@ data class UiState(
     val input: MediaInput? = null,
 
     // Image path
-    val imageOriginal: Bitmap? = null,
-    val imageEnhanced: Bitmap? = null,
+    val imageOriginal: FrameImage? = null,
+    val imageEnhanced: FrameImage? = null,
 
     // Video path
     val videoMetadata: VideoMetadata? = null,
-    val videoOriginal: Bitmap? = null,
-    val videoEnhanced: Bitmap? = null,
+    val videoOriginal: FrameImage? = null,
+    val videoEnhanced: FrameImage? = null,
     val videoPlaying: Boolean = false,
     val videoFrameCount: Int = 0,
     val videoInferenceMs: Long = 0L,

@@ -1,25 +1,26 @@
-package openllve.android.domain
-
-import android.net.Uri
+package openllve.shared.domain
 
 /**
  * The kind of media the user selected. The UI must always know whether the
  * current input is an [ImageInput] or a [VideoInput] and the two processing
  * paths stay separate (image = single frame; video = decoded frame stream).
+ *
+ * [source] is a platform-neutral URI string; each host platform converts it
+ * to its own URI type (Android `android.net.Uri`, iOS `NSURL`).
  */
 sealed interface MediaInput {
-    val uri: Uri
+    val source: String
     val displayName: String
 }
 
-/** A still image selected via the Storage Access Framework. */
+/** A still image selected via the platform's file picker. */
 data class ImageInput(
-    override val uri: Uri,
+    override val source: String,
     override val displayName: String
 ) : MediaInput
 
-/** An MP4 (or other decodable video) selected via the Storage Access Framework. */
+/** An MP4 (or other decodable video) selected via the platform's file picker. */
 data class VideoInput(
-    override val uri: Uri,
+    override val source: String,
     override val displayName: String
 ) : MediaInput
