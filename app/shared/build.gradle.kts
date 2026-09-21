@@ -10,6 +10,7 @@ plugins {
 }
 
 repositories {
+    google()
     mavenCentral()
 }
 

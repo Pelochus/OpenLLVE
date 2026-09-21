@@ -44,7 +44,7 @@ The important architectural rule is that `core/` stays independent from the app 
 
 ### Android / Kotlin layer
 
-- capture, UI, camera session control, benchmark orchestration
+- media selection (SAF), MediaCodec/MediaExtractor decode, UI, benchmark orchestration
 - delegates to the Rust core via the generated C ABI
 - manages Android thread dispatch and lifecycle
 
@@ -68,7 +68,7 @@ The C ABI is the compatibility layer between the app runtime and the Rust core. 
 ## 5. Application Technology Responsibilities
 
 - **KMP shared app layer**: shared app state, domain models, benchmark orchestration, and UI contracts
-- **Android platform layer**: Kotlin, Jetpack Compose, CameraX / Media3, Android lifecycle, and device-specific accelerator integration
+- **Android platform layer**: Kotlin, Jetpack Compose, MediaCodec/MediaExtractor, Android lifecycle, and device-specific accelerator integration
 - **Future iOS platform layer**: SwiftUI, AVFoundation, and Apple-specific runtime integration
 - **Inference runtimes**: LiteRT / TFLite delegates on Android; Core ML / Metal or MPS on iOS when that platform is implemented
 - **Rust core**: business logic, enhancement pipelines, filters, frame abstractions, telemetry, and the C FFI surface

@@ -23,7 +23,6 @@ import openllve.shared.domain.BackendSelection
 import openllve.shared.domain.EnhancementEngine
 import openllve.shared.domain.EnhancementSettings
 import openllve.shared.domain.ImageInput
-import openllve.shared.domain.MediaInput
 import openllve.shared.domain.ProcessingMetrics
 import openllve.shared.domain.VideoInput
 import openllve.shared.media.FrameImage

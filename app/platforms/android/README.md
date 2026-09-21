@@ -4,7 +4,7 @@ This directory contains Android-specific runtime code for the app.
 
 ## Purpose
 
-- CameraX / camera capture
+- SAF media selection and MediaCodec/MediaExtractor decode
 - Compose UI and screen composition
 - Android lifecycle management
 - device-specific accelerator integration

@@ -4,7 +4,7 @@
 
 ## Project Status
 
-OpenLLVE is currently a proof-of-concept architecture and early implementation. The Rust core and Android project structure are being established before production inference and iOS work.
+OpenLLVE is an early implementation: the Rust core and the KMP shared layer are in place, and the Android app is a functional vertical slice (Compose UI, LiteRT inference, MediaCodec decode, DataStore settings). JNI/Rust wiring and the iOS platform are next.
 
 ## Documentation
 
