@@ -30,6 +30,14 @@ OpenLLVE is an early implementation: the Rust core and the KMP shared layer are 
 ./gradlew assembleDebug
 ```
 
+### Signing the release APK
+
+```text
+scripts/sign-release-apk.sh <keystore> <key-alias> <key-password> [store-password]
+```
+
+The script is the single source of truth; see its header for details.
+
 ### Rust core
 
 ```text

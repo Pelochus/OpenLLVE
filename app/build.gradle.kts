@@ -50,10 +50,32 @@ android {
         }
     }
 
+    // Release signing is opt-in: scripts/sign-release-apk.sh (the single
+    // source of truth) sets the RELEASE_* environment variables consumed
+    // here. Without them, release builds fall back to the debug keystore.
+    signingConfigs {
+        val keystore = providers.environmentVariable("RELEASE_KEYSTORE")
+        if (keystore.isPresent) {
+            create("release") {
+                storeFile = file(keystore.get())
+                keyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD").get()
+                storePassword = providers.environmentVariable("RELEASE_STORE_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Falls back to the debug keystore unless the RELEASE_* env vars
+            // (set by scripts/sign-release-apk.sh) define a release key.
+            signingConfig = if (signingConfigs.names.contains("release")) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
