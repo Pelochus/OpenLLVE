@@ -12,18 +12,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import openllve.android.media.toBitmap
 import openllve.android.ui.components.BackendInfoCard
 import openllve.android.ui.components.ComparisonSlider
 import openllve.android.ui.components.ErrorBanner
@@ -31,7 +32,6 @@ import openllve.android.ui.components.MetricsCard
 import openllve.android.ui.components.ProcessingIndicator
 import openllve.android.ui.components.SettingsCard
 import openllve.android.ui.viewmodel.EnhancementViewModel
-import openllve.android.media.toBitmap
 import openllve.shared.domain.ProcessingMetrics
 import openllve.shared.media.VideoMetadata
 import openllve.shared.ui.UiState
@@ -46,7 +46,7 @@ import openllve.shared.ui.UiState
 fun VideoResultScreen(
     viewModel: EnhancementViewModel,
     uiState: UiState,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val original = uiState.videoOriginal?.toBitmap()
     val enhanced = uiState.videoEnhanced?.toBitmap()
@@ -60,19 +60,20 @@ fun VideoResultScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        modifier = Modifier.clickable { onBack() }
+                        modifier = Modifier.clickable { onBack() },
                     )
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             uiState.error?.let { ErrorBanner(it) }
 
@@ -91,11 +92,12 @@ fun VideoResultScreen(
                         Text("Stop")
                     }
                 }
+
                 else -> {
                     SettingsCard(
                         settings = uiState.settings,
                         probe = uiState.backendProbe,
-                        onSettingsChange = viewModel::updateSettings
+                        onSettingsChange = viewModel::updateSettings,
                     )
                     Button(onClick = viewModel::startVideo, modifier = Modifier.fillMaxWidth()) {
                         Text("Start enhancement")
@@ -109,9 +111,10 @@ fun VideoResultScreen(
 @Composable
 private fun MetadataCard(metadata: VideoMetadata) {
     androidx.compose.material3.Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Video", style = MaterialTheme.typography.titleMedium)
@@ -137,10 +140,11 @@ private fun videoMetrics(uiState: UiState): ProcessingMetrics? {
         inputResolution = uiState.videoMetadata?.resolution ?: "unknown",
         backend = uiState.videoBackend?.actual ?: uiState.settings.computeTarget,
         modelName = "zero-dce-int8",
-        realtimeFactor = if (inferenceMs > 0 && durationMs > 0) {
-            durationMs.toDouble() / inferenceMs
-        } else {
-            0.0
-        }
+        realtimeFactor =
+            if (inferenceMs > 0 && durationMs > 0) {
+                durationMs.toDouble() / inferenceMs
+            } else {
+                0.0
+            },
     )
 }

@@ -33,37 +33,39 @@ import androidx.compose.ui.unit.dp
 fun ComparisonSlider(
     original: Bitmap,
     enhanced: Bitmap,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var slider by remember { mutableStateOf(0.5f) }
 
     Column(modifier = modifier.padding(horizontal = 12.dp)) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f),
         ) {
             Image(
                 bitmap = original.asImageBitmap(),
                 contentDescription = "Original",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                alpha = 1f
+                alpha = 1f,
             )
             Image(
                 bitmap = enhanced.asImageBitmap(),
                 contentDescription = "Enhanced",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                alpha = slider
+                alpha = slider,
             )
         }
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Original", style = MaterialTheme.typography.labelLarge)
             Spacer(modifier = Modifier.weight(1f))
@@ -72,7 +74,7 @@ fun ComparisonSlider(
         Slider(
             value = slider,
             onValueChange = { slider = it },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

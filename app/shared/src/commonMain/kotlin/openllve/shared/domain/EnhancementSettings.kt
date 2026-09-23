@@ -12,5 +12,5 @@ package openllve.shared.domain
 data class EnhancementSettings(
     val computeTarget: ComputeTarget = ComputeTarget.CPU,
     val ewmaEnabled: Boolean = false,
-    val flickerReductionEnabled: Boolean = false
+    val flickerReductionEnabled: Boolean = false,
 )

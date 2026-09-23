@@ -19,14 +19,17 @@ enum class ComputeTarget {
     GPU,
 
     /** NPU via the NNAPI delegate. Requires a compatible device/NPU. */
-    NPU;
+    NPU,
+
+    ;
 
     /** Human-readable label for the UI. */
     val label: String
-        get() = when (this) {
-            CPU -> "CPU"
-            XNNPACK -> "XNNPACK (CPU)"
-            GPU -> "GPU"
-            NPU -> "NPU (NNAPI)"
-        }
+        get() =
+            when (this) {
+                CPU -> "CPU"
+                XNNPACK -> "XNNPACK (CPU)"
+                GPU -> "GPU"
+                NPU -> "NPU (NNAPI)"
+            }
 }

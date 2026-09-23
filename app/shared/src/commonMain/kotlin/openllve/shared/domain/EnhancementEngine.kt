@@ -10,7 +10,6 @@ package openllve.shared.domain
  * `RustEngine` calling the Rust core via the C FFI; the UI will not change.
  */
 interface EnhancementEngine {
-
     /** The model file (asset path) this engine runs. Exposed for display only. */
     val modelAssetPath: String
 
@@ -37,7 +36,11 @@ interface EnhancementEngine {
      * @param input row-major RGB floats in `[0, 1]`, size `width * height * 3`.
      * @return enhanced RGB floats in `[0, 1]`, same size.
      */
-    fun enhanceFrame(input: FloatArray, width: Int, height: Int): FloatArray
+    fun enhanceFrame(
+        input: FloatArray,
+        width: Int,
+        height: Int,
+    ): FloatArray
 
     /** Inference time of the last [enhanceFrame] call, in ms (0 if unknown). */
     val lastInferenceMs: Long
@@ -50,8 +53,9 @@ interface EnhancementEngine {
 data class BackendProbeResult(
     val supported: Set<ComputeTarget>,
     /** Reason a target is unsupported (only present for unsupported targets). */
-    val notes: Map<ComputeTarget, String>
+    val notes: Map<ComputeTarget, String>,
 ) {
     fun isSupported(target: ComputeTarget): Boolean = target in supported
+
     fun noteFor(target: ComputeTarget): String? = notes[target]
 }

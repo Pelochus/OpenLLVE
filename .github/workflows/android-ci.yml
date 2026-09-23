@@ -22,7 +22,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run Linter (ktlint / androidLint)
+      - name: Run Kotlin lint (ktlint)
+        run: |
+          curl -sSL -o ktlint \
+            https://github.com/ktlint/ktlint/releases/download/1.8.0/ktlint
+          chmod +x ktlint
+          ./ktlint app/shared/src app/platforms/android/src
+
+      - name: Run Android Lint
         run: ./gradlew lintDebug
 
       - name: Run Unit Tests

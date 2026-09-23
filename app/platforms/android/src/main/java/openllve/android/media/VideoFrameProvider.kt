@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class VideoFrameProvider(
     private val context: Context,
-    private val engine: EnhancementEngine
+    private val engine: EnhancementEngine,
 ) {
     private var thread: Thread? = null
     private val running = AtomicBoolean(false)
@@ -40,7 +40,10 @@ class VideoFrameProvider(
     val backendSelection = MutableStateFlow<BackendSelection?>(null)
 
     /** Starts decoding and enhancing [uri] with [settings]. */
-    fun start(uri: Uri, settings: EnhancementSettings) {
+    fun start(
+        uri: Uri,
+        settings: EnhancementSettings,
+    ) {
         stop()
         latestOriginal.value = null
         latestEnhanced.value = null
@@ -49,21 +52,22 @@ class VideoFrameProvider(
         inferenceMsTotal.value = 0L
         backendSelection.value = null
 
-        val worker = Thread {
-            if (running.compareAndSet(false, true)) {
-                try {
-                    val selection = runBlocking { engine.configure(settings) }
-                    backendSelection.value = selection
-                    isPlaying.value = true
-                    decodeAndEnhance(uri, selection)
-                } catch (e: Exception) {
-                    errorMessage.value = "Video processing failed: ${e.message ?: "unknown error"}"
-                } finally {
-                    isPlaying.value = false
-                    running.set(false)
+        val worker =
+            Thread {
+                if (running.compareAndSet(false, true)) {
+                    try {
+                        val selection = runBlocking { engine.configure(settings) }
+                        backendSelection.value = selection
+                        isPlaying.value = true
+                        decodeAndEnhance(uri, selection)
+                    } catch (e: Exception) {
+                        errorMessage.value = "Video processing failed: ${e.message ?: "unknown error"}"
+                    } finally {
+                        isPlaying.value = false
+                        running.set(false)
+                    }
                 }
             }
-        }
         worker.name = "openllve-video-decode"
         this.thread = worker
         worker.start()
@@ -76,29 +80,35 @@ class VideoFrameProvider(
         isPlaying.value = false
     }
 
-    private fun decodeAndEnhance(uri: Uri, selection: BackendSelection) {
+    private fun decodeAndEnhance(
+        uri: Uri,
+        selection: BackendSelection,
+    ) {
         // MediaExtractor has no Uri overload; open the SAF Uri via the
         // ContentResolver and keep the descriptor open for the whole decode.
-        val fd = context.contentResolver.openFileDescriptor(uri, "r")
-            ?: throw IllegalStateException("Could not open a file descriptor for $uri")
+        val fd =
+            context.contentResolver.openFileDescriptor(uri, "r")
+                ?: throw IllegalStateException("Could not open a file descriptor for $uri")
 
         val extractor = MediaExtractor()
         extractor.setDataSource(fd.fileDescriptor, 0, fd.statSize)
 
-        val videoTrack = findVideoTrack(extractor)
-            ?: run {
-                extractor.release()
-                fd.close()
-                throw IllegalArgumentException("No decodable video track found in this file")
-            }
+        val videoTrack =
+            findVideoTrack(extractor)
+                ?: run {
+                    extractor.release()
+                    fd.close()
+                    throw IllegalArgumentException("No decodable video track found in this file")
+                }
         val videoFormat = extractor.getTrackFormat(videoTrack)
         extractor.selectTrack(videoTrack)
-        val mime = videoFormat.getString(MediaFormat.KEY_MIME)
-            ?: run {
-                extractor.release()
-                fd.close()
-                throw IllegalArgumentException("Unknown video mime type")
-            }
+        val mime =
+            videoFormat.getString(MediaFormat.KEY_MIME)
+                ?: run {
+                    extractor.release()
+                    fd.close()
+                    throw IllegalArgumentException("Unknown video mime type")
+                }
 
         val codec = MediaCodec.createDecoderByType(mime)
         // Software output (null surface): decoded frames come back as a ByteBuffer
@@ -128,8 +138,11 @@ class VideoFrameProvider(
                         if (sampleSize < 0) {
                             inputBuffer.clear()
                             codec.queueInputBuffer(
-                                inputBufferIndex, 0, 0, 0,
-                                MediaCodec.BUFFER_FLAG_END_OF_STREAM
+                                inputBufferIndex,
+                                0,
+                                0,
+                                0,
+                                MediaCodec.BUFFER_FLAG_END_OF_STREAM,
                             )
                             eosFed = true
                         } else {
@@ -143,7 +156,11 @@ class VideoFrameProvider(
                                     0
                                 }
                             codec.queueInputBuffer(
-                                inputBufferIndex, 0, sampleSize, extractor.sampleTime, flags
+                                inputBufferIndex,
+                                0,
+                                sampleSize,
+                                extractor.sampleTime,
+                                flags,
                             )
                         }
                     }
@@ -155,13 +172,18 @@ class VideoFrameProvider(
                     val idx = codec.dequeueOutputBuffer(outputInfo, OUTPUT_TIMEOUT_US)
                     when (idx) {
                         MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED,
-                        MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> Unit
+                        MediaCodec.INFO_OUTPUT_FORMAT_CHANGED,
+                        -> {
+                            Unit
+                        }
+
                         MediaCodec.INFO_TRY_AGAIN_LATER -> {
                             // After the EOS flag is fed, TRY_AGAIN_LATER means the
                             // decoder has drained every frame. Stop.
                             if (eosFed) finished = true
                             break
                         }
+
                         else -> {
                             if (idx < 0) break
                             if (outputInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
@@ -198,7 +220,12 @@ class VideoFrameProvider(
      * Converts a software-decoded YUV frame (NV12 or YV12) into an ARGB_8888
      * [Bitmap]; row stride equals the frame width (no padding).
      */
-    private fun yuvToBitmap(buffer: ByteBuffer, width: Int, height: Int, colorFormat: Int): Bitmap {
+    private fun yuvToBitmap(
+        buffer: ByteBuffer,
+        width: Int,
+        height: Int,
+        colorFormat: Int,
+    ): Bitmap {
         val yPlane = ByteArray(width * height)
         buffer.rewind()
         buffer.get(yPlane)
@@ -237,7 +264,11 @@ class VideoFrameProvider(
         return bitmap
     }
 
-    private fun yuvToArgb(y: Int, u: Int, v: Int): Int {
+    private fun yuvToArgb(
+        y: Int,
+        u: Int,
+        v: Int,
+    ): Int {
         val r = (1.164f * y + 1.596f * v).toInt().coerceIn(0, 255)
         val g = (1.164f * y - 0.391f * u - 0.813f * v).toInt().coerceIn(0, 255)
         val b = (1.164f * y + 2.018f * u).toInt().coerceIn(0, 255)

@@ -9,18 +9,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import openllve.android.media.toBitmap
 import openllve.android.ui.components.BackendInfoCard
 import openllve.android.ui.components.ComparisonSlider
 import openllve.android.ui.components.ErrorBanner
@@ -28,7 +29,6 @@ import openllve.android.ui.components.MetricsCard
 import openllve.android.ui.components.ProcessingIndicator
 import openllve.android.ui.components.SettingsCard
 import openllve.android.ui.viewmodel.EnhancementViewModel
-import openllve.android.media.toBitmap
 import openllve.shared.ui.UiState
 
 /**
@@ -40,7 +40,7 @@ import openllve.shared.ui.UiState
 fun ImageResultScreen(
     viewModel: EnhancementViewModel,
     uiState: UiState,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val original = uiState.imageOriginal?.toBitmap()
     val enhanced = uiState.imageEnhanced?.toBitmap()
@@ -54,23 +54,30 @@ fun ImageResultScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        modifier = Modifier.clickable { onBack() }
+                        modifier = Modifier.clickable { onBack() },
                     )
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when {
-                error != null -> ErrorBanner(error)
-                uiState.processing -> ProcessingIndicator("Enhancing image…")
+                error != null -> {
+                    ErrorBanner(error)
+                }
+
+                uiState.processing -> {
+                    ProcessingIndicator("Enhancing image…")
+                }
+
                 original != null && enhanced != null -> {
                     ComparisonSlider(original = original, enhanced = enhanced)
                     uiState.metrics?.let { MetricsCard(it) }
@@ -78,17 +85,18 @@ fun ImageResultScreen(
                     SettingsCard(
                         settings = uiState.settings,
                         probe = uiState.backendProbe,
-                        onSettingsChange = viewModel::updateSettings
+                        onSettingsChange = viewModel::updateSettings,
                     )
                     Button(onClick = viewModel::rerunImage, modifier = Modifier.fillMaxWidth()) {
                         Text("Re-run with current settings")
                     }
                 }
+
                 else -> {
                     Text(
                         text = "No image loaded. Go back and select an image.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

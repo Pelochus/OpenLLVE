@@ -11,7 +11,6 @@ import openllve.shared.domain.EnhancementEngine
  * will later be swapped for a Rust-backed implementation.
  */
 class OpenLLVEApp : Application() {
-
     lateinit var enhancementEngine: EnhancementEngine
     lateinit var settingsRepository: SettingsRepository
 

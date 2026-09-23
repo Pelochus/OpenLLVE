@@ -20,7 +20,10 @@ import openllve.shared.domain.ProcessingMetrics
  * whether processing is faster/slower than realtime.
  */
 @Composable
-fun MetricsCard(metrics: ProcessingMetrics, modifier: Modifier = Modifier) {
+fun MetricsCard(
+    metrics: ProcessingMetrics,
+    modifier: Modifier = Modifier,
+) {
     Card(modifier = modifier.padding(horizontal = 12.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Performance", style = MaterialTheme.typography.titleMedium)
@@ -41,16 +44,19 @@ fun MetricsCard(metrics: ProcessingMetrics, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MetricRow(label: String, value: String) {
+private fun MetricRow(
+    label: String,
+    value: String,
+) {
     Row {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(160.dp)
+            modifier = Modifier.width(160.dp),
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }

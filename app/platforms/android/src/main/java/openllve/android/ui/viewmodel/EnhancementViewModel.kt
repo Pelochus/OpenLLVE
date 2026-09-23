@@ -37,9 +37,8 @@ import openllve.shared.ui.UiState
 class EnhancementViewModel(
     private val context: Context,
     private val engine: EnhancementEngine,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     private val imageProvider = ImageFrameProvider(context)
     private val videoProvider = VideoFrameProvider(context, engine)
 
@@ -73,41 +72,47 @@ class EnhancementViewModel(
 
     // ---- Image path ----
 
-    fun selectImage(uri: Uri, name: String) {
+    fun selectImage(
+        uri: Uri,
+        name: String,
+    ) {
         resetResult()
         _uiState.update { it.copy(input = ImageInput(uri.mediaSource(), name)) }
         viewModelScope.launch {
             _uiState.update { it.copy(processing = true, error = null) }
             try {
-                val result = withContext(Dispatchers.Default) {
-                    val bitmap = imageProvider.loadBitmap(uri)
-                    val original = BitmapFrameAdapter.toFrame(bitmap)
-                    val floats = FramePixels.argbToFloatRgb(original.pixels)
-                    val selection = engine.configure(_uiState.value.settings)
-                    val enhanced = engine.enhanceFrame(floats, bitmap.width, bitmap.height)
-                    val enhancedFrame = FrameImage(
-                        bitmap.width,
-                        bitmap.height,
-                        FramePixels.floatRgbToArgb(enhanced, bitmap.width, bitmap.height)
+                val result =
+                    withContext(Dispatchers.Default) {
+                        val bitmap = imageProvider.loadBitmap(uri)
+                        val original = BitmapFrameAdapter.toFrame(bitmap)
+                        val floats = FramePixels.argbToFloatRgb(original.pixels)
+                        val selection = engine.configure(_uiState.value.settings)
+                        val enhanced = engine.enhanceFrame(floats, bitmap.width, bitmap.height)
+                        val enhancedFrame =
+                            FrameImage(
+                                bitmap.width,
+                                bitmap.height,
+                                FramePixels.floatRgbToArgb(enhanced, bitmap.width, bitmap.height),
+                            )
+                        EnhancedImageResult(original, enhancedFrame, selection, engine.lastInferenceMs)
+                    }
+                val metrics =
+                    ProcessingMetrics(
+                        frameCount = 1,
+                        inferenceMs = result.inferenceMs,
+                        averageFrameMs = result.inferenceMs.toDouble(),
+                        fps = if (result.inferenceMs > 0) 1000.0 / result.inferenceMs else 0.0,
+                        inputResolution = "${result.original.width}×${result.original.height}",
+                        backend = result.selection.actual,
+                        modelName = engine.modelName,
                     )
-                    EnhancedImageResult(original, enhancedFrame, selection, engine.lastInferenceMs)
-                }
-                val metrics = ProcessingMetrics(
-                    frameCount = 1,
-                    inferenceMs = result.inferenceMs,
-                    averageFrameMs = result.inferenceMs.toDouble(),
-                    fps = if (result.inferenceMs > 0) 1000.0 / result.inferenceMs else 0.0,
-                    inputResolution = "${result.original.width}×${result.original.height}",
-                    backend = result.selection.actual,
-                    modelName = engine.modelName
-                )
                 _uiState.update {
                     it.copy(
                         imageOriginal = result.original,
                         imageEnhanced = result.enhanced,
                         metrics = metrics,
                         backendSelection = result.selection,
-                        processing = false
+                        processing = false,
                     )
                 }
             } catch (e: Exception) {
@@ -123,7 +128,10 @@ class EnhancementViewModel(
 
     // ---- Video path ----
 
-    fun selectVideo(uri: Uri, name: String) {
+    fun selectVideo(
+        uri: Uri,
+        name: String,
+    ) {
         stopVideo()
         resetResult()
         _uiState.update { it.copy(input = VideoInput(uri.mediaSource(), name)) }
@@ -143,7 +151,7 @@ class EnhancementViewModel(
                 videoFrameCount = 0,
                 videoInferenceMs = 0L,
                 videoBackend = null,
-                error = null
+                error = null,
             )
         }
         videoProvider.start(input.sourceUri(), _uiState.value.settings)
@@ -198,7 +206,7 @@ class EnhancementViewModel(
                 metrics = null,
                 backendSelection = null,
                 error = null,
-                processing = false
+                processing = false,
             )
         }
     }
@@ -213,21 +221,19 @@ class EnhancementViewModel(
         val original: FrameImage,
         val enhanced: FrameImage,
         val selection: BackendSelection,
-        val inferenceMs: Long
+        val inferenceMs: Long,
     )
 
     companion object {
         fun factory(
             context: Context,
             engine: EnhancementEngine,
-            settingsRepository: SettingsRepository
-        ): ViewModelProvider.Factory {
-            return object : ViewModelProvider.Factory {
+            settingsRepository: SettingsRepository,
+        ): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return EnhancementViewModel(context, engine, settingsRepository) as T
-                }
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    EnhancementViewModel(context, engine, settingsRepository) as T
             }
-        }
     }
 }

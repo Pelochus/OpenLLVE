@@ -25,19 +25,20 @@ data class ProcessingMetrics(
      *  < 1.0 -> slower than realtime.
      *  0.0 for a single image (no duration to compare against).
      */
-    val realtimeFactor: Double = 0.0
+    val realtimeFactor: Double = 0.0,
 ) {
     val realtimeLabel: String?
-        get() = if (realtimeFactor <= 0.0) {
-            null
-        } else {
-            val factor = oneDecimal(realtimeFactor)
-            when {
-                realtimeFactor > 1.5 -> "faster than realtime (×$factor)"
-                realtimeFactor >= 0.75 -> "approximately realtime (×$factor)"
-                else -> "slower than realtime (×$factor)"
+        get() =
+            if (realtimeFactor <= 0.0) {
+                null
+            } else {
+                val factor = oneDecimal(realtimeFactor)
+                when {
+                    realtimeFactor > 1.5 -> "faster than realtime (×$factor)"
+                    realtimeFactor >= 0.75 -> "approximately realtime (×$factor)"
+                    else -> "slower than realtime (×$factor)"
+                }
             }
-        }
 
     /**
      * Common-code one-decimal formatting (JVM `String.format` is not

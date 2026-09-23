@@ -17,10 +17,13 @@ import androidx.compose.ui.unit.dp
 
 /** Indeterminate progress with a label (loading / processing states). */
 @Composable
-fun ProcessingIndicator(label: String, modifier: Modifier = Modifier) {
+fun ProcessingIndicator(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier.padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         CircularProgressIndicator(modifier = Modifier.width(24.dp).height(24.dp))
         Spacer(modifier = Modifier.width(12.dp))
@@ -33,32 +36,38 @@ fun ProcessingIndicator(label: String, modifier: Modifier = Modifier) {
  * yet; kept for the upcoming empty-state UI.
  */
 @Composable
-fun EmptyState(message: String, modifier: Modifier = Modifier) {
+fun EmptyState(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
 /** A clear, non-silent error state. */
 @Composable
-fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
+fun ErrorBanner(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(12.dp)
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(12.dp),
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
         )
     }
 }
-

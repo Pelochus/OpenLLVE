@@ -17,21 +17,24 @@ import openllve.shared.domain.BackendSelection
  * the engine fell back, the reason is shown (e.g. "NPU delegate unavailable").
  */
 @Composable
-fun BackendInfoCard(selection: BackendSelection, modifier: Modifier = Modifier) {
+fun BackendInfoCard(
+    selection: BackendSelection,
+    modifier: Modifier = Modifier,
+) {
     Card(modifier = modifier.padding(horizontal = 12.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Compute backend", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = selection.summary,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
             )
             if (selection.fellBack) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = selection.reason ?: "Fell back to a supported backend",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
         }

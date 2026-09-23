@@ -15,15 +15,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,22 +43,24 @@ fun HomeScreen(
     uiState: UiState,
     onOpenImage: (Uri, String) -> Unit,
     onOpenVideo: (Uri, String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
 ) {
-    val pickImage = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            onOpenImage(uri, uri.lastPathSegment ?: "image")
+    val pickImage =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri: Uri? ->
+            if (uri != null) {
+                onOpenImage(uri, uri.lastPathSegment ?: "image")
+            }
         }
-    }
-    val pickVideo = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            onOpenVideo(uri, uri.lastPathSegment ?: "video")
+    val pickVideo =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri: Uri? ->
+            if (uri != null) {
+                onOpenVideo(uri, uri.lastPathSegment ?: "video")
+            }
         }
-    }
 
     Scaffold(
         topBar = {
@@ -68,41 +70,42 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Filled.Settings,
                         contentDescription = "Settings",
-                        modifier = Modifier.clickable { onOpenSettings() }
+                        modifier = Modifier.clickable { onOpenSettings() },
                     )
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = "Low-light video enhancement",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             Text(
                 text = "Select an image or an MP4 to run the Zero-DCE enhancement model on-device.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = { pickImage.launch(arrayOf("image/*")) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 ) {
                     Text("Select image")
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Button(
                     onClick = { pickVideo.launch(arrayOf("video/*")) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 ) {
                     Text("Select MP4 / video")
                 }
@@ -111,7 +114,7 @@ fun HomeScreen(
             SettingsCard(
                 settings = uiState.settings,
                 probe = uiState.backendProbe,
-                onSettingsChange = viewModel::updateSettings
+                onSettingsChange = viewModel::updateSettings,
             )
 
             Spacer(modifier = Modifier.height(24.dp))

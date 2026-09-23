@@ -8,5 +8,5 @@ package openllve.shared.media
 data class FrameImage(
     val width: Int,
     val height: Int,
-    val pixels: IntArray
+    val pixels: IntArray,
 )

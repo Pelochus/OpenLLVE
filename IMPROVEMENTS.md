@@ -11,7 +11,7 @@ Status of the remaining §5 items:
 | P1.1 wire Rust core into Android | ⬜ remaining — the single highest-value step (cross-compile cdylib, Kotlin `external fun`s) |
 | P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts; benchmark definitions (P3.6) remaining |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
-| P2.1 CI | ⚠️ partial — clippy/fmt in `rust-core.yml`; wrapper makes `android-ci.yml` runnable; ktlint step + release workflow remaining |
+| P2.1 CI | ✅ done — clippy/fmt in `rust-core.yml`; ktlint step in `android-ci.yml` (prebuilt binary); `release.yml` workflow for `v*` tags |
 | P2.3 benchmarks | ⬜ remaining |
 | P2.4 dependency refresh | ✅ done — ML runtime migrated to LiteRT 2.2.0 (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain |
 | P2.5 docs | ⚠️ partial — app now uses the real `com.google.ai.edge.litert` artifact; docs naming pass remaining |

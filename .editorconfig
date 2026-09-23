@@ -13,3 +13,8 @@ indent_size = 4
 [*.{kt,kts,java,xml,gradle,md,yml,yaml}]
 indent_style = space
 indent_size = 4
+
+# ktlint: @Composable functions follow the capitalized-Composable-name
+# convention and are exempt from function-naming.
+[*.{kt,kts}]
+ktlint_function_naming_ignore_when_annotated_with = Composable

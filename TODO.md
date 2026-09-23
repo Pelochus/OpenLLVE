@@ -60,7 +60,10 @@ table in sync.
    Remaining: the compileSdk 37 lines
    (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x)
    once android-37 is published.
-7. [ ] **P2.1 — CI**: add a ktlint step; add a small release workflow.
+7. [x] **P2.1 — CI**: done — real ktlint step in `android-ci.yml` (prebuilt
+   binary, lints `app/shared/src` + `app/platforms/android/src`); new
+   `release.yml` workflow (on `v*` tag: test, build release APK, upload to
+   GitHub Release).
 8. [ ] **P3.6 — `BenchmarkRun` record + persistence.**
    - `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples,
      latencies }` with `median`/`p99`/`fps`/`thermal_drift`; persist runs as

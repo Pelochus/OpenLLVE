@@ -14,11 +14,11 @@ sealed interface MediaInput {
 /** A still image selected via the platform's file picker. */
 data class ImageInput(
     override val source: String,
-    override val displayName: String
+    override val displayName: String,
 ) : MediaInput
 
 /** An MP4 (or other decodable video) selected via the platform's file picker. */
 data class VideoInput(
     override val source: String,
-    override val displayName: String
+    override val displayName: String,
 ) : MediaInput

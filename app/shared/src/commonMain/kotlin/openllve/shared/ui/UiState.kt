@@ -17,11 +17,9 @@ data class UiState(
     val settings: EnhancementSettings,
     val backendProbe: BackendProbeResult? = null,
     val input: MediaInput? = null,
-
     // Image path
     val imageOriginal: FrameImage? = null,
     val imageEnhanced: FrameImage? = null,
-
     // Video path
     val videoMetadata: VideoMetadata? = null,
     val videoOriginal: FrameImage? = null,
@@ -30,10 +28,9 @@ data class UiState(
     val videoFrameCount: Int = 0,
     val videoInferenceMs: Long = 0L,
     val videoBackend: BackendSelection? = null,
-
     // Shared
     val metrics: ProcessingMetrics? = null,
     val backendSelection: BackendSelection? = null,
     val processing: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
 )

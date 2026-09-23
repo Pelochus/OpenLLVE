@@ -29,9 +29,8 @@ import java.io.File
 class AndroidLiteRtEngine(
     private val context: Context,
     override val modelAssetPath: String = MODEL_ASSET_PATH,
-    override val modelName: String = "zero-dce-int8"
+    override val modelName: String = "zero-dce-int8",
 ) : EnhancementEngine {
-
     private var compiledModel: CompiledModel? = null
     private var inputBuffer: TensorBuffer? = null
     private var outputBuffer: TensorBuffer? = null
@@ -47,15 +46,18 @@ class AndroidLiteRtEngine(
         val notes = mutableMapOf<ComputeTarget, String>()
         val available = Environment.create(context).use { it.getAvailableAccelerators() }
         for (target in ComputeTarget.entries) {
-            val ok = when (target) {
-                // CPU is always available. XNNPACK maps to CPU: LiteRT
-                // `CompiledModel` has no separate XNNPACK accelerator (the
-                // experimental YNNPACK CPU accelerator is a build flag, not a
-                // delegate).
-                ComputeTarget.CPU, ComputeTarget.XNNPACK -> true
-                ComputeTarget.GPU -> Accelerator.GPU in available
-                ComputeTarget.NPU -> Accelerator.NPU in available
-            }
+            val ok =
+                when (target) {
+                    // CPU is always available. XNNPACK maps to CPU: LiteRT
+                    // `CompiledModel` has no separate XNNPACK accelerator (the
+                    // experimental YNNPACK CPU accelerator is a build flag, not a
+                    // delegate).
+                    ComputeTarget.CPU, ComputeTarget.XNNPACK -> true
+
+                    ComputeTarget.GPU -> Accelerator.GPU in available
+
+                    ComputeTarget.NPU -> Accelerator.NPU in available
+                }
             if (ok) {
                 supported += target
             } else {
@@ -81,7 +83,7 @@ class AndroidLiteRtEngine(
             compiledModel = null
             throw IllegalStateException(
                 "unsupported model output dtype ${outType.elementType} (expected FLOAT32; " +
-                    "LiteRT 2.2.0 does not expose INT8 quantization parameters for dequantization)"
+                    "LiteRT 2.2.0 does not expose INT8 quantization parameters for dequantization)",
             )
         }
 
@@ -90,7 +92,11 @@ class AndroidLiteRtEngine(
         return BackendSelection(requested, actual, reason)
     }
 
-    override fun enhanceFrame(input: FloatArray, width: Int, height: Int): FloatArray {
+    override fun enhanceFrame(
+        input: FloatArray,
+        width: Int,
+        height: Int,
+    ): FloatArray {
         val model = compiledModel ?: throw IllegalStateException("engine not configured; call configure() first")
         val inBuf = inputBuffer!!
         val outBuf = outputBuffer!!
@@ -130,7 +136,7 @@ class AndroidLiteRtEngine(
     private fun createModelWithFallback(
         modelFile: File,
         requested: ComputeTarget,
-        threads: Int
+        threads: Int,
     ): Triple<CompiledModel, ComputeTarget, String?> {
         if (requested == ComputeTarget.XNNPACK) {
             // Maps to CPU (no XNNPACK accelerator in `CompiledModel`).
@@ -147,12 +153,16 @@ class AndroidLiteRtEngine(
         }
     }
 
-    private fun buildOptions(target: ComputeTarget, threads: Int): CompiledModel.Options {
-        val options = when (target) {
-            ComputeTarget.CPU, ComputeTarget.XNNPACK -> CompiledModel.Options(Accelerator.CPU)
-            ComputeTarget.GPU -> CompiledModel.Options(Accelerator.GPU)
-            ComputeTarget.NPU -> CompiledModel.Options(Accelerator.NPU)
-        }
+    private fun buildOptions(
+        target: ComputeTarget,
+        threads: Int,
+    ): CompiledModel.Options {
+        val options =
+            when (target) {
+                ComputeTarget.CPU, ComputeTarget.XNNPACK -> CompiledModel.Options(Accelerator.CPU)
+                ComputeTarget.GPU -> CompiledModel.Options(Accelerator.GPU)
+                ComputeTarget.NPU -> CompiledModel.Options(Accelerator.NPU)
+            }
         options.cpuOptions = CompiledModel.CpuOptions(numThreads = threads)
         return options
     }
@@ -160,7 +170,10 @@ class AndroidLiteRtEngine(
     private fun defaultThreads(): Int = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
 
     /** Patch grid for a (w, h) frame: (stride, numW, numH, wPad, hPad). */
-    private fun patchInfo(w: Int, h: Int): IntArray {
+    private fun patchInfo(
+        w: Int,
+        h: Int,
+    ): IntArray {
         val patch = PATCH
         val overlap = OVERLAP
         val stride = patch - overlap
@@ -179,7 +192,10 @@ class AndroidLiteRtEngine(
     }
 
     /** Reflect coordinate beyond `dim` (numpy mode='reflect'; edge not repeated). */
-    private fun reflectCoord(dim: Int, pos: Int): Int {
+    private fun reflectCoord(
+        dim: Int,
+        pos: Int,
+    ): Int {
         if (dim <= 1) return 0
         val period = 2 * (dim - 1)
         val p = pos % period
@@ -193,7 +209,7 @@ class AndroidLiteRtEngine(
         x0: Int,
         y0: Int,
         brightness: Float,
-        out: FloatArray
+        out: FloatArray,
     ) {
         for (py in 0 until PATCH) {
             val sy = reflectCoord(h, y0 + py)
@@ -214,7 +230,7 @@ class AndroidLiteRtEngine(
         model: CompiledModel,
         inBuf: TensorBuffer,
         outBuf: TensorBuffer,
-        patchIn: FloatArray
+        patchIn: FloatArray,
     ): FloatArray {
         inBuf.writeFloat(patchIn)
         model.run(listOf(inBuf), listOf(outBuf))
@@ -228,7 +244,7 @@ class AndroidLiteRtEngine(
         numW: Int,
         wPad: Int,
         patchOut: FloatArray,
-        accum: FloatArray
+        accum: FloatArray,
     ) {
         val denom = (OVERLAP - 1).toFloat()
         val stride = PATCH - OVERLAP
@@ -257,7 +273,7 @@ class AndroidLiteRtEngine(
         w: Int,
         h: Int,
         wPad: Int,
-        accum: FloatArray
+        accum: FloatArray,
     ) {
         for (y in 0 until h) {
             for (x in 0 until w) {

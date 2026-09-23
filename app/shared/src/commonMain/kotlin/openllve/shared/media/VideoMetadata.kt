@@ -6,10 +6,10 @@ data class VideoMetadata(
     val width: Int,
     val height: Int,
     val mimeType: String,
-    val fileSizeBytes: Long
+    val fileSizeBytes: Long,
 ) {
     val resolution: String
-        get() = "${width}×${height}"
+        get() = "$width×$height"
 
     val durationLabel: String
         get() {

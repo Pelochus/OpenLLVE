@@ -31,7 +31,7 @@ fun SettingsCard(
     settings: EnhancementSettings,
     probe: BackendProbeResult?,
     onSettingsChange: (EnhancementSettings) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.padding(horizontal = 12.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -40,20 +40,20 @@ fun SettingsCard(
             ComputeTargetSelector(
                 selected = settings.computeTarget,
                 probe = probe,
-                onSelect = { target -> onSettingsChange(settings.copy(computeTarget = target)) }
+                onSelect = { target -> onSettingsChange(settings.copy(computeTarget = target)) },
             )
             Spacer(modifier = Modifier.height(12.dp))
             ToggleRow(
                 label = "EWMA (temporal smoothing)",
                 pending = true,
                 checked = settings.ewmaEnabled,
-                onCheckedChange = { onSettingsChange(settings.copy(ewmaEnabled = it)) }
+                onCheckedChange = { onSettingsChange(settings.copy(ewmaEnabled = it)) },
             )
             ToggleRow(
                 label = "Flicker reduction",
                 pending = true,
                 checked = settings.flickerReductionEnabled,
-                onCheckedChange = { onSettingsChange(settings.copy(flickerReductionEnabled = it)) }
+                onCheckedChange = { onSettingsChange(settings.copy(flickerReductionEnabled = it)) },
             )
         }
     }
@@ -63,7 +63,7 @@ fun SettingsCard(
 private fun ComputeTargetSelector(
     selected: ComputeTarget,
     probe: BackendProbeResult?,
-    onSelect: (ComputeTarget) -> Unit
+    onSelect: (ComputeTarget) -> Unit,
 ) {
     ComputeTarget.entries.forEach { target ->
         val supported = probe?.isSupported(target) ?: true
@@ -74,31 +74,32 @@ private fun ComputeTargetSelector(
             androidx.compose.material3.RadioButton(
                 selected = selected == target,
                 enabled = supported,
-                onClick = { if (supported) onSelect(target) }
+                onClick = { if (supported) onSelect(target) },
             )
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text(
                     text = target.label,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (supported) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    }
+                    color =
+                        if (supported) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        },
                 )
                 if (target == ComputeTarget.XNNPACK) {
                     Text(
                         text = "no XNNPACK accelerator in LiteRT; runs on CPU",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (!supported && note != null) {
                     Text(
                         text = note,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
@@ -111,7 +112,7 @@ private fun ToggleRow(
     label: String,
     pending: Boolean,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(modifier = Modifier.padding(vertical = 4.dp)) {
         Column(modifier = Modifier.weight(1f)) {
@@ -120,7 +121,7 @@ private fun ToggleRow(
                 Text(
                     text = "prototype — applied by the native pipeline",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

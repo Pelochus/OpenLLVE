@@ -10,16 +10,17 @@ package openllve.shared.domain
 data class BackendSelection(
     val requested: ComputeTarget,
     val actual: ComputeTarget,
-    val reason: String? = null
+    val reason: String? = null,
 ) {
     val fellBack: Boolean
         get() = requested != actual
 
     /** One-line summary for the UI, e.g. "Requested: NPU — Actual: CPU". */
     val summary: String
-        get() = if (fellBack) {
-            "Requested: ${requested.label} — Actual: ${actual.label}"
-        } else {
-            "Backend: ${actual.label}"
-        }
+        get() =
+            if (fellBack) {
+                "Requested: ${requested.label} — Actual: ${actual.label}"
+            } else {
+                "Backend: ${actual.label}"
+            }
 }

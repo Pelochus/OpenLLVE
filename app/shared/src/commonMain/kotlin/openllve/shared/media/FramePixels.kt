@@ -5,7 +5,6 @@ package openllve.shared.media
  * format: row-major RGB floats in `[0, 1]`.
  */
 object FramePixels {
-
     /** ARGB_8888 ints -> row-major RGB floats in `[0, 1]`. */
     fun argbToFloatRgb(pixels: IntArray): FloatArray {
         val out = FloatArray(pixels.size * 3)
@@ -20,7 +19,11 @@ object FramePixels {
     }
 
     /** Row-major RGB floats in `[0, 1]` -> ARGB_8888 ints. */
-    fun floatRgbToArgb(floats: FloatArray, width: Int, height: Int): IntArray {
+    fun floatRgbToArgb(
+        floats: FloatArray,
+        width: Int,
+        height: Int,
+    ): IntArray {
         val pixels = IntArray(width * height)
         for (i in pixels.indices) {
             val idx = i * 3

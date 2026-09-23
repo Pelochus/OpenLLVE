@@ -30,17 +30,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             OpenLLVETheme {
                 val navController = rememberNavController()
-                val viewModel: EnhancementViewModel = viewModel(
-                    factory = EnhancementViewModel.factory(
-                        context = this,
-                        engine = app.enhancementEngine,
-                        settingsRepository = app.settingsRepository
+                val viewModel: EnhancementViewModel =
+                    viewModel(
+                        factory =
+                            EnhancementViewModel.factory(
+                                context = this,
+                                engine = app.enhancementEngine,
+                                settingsRepository = app.settingsRepository,
+                            ),
                     )
-                )
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 NavHost(
                     navController = navController,
-                    startDestination = Destination.HOME
+                    startDestination = Destination.HOME,
                 ) {
                     composable(Destination.HOME) {
                         HomeScreen(
@@ -54,28 +56,28 @@ class MainActivity : ComponentActivity() {
                                 viewModel.selectVideo(uri, name)
                                 navController.navigate(Destination.VIDEO_RESULT)
                             },
-                            onOpenSettings = { navController.navigate(Destination.SETTINGS) }
+                            onOpenSettings = { navController.navigate(Destination.SETTINGS) },
                         )
                     }
                     composable(Destination.SETTINGS) {
                         SettingsScreen(
                             viewModel = viewModel,
                             uiState = uiState,
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
                         )
                     }
                     composable(Destination.IMAGE_RESULT) {
                         ImageResultScreen(
                             viewModel = viewModel,
                             uiState = uiState,
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
                         )
                     }
                     composable(Destination.VIDEO_RESULT) {
                         VideoResultScreen(
                             viewModel = viewModel,
                             uiState = uiState,
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
                         )
                     }
                 }
