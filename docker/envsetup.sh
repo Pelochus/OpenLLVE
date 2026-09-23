@@ -20,28 +20,28 @@ ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
 # --- base tools -----------------------------------------------------------
 apt-get update
 apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    git \
-    unzip \
-    wget \
-    build-essential \
-    openjdk-17-jdk-headless
+	ca-certificates \
+	curl \
+	git \
+	unzip \
+	wget \
+	build-essential \
+	openjdk-17-jdk-headless
 
 # --- Rust (stable, minimal profile) ----------------------------------------
 export PATH="$CARGO_HOME/bin:$PATH"
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain stable --profile minimal
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+	sh -s -- -y --default-toolchain stable --profile minimal
 
 # --- ktlint (same version as CI) -------------------------------------------
 curl -sSL -o /usr/local/bin/ktlint \
-    https://github.com/ktlint/ktlint/releases/download/1.8.0/ktlint
+	https://github.com/ktlint/ktlint/releases/download/1.8.0/ktlint
 chmod +x /usr/local/bin/ktlint
 
 # --- Android SDK (cmdline tools + platform 36 + build tools) --------------
 mkdir -p "$ANDROID_HOME/cmdline-tools"
 curl -sSL -o /tmp/cmdline-tools.zip \
-    https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip
+	https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip
 unzip -q /tmp/cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
 # The zip extracts a `cmdline-tools/` dir; the standard layout is
 # cmdline-tools/latest/.
@@ -49,7 +49,7 @@ mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/late
 rm /tmp/cmdline-tools.zip
 
 SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-yes | "$SDKMGR" --licenses > /dev/null
+yes | "$SDKMGR" --licenses >/dev/null
 "$SDKMGR" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
 echo "envsetup: toolchain installed (JDK 17, Rust stable, ktlint 1.8.0, Android SDK)"

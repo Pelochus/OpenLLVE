@@ -4,17 +4,15 @@
 
 ## 0. Implementation status
 
-Status of the remaining §5 items:
+Status of the remaining §4 items:
 
 | Item | Status |
 | --- | --- |
 | P1.1 wire Rust core into Android | ⚠️ partial — approach decided (`docs/dev/architecture/FFI-WIRING.md`: direct JNI, no C++ layer; Rust-side LiteRT stays non-core); implementation remaining (cargo-ndk, `external fun`s, package `.so`) |
 | P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts; benchmark definitions (P3.6) remaining |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
-| P2.1 CI | ✅ done — clippy/fmt in `rust-core.yml`; ktlint step in `android-ci.yml` (prebuilt binary); `release.yml` workflow for `v*` tags |
 | P2.3 benchmarks | ⬜ remaining |
-| P2.4 dependency refresh | ✅ done — ML runtime migrated to LiteRT 2.2.0 (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain |
-| P2.5 docs | ⚠️ partial — app now uses the real `com.google.ai.edge.litert` artifact; docs naming pass remaining |
+| P2.4 dependency refresh | ⚠️ partial — ML runtime on LiteRT 2.2.0 (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `serde`/`serde_json` wait for P3.6, `proptest` for P3.8 |
 
 ## 1. What this repo is
@@ -43,7 +41,6 @@ The docs are clear and good, but the code still contradicts them in places:
 | `VideoPipelineManager.kt` | `startPipeline()`/`stopPipeline()` are empty comments; `processFrame` is a placeholder copy; no engine, no threading, no lifecycle. |
 | `SystemMonitor.kt` | `getCpuUsage()` is a hardcoded `0.0f` placeholder; `getMemoryUsage()` uses the deprecated `ActivityManager.getMemoryInfo` path. |
 | `MainScreen.kt` | Button is a no-op; no camera preview, no result surface, no state. |
-| Naming | ✅ done — docs and code standardized on **LiteRT** (Google's Sept 2024 rename of TensorFlow Lite); the app uses the real `com.google.ai.edge.litert` artifact. Literal names kept as-is: `tflite-c-rs`, `libtensorflowlite_c`, `.tflite`, `TfLite*` C API. |
 
 ## 4. Suggested improvements (prioritized, remaining)
 
@@ -57,10 +54,8 @@ The docs are clear and good, but the code still contradicts them in places:
 
 ### P2 — Quality, tests, and process
 
-1. **CI**: add a Kotlin lint step (ktlint); add a release workflow.
-2. **Benchmarks**: benchmark the *model path* (not memcpy), keep warm-up exclusion, and record device/temperature/battery metadata per run as the methodology doc requires.
-3. **Dependency refresh**: done — ML runtime on LiteRT 2.2.0 `CompiledModel` and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36). Only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x).
-4. **Docs**: done — LiteRT naming standardized across docs and code (app-side resolved by the LiteRT migration; docs pass complete).
+1. **Benchmarks**: benchmark the *model path* (not memcpy), keep warm-up exclusion, and record device/temperature/battery metadata per run as the methodology doc requires.
+2. **Dependency refresh**: only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x) once android-37 is published; the ML runtime (LiteRT 2.2.0 `CompiledModel`) and the rest of the toolchain are already bumped.
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
 
@@ -70,10 +65,9 @@ blocks the build.
 | # | Item (`DESIGN_SUGGESTIONS.md` §) | Effort | Verdict | Notes |
 | --- | --- | --- | --- | --- |
 | P3.1 | Model manifest (§2) | easy | **clear win** | `manifest.json` (or a Rust `ModelSpec`) next to each model: id, version, in/out shapes, quantization, supported delegates. Pure data + a tiny loader; makes benchmark runs reproducible and gives model validation something to check against. |
-| P3.2 | Threading model ADR (§3) | done | ✅ done | Decision recorded in `docs/dev/architecture/ARCHITECTURE.md` §12: Rust core synchronous (one `process` per frame); platform owns capture/process/render threads; bounded frame queue with drop-oldest. |
-| P3.3 | Crate additions (§6) | easy | enabler | Add each crate when its paired item lands: `serde`/`serde_json` → P3.6, `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. |
+| P3.3 | Crate additions (§4) | easy | enabler | Add each crate when its paired item lands: `serde`/`serde_json` → P3.6, `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. |
 | P3.6 | `BenchmarkRun` record + persistence (§1) | med | **clear win** | `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples, latencies }` with `median`/`p99`/`fps`/`thermal_drift`; persist runs as JSON/CSV via serde so they are comparable and reproducible. Needs P3.1; builds on the metrics API (done). |
-| P3.8 | Property / FFI-fuzz tests (§4) | med | partial now | proptest for filter invariants (EWMA stays within `[min,max]` per pixel, blend is a convex combination) can start now; golden-frame hashes and FFI fuzzing/miri need P1.1 first (FFI wiring). |
+| P3.8 | Property / FFI-fuzz tests (§3) | med | partial now | proptest for filter invariants (EWMA stays within `[min,max]` per pixel, blend is a convex combination) can start now; golden-frame hashes and FFI fuzzing/miri need P1.1 first (FFI wiring). |
 
 ## 5. What's already good
 
@@ -87,4 +81,4 @@ blocks the build.
 
 ### TL;DR
 
-The build is fixed and the Rust core is real (model path included). The **core promise — Kotlin calling the Rust core — is still not implemented** (P1.1: the FFI is dead code today). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) benchmark the model path with per-run metadata (P2.3), and (3) the P3 design follow-ups (model manifest, threading ADR, property tests, `BenchmarkRun`).
+The build is fixed and the Rust core is real (model path included). The **core promise — Kotlin calling the Rust core — is still not implemented** (P1.1: the FFI is dead code today). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) benchmark the model path with per-run metadata (P2.3), and (3) the P3 design follow-ups (model manifest, property tests, `BenchmarkRun`).
