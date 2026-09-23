@@ -6,7 +6,7 @@ This module defines the main inference families for OpenLLVE.
   `EwmaFilter`. With the `model` feature enabled, it runs the Zero-DCE model
   (`ModelRunner`, see `docs/architecture/ARCHITECTURE.md` §11): frame in → enhanced frame out. Without the
   feature (or without a model) `process` is an identity stub so the core still
-  builds and tests without the TFLite runtime present.
+  builds and tests without the LiteRT runtime present.
 - `temporal.rs`: stateful temporal pipeline, optionally combined with
   `FrameBlendFilter`.
 

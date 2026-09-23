@@ -2,7 +2,7 @@ package openllve.shared.domain
 
 /**
  * Compute backends the enhancement engine can run on. Not tied to any
- * LiteRT/TFLite or CoreML delegate class; concrete wiring lives behind
+ * LiteRT or CoreML delegate class; concrete wiring lives behind
  * [EnhancementEngine].
  */
 enum class ComputeTarget {

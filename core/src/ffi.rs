@@ -83,7 +83,7 @@ pub extern "C" fn openllve_pipeline_new_llie() -> *mut OpenLlvePipeline {
 /// The model is loaded from `model_path` (a NUL-terminated UTF-8 C string)
 /// and run with `num_threads` threads. Returns null if `model_path` is null,
 /// `num_threads` is not positive, the `model` cargo feature is not enabled,
-/// or the TFLite library / model file cannot be loaded.
+/// or the LiteRT library / model file cannot be loaded.
 ///
 /// # Safety
 /// `model_path` must be a valid, NUL-terminated C string. The returned handle

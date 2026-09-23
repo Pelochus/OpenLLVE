@@ -34,7 +34,7 @@ core/
 │   ├── filters/
 │   │   ├── ewma.rs                # temporal anti-flicker filter
 │   │   └── blend.rs               # raw/enhanced blending filter
-│   ├── model.rs                  # TFLite ModelRunner (feature `model`)
+│   ├── model.rs                  # LiteRT ModelRunner (feature `model`)
 │   ├── pipelines.rs              # module declaration for llie.rs + temporal.rs
 │   ├── pipelines/
 │   │   ├── llie.rs                # LLIE pipeline, optionally configured with EWMA
@@ -101,7 +101,7 @@ environment variable, falling back to the default search path.
   `openllve_pipeline_new_llie_with_model(model_path, num_threads)`.
 
 The feature is off by default so `cargo test` / `cargo clippy` / `cargo fmt`
-pass without the TFLite runtime present. To run the real model path on a PC:
+pass without the LiteRT runtime present. To run the real model path on a PC:
 
 ```bash
 scripts/fetch-tflite-lib.sh core/native          # downloads libtensorflowlite_c
@@ -112,14 +112,14 @@ OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
 ```
 
 On Android the same cdylib is packaged alongside `libopenllve_core.so` and the
-TFLite shared library (see `docs/architecture/ARCHITECTURE.md` §11); Kotlin only calls the FFI.
+LiteRT shared library (see `docs/architecture/ARCHITECTURE.md` §11); Kotlin only calls the FFI.
 
 **Scope and performance.** The Rust `ModelRunner` exists for PC-side
 benchmarking and validation (the tenet: "if it can run on a PC with
 `cargo bench`, it's in the right layer"), **not** for production throughput.
-It runs the TFLite C **reference kernel** (`tflite-c-rs` does not expose the
+It runs the LiteRT C **reference kernel** (`tflite-c-rs` does not expose the
 XNNPACK delegate), so its numbers are not representative of on-device
-performance: on Android the real TFLite runtime uses XNNPACK (or GPU/NPU),
+performance: on Android the real LiteRT runtime uses XNNPACK (or GPU/NPU),
 which is ~5× faster than the reference kernel. Measured on this desktop:
 256×256 ≈ 11 ms (87 FPS) and 1280×720 ≈ 337 ms (3 FPS) under XNNPACK, versus
 ≈ 1.68 s/frame under the reference kernel. The model is a small-patch
@@ -128,7 +128,7 @@ to 720p (≈18 overlapping patches) is the dominant cost — not the kernel.
 
 **Known workaround (not a fix).** The upstream model ships with a static
 `[1,1,1,4]` input shape and is meant to be resized at runtime, but
-`TfLiteInterpreterResizeInputTensor` **segfaults** in the TFLite C library for
+`TfLiteInterpreterResizeInputTensor` **segfaults** in the LiteRT C library for
 this graph (root cause not yet identified). The committed
 `zero-dce-int8.tflite` therefore has the `[1,256,256,4]` input shape baked
 into the flatbuffer (in-place patch, verified bit-exact vs upstream+resize).

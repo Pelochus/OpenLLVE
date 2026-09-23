@@ -70,7 +70,7 @@ The C ABI is the compatibility layer between the app runtime and the Rust core. 
 - **KMP shared app layer**: shared app state, domain models, benchmark orchestration, and UI contracts
 - **Android platform layer**: Kotlin, Jetpack Compose, MediaCodec/MediaExtractor, Android lifecycle, and device-specific accelerator integration
 - **Future iOS platform layer**: SwiftUI, AVFoundation, and Apple-specific runtime integration
-- **Inference runtimes**: LiteRT / TFLite delegates on Android; Core ML / Metal or MPS on iOS when that platform is implemented
+- **Inference runtimes**: LiteRT delegates on Android; Core ML / Metal or MPS on iOS when that platform is implemented
 - **Rust core**: business logic, enhancement pipelines, filters, frame abstractions, telemetry, and the C FFI surface
 
 ## 6. Data Flow
@@ -133,7 +133,7 @@ Warm-up frames should be excluded from reported averages. See [BENCHMARK_METHODO
 Inference runs **inside the Rust core**, not on the platform: a `ModelRunner`
 (feature `model` in `core/`) loads the `.tflite` model via `tflite-c-rs`
 (CPU delegate, dynamically loaded at runtime — no build-time link). The
-platform never links TensorFlow Lite directly; Kotlin/Swift only call the C
+platform never links LiteRT directly; Kotlin/Swift only call the C
 FFI. This satisfies tenet 2 and the "cargo bench on a PC" rule: the same
 inference path is benchmarkable on a desktop, and there is one implementation
 for all platforms.

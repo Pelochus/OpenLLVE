@@ -75,7 +75,9 @@ table in sync.
 10. [ ] **P1.1 — Android native (Rust) wiring** (re-attempt once the app is
    functional and the NDK is available): cross-compile cdylib (cargo-ndk),
    Kotlin `external fun`s, C JNI glue, package `.so` into the APK.
-11. [ ] **P2.5 — Docs**: standardize LiteRT/TFLite naming (app-side resolved — the app now uses the real `com.google.ai.edge.litert` artifact; docs-wide pass remaining).
+11. [x] **P2.5 — Docs**: done — LiteRT naming standardized across docs, READMEs, and
+   comments (kept literal names: `tflite-c-rs`, `libtensorflowlite_c`, `.tflite`,
+   `TfLite*` C API; app already on `com.google.ai.edge.litert`).
 
 ## Notes
 

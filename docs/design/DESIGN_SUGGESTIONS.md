@@ -80,12 +80,13 @@ nothing at this stage and complicates the FFI.
 - FFI-fuzzing, miri, and JNI round-trip tests wait for P1.1 (FFI wiring into
   the app).
 
-## 5. Naming / domain-model cleanup (minor)
+## 5. Naming (done)
 
-- Standardize LiteRT vs TFLite naming in docs/code (the Maven artifact is
-  still `org.tensorflow:tensorflow-lite` even after the rename to LiteRT —
-  note that once so contributors don't "fix" the artifact id to a
-  non-existent one).
+Docs and code are standardized on **LiteRT** (Google's rename of
+TensorFlow Lite, Sept 2024). The literal names `tflite-c-rs`,
+`libtensorflowlite_c`, the `.tflite` file extension, and the `TfLite*` C
+API are kept as-is — they are the real crate/library names, not stale
+spelling.
 
 ## 6. Remaining Rust tooling & crates
 
@@ -127,4 +128,4 @@ nothing at this stage and complicates the FFI.
 The keystone pieces are in place (in-Rust model runner, `Frame` type,
 out-buffer API, hardened FFI). What remains is the benchmark data model
 (`BenchmarkRun` + model manifest), a short threading ADR, and the quality bar
-(property/golden-frame tests, LiteRT/TFLite naming, remaining crates).
+(property/golden-frame tests, remaining crates).

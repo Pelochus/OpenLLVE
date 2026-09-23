@@ -43,7 +43,7 @@ The docs are clear and good, but the code still contradicts them in places:
 | `VideoPipelineManager.kt` | `startPipeline()`/`stopPipeline()` are empty comments; `processFrame` is a placeholder copy; no engine, no threading, no lifecycle. |
 | `SystemMonitor.kt` | `getCpuUsage()` is a hardcoded `0.0f` placeholder; `getMemoryUsage()` uses the deprecated `ActivityManager.getMemoryInfo` path. |
 | `MainScreen.kt` | Button is a no-op; no camera preview, no result surface, no state. |
-| Naming | "LiteRT" (docs) vs `org.tensorflow:tensorflow-lite` artifacts: Google renamed TensorFlow Lite → **LiteRT** (Sept 2024). The app now uses the real LiteRT artifact (`com.google.ai.edge.litert:litert:2.2.0`, `CompiledModel` API), so the app-side naming issue is resolved; remaining: a docs-wide pass to standardize on "LiteRT". |
+| Naming | ✅ done — docs and code standardized on **LiteRT** (Google's Sept 2024 rename of TensorFlow Lite); the app uses the real `com.google.ai.edge.litert` artifact. Literal names kept as-is: `tflite-c-rs`, `libtensorflowlite_c`, `.tflite`, `TfLite*` C API. |
 
 ## 4. Suggested improvements (prioritized, remaining)
 
@@ -60,7 +60,7 @@ The docs are clear and good, but the code still contradicts them in places:
 1. **CI**: add a Kotlin lint step (ktlint); add a release workflow.
 2. **Benchmarks**: benchmark the *model path* (not memcpy), keep warm-up exclusion, and record device/temperature/battery metadata per run as the methodology doc requires.
 3. **Dependency refresh**: done — ML runtime on LiteRT 2.2.0 `CompiledModel` and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36). Only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x).
-4. **Docs**: standardize LiteRT vs TFLite naming (app-side resolved by the LiteRT migration; docs pass remaining).
+4. **Docs**: done — LiteRT naming standardized across docs and code (app-side resolved by the LiteRT migration; docs pass complete).
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
 

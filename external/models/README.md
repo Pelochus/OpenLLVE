@@ -30,7 +30,7 @@ against (symlinked into app assets as
 ### Fixed input shape (256×256)
 
 The upstream model ships with a **1×1×1** input tensor that is meant to be
-resized at runtime (`TfLiteInterpreterResizeInputTensor`). The TFLite C
+resized at runtime (`TfLiteInterpreterResizeInputTensor`). The LiteRT C
 runtime used by the Rust core (`tflite-c-rs`, per `docs/architecture/ARCHITECTURE.md` §11) segfaults on that
 resize call for this model, so the committed file is a **re-derived** variant
 with the input shape patched in place from `[1, 1, 1, 4]` to
@@ -72,6 +72,6 @@ The script adds the submodule and creates the symlink in
 `app/platforms/android/src/main/assets/models/` automatically. Afterwards:
 
 1. Validate the model in its upstream repository (e.g. load it with the
-   LiteRT/TFLite Python runtime and check the input/output tensor specs).
+   LiteRT Python runtime and check the input/output tensor specs).
 2. Record the model's I/O shape and license in
    `app/platforms/android/src/main/assets/models/README.md`.

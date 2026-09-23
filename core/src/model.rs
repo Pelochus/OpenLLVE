@@ -1,4 +1,4 @@
-//! Feature-gated TFLite model runner (see `docs/architecture/ARCHITECTURE.md` §11).
+//! Feature-gated LiteRT model runner (see `docs/architecture/ARCHITECTURE.md` §11).
 //!
 //! Enabled with `cargo build --features model`. It loads a `.tflite` model via
 //! `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime
@@ -29,7 +29,7 @@ const EXPECTED_OUTPUT_DIMS: [i32; 4] = [1, 256, 256, 24];
 
 /// Runs the Zero-DCE model on 256×256 patches.
 ///
-/// Owns a TFLite interpreter and reusable scratch buffers so steady-state
+/// Owns a LiteRT interpreter and reusable scratch buffers so steady-state
 /// frames allocate nothing. The interpreter is not thread-safe: one runner is
 /// owned by one thread (the FFI documents this for strategy handles).
 pub struct ModelRunner {
@@ -57,7 +57,7 @@ impl ModelRunner {
     /// threads.
     ///
     /// # Errors
-    /// Returns [`CoreError::InferenceFailure`] if the TFLite library cannot be
+    /// Returns [`CoreError::InferenceFailure`] if the LiteRT library cannot be
     /// loaded, the model file cannot be parsed, or the model's input/output
     /// shapes do not match the expected `(1, 256, 256, 4)` /
     /// `(1, 256, 256, 24)`.
@@ -70,9 +70,9 @@ impl ModelRunner {
 
         let lib = match std::env::var_os("OPENLLVE_TFLITE_LIB") {
             Some(path) => TfLiteLibrary::load_from_path(path)
-                .map_err(|e| CoreError::InferenceFailure(format!("failed to load TFLite library: {e}")))?,
+                .map_err(|e| CoreError::InferenceFailure(format!("failed to load LiteRT library: {e}")))?,
             None => TfLiteLibrary::load_default()
-                .map_err(|e| CoreError::InferenceFailure(format!("failed to load TFLite library: {e}")))?,
+                .map_err(|e| CoreError::InferenceFailure(format!("failed to load LiteRT library: {e}")))?,
         };
 
         let model = Model::from_file(model_path, lib.clone()).map_err(|e| {
@@ -360,7 +360,7 @@ mod tests {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../external/models/zero-dce-int8.tflite")
     }
 
-    /// Loads a runner, or `None` when the TFLite library / model is
+    /// Loads a runner, or `None` when the LiteRT library / model is
     /// unavailable (the test then skips gracefully).
     fn try_runner() -> Option<ModelRunner> {
         if TfLiteLibrary::load_default().is_err() {

@@ -9,7 +9,7 @@ use std::path::Path;
 /// With the `model` feature enabled, this pipeline runs the Zero-DCE model
 /// (`ModelRunner`, see `docs/architecture/ARCHITECTURE.md` §11): frame in → enhanced frame out. Without the
 /// feature (or without a model), `process` is an identity stub so the core
-/// still builds and tests without the TFLite runtime present.
+/// still builds and tests without the LiteRT runtime present.
 #[derive(Default, Debug)]
 pub struct LliePipeline {
     ewma: Option<EwmaFilter>,
@@ -32,7 +32,7 @@ impl LliePipeline {
     ///
     /// # Errors
     /// Returns [`crate::error::CoreError::InferenceFailure`] if the `model`
-    /// feature is not enabled, or the model/TFLite library cannot be loaded.
+    /// feature is not enabled, or the model/LiteRT library cannot be loaded.
     pub fn with_model(self, model_path: &Path, num_threads: u32) -> Result<Self> {
         #[cfg(feature = "model")]
         {

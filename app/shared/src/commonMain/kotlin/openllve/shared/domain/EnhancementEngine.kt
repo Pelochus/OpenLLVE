@@ -2,7 +2,7 @@ package openllve.shared.domain
 
 /**
  * The seam between the UI and the inference backend: the UI depends only on
- * this interface and the domain types, and never sees LiteRT/TFLite or CoreML
+ * this interface and the domain types, and never sees LiteRT or CoreML
  * classes. The interface is host-type-free; implementations receive what they
  * need (e.g. an Android `Context`) at construction time.
  *
