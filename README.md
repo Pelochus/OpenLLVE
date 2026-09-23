@@ -51,11 +51,12 @@ cargo bench
 ### Dev environment (Docker)
 
 ```text
-podman build -t openllve-dev docker/
-podman run --rm -it -v "$PWD":/workspace openllve-dev
+docker/run.sh
 ```
 
-JDK 17, Rust, ktlint, and the Android SDK are preinstalled. See
+Builds the Ubuntu 26.04 container (JDK 17, Rust, ktlint, Android SDK —
+see `docker/envsetup.sh`), mounts the repo at `/workspace`, and enables
+the `.githooks` pre-commit hook. See
 [docs/dev/docker-dev-env.md](docs/dev/docker-dev-env.md) for details.
 
 ### Local commit hooks (optional)

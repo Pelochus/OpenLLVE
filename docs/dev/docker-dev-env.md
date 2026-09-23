@@ -1,7 +1,13 @@
 # Docker dev environment
 
 A self-contained **Ubuntu 26.04** container with everything needed to build
-and test the project. Definition: [`docker/Dockerfile`](../../docker/Dockerfile).
+and test the project.
+
+| File | Purpose |
+| --- | --- |
+| [`docker/Dockerfile`](../../docker/Dockerfile) | slim image: base + env vars + `envsetup.sh` |
+| [`docker/envsetup.sh`](../../docker/envsetup.sh) | all package installation (kept separate so version bumps are a one-file edit; also runnable on a host with sudo) |
+| [`docker/run.sh`](../../docker/run.sh) | build + run convenience: mounts the repo at `/workspace`, enables the repo's git hooks |
 
 ## What's inside
 
@@ -19,21 +25,19 @@ it from the plugin versions declared in the build files.
 The **NDK is not installed yet** — it becomes needed for P1.1
 (`cargo-ndk` cross-compilation of the Rust cdylib).
 
-## Build the image
+## Build and run
 
 ```bash
-podman build -t openllve-dev docker/
-# or, with Docker:
-docker build -t openllve-dev docker/
+docker/run.sh
 ```
 
-## Run it
+That builds the image (`openllve-dev`), mounts the repo at `/workspace`,
+and enables the repo's pre-commit hooks (`git config core.hooksPath
+.githooks`) — so `git commit` inside the container runs `cargo fmt --check`
+and `ktlint` on staged files. Extra run args pass through, e.g.
+`docker/run.sh --privileged`.
 
-```bash
-podman run --rm -it -v "$PWD":/workspace openllve-dev
-```
-
-The repo is mounted at `/workspace`; from there, the usual commands work:
+From inside, the usual commands work:
 
 ```bash
 ./gradlew assembleDebug
@@ -50,8 +54,8 @@ ktlint app/shared/src app/platforms/android/src
   distribution and dependencies (cached in `~/.gradle` inside the
   container).
 - If the Android SDK releases a newer platform, bump the
-  `sdkmanager` package list in the Dockerfile together with
-  `compileSdk` in `app/build.gradle.kts`.
+  `sdkmanager` package list in `envsetup.sh` together with `compileSdk` in
+  `app/build.gradle.kts`.
 - On some rootless podman setups the bind mount fails with
   `Permission denied`; add `--privileged` to the `run` command in that
   case (verified on this host).
