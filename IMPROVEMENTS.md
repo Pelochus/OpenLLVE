@@ -8,7 +8,7 @@ Status of the remaining §5 items:
 
 | Item | Status |
 | --- | --- |
-| P1.1 wire Rust core into Android | ⬜ remaining — the single highest-value step (cross-compile cdylib, Kotlin `external fun`s) |
+| P1.1 wire Rust core into Android | ⚠️ partial — approach decided (`docs/design/FFI-WIRING.md`: direct JNI, no C++ layer; Rust-side LiteRT stays non-core); implementation remaining (cargo-ndk, `external fun`s, package `.so`) |
 | P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts; benchmark definitions (P3.6) remaining |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.1 CI | ✅ done — clippy/fmt in `rust-core.yml`; ktlint step in `android-ci.yml` (prebuilt binary); `release.yml` workflow for `v*` tags |

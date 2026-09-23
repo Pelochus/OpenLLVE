@@ -72,9 +72,13 @@ table in sync.
      the metrics API (done).
 9. [ ] **P2.3 — Benchmarks**: benchmark the *model path* (not memcpy); keep
    warm-up exclusion; record device/thermal/battery metadata per run.
-10. [ ] **P1.1 — Android native (Rust) wiring** (re-attempt once the app is
-   functional and the NDK is available): cross-compile cdylib (cargo-ndk),
-   Kotlin `external fun`s, C JNI glue, package `.so` into the APK.
+10. [~] **P1.1 — Android native (Rust) wiring**.
+   - Investigation done: `docs/design/FFI-WIRING.md` — direct JNI (Rust
+     cdylib → C ABI → Kotlin `external fun`s), **no C++ layer**; Rust-side
+     LiteRT runner stays a non-core optional feature (PC-side testing),
+     app production inference stays on the Kotlin-side LiteRT engine.
+   - Remaining: cross-compile cdylib (cargo-ndk), Kotlin `external fun`s,
+     package `.so` into the APK.
 11. [x] **P2.5 — Docs**: done — LiteRT naming standardized across docs, READMEs, and
    comments (kept literal names: `tflite-c-rs`, `libtensorflowlite_c`, `.tflite`,
    `TfLite*` C API; app already on `com.google.ai.edge.litert`).
