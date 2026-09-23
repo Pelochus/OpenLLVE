@@ -118,7 +118,7 @@ The benchmark must isolate the inference path from camera I/O, color conversion,
 - **P99 latency**: tail latency under load
 - **Thermal stability**: behavior during sustained processing and throttling
 
-Warm-up frames should be excluded from reported averages. See [BENCHMARK_METHODOLOGY.md](../guides/BENCHMARK_METHODOLOGY.md) for the detailed procedure.
+Warm-up frames should be excluded from reported averages. See [BENCHMARK_METHODOLOGY.md](../../guides/BENCHMARK_METHODOLOGY.md) for the detailed procedure.
 
 ## 10. Design Principles
 

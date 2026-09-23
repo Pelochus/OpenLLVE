@@ -7,7 +7,7 @@ use std::path::Path;
 /// Pipeline A: LLIE (static frame enhancer) with optional temporal toppings.
 ///
 /// With the `model` feature enabled, this pipeline runs the Zero-DCE model
-/// (`ModelRunner`, see `docs/architecture/ARCHITECTURE.md` §11): frame in → enhanced frame out. Without the
+/// (`ModelRunner`, see `docs/dev/architecture/ARCHITECTURE.md` §11): frame in → enhanced frame out. Without the
 /// feature (or without a model), `process` is an identity stub so the core
 /// still builds and tests without the LiteRT runtime present.
 #[derive(Default, Debug)]

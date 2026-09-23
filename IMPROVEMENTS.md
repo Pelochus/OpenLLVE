@@ -8,7 +8,7 @@ Status of the remaining §5 items:
 
 | Item | Status |
 | --- | --- |
-| P1.1 wire Rust core into Android | ⚠️ partial — approach decided (`docs/design/FFI-WIRING.md`: direct JNI, no C++ layer; Rust-side LiteRT stays non-core); implementation remaining (cargo-ndk, `external fun`s, package `.so`) |
+| P1.1 wire Rust core into Android | ⚠️ partial — approach decided (`docs/dev/architecture/FFI-WIRING.md`: direct JNI, no C++ layer; Rust-side LiteRT stays non-core); implementation remaining (cargo-ndk, `external fun`s, package `.so`) |
 | P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts; benchmark definitions (P3.6) remaining |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.1 CI | ✅ done — clippy/fmt in `rust-core.yml`; ktlint step in `android-ci.yml` (prebuilt binary); `release.yml` workflow for `v*` tags |
@@ -70,7 +70,7 @@ blocks the build.
 | # | Item (`DESIGN_SUGGESTIONS.md` §) | Effort | Verdict | Notes |
 | --- | --- | --- | --- | --- |
 | P3.1 | Model manifest (§2) | easy | **clear win** | `manifest.json` (or a Rust `ModelSpec`) next to each model: id, version, in/out shapes, quantization, supported delegates. Pure data + a tiny loader; makes benchmark runs reproducible and gives model validation something to check against. |
-| P3.2 | Threading model ADR (§3) | done | ✅ done | Decision recorded in `docs/architecture/ARCHITECTURE.md` §12: Rust core synchronous (one `process` per frame); platform owns capture/process/render threads; bounded frame queue with drop-oldest. |
+| P3.2 | Threading model ADR (§3) | done | ✅ done | Decision recorded in `docs/dev/architecture/ARCHITECTURE.md` §12: Rust core synchronous (one `process` per frame); platform owns capture/process/render threads; bounded frame queue with drop-oldest. |
 | P3.3 | Crate additions (§6) | easy | enabler | Add each crate when its paired item lands: `serde`/`serde_json` → P3.6, `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. |
 | P3.6 | `BenchmarkRun` record + persistence (§1) | med | **clear win** | `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples, latencies }` with `median`/`p99`/`fps`/`thermal_drift`; persist runs as JSON/CSV via serde so they are comparable and reproducible. Needs P3.1; builds on the metrics API (done). |
 | P3.8 | Property / FFI-fuzz tests (§4) | med | partial now | proptest for filter invariants (EWMA stays within `[min,max]` per pixel, blend is a convex combination) can start now; golden-frame hashes and FFI fuzzing/miri need P1.1 first (FFI wiring). |

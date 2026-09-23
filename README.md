@@ -8,7 +8,9 @@ OpenLLVE is an early implementation: the Rust core and the KMP shared layer are 
 
 ## Documentation
 
-- [Architecture](docs/architecture/ARCHITECTURE.md) - boundaries, tenets, data flow, and repository structure
+Start at the [documentation index](docs/index.md).
+
+- [Architecture](docs/dev/architecture/ARCHITECTURE.md) - boundaries, tenets, data flow, and repository structure
 - [Rust core](core/README.md) - modules, pipelines, filters, FFI, tests, and benchmarks
 - [Shared app layer](app/shared/README.md) - KMP responsibilities and shared app conventions
 - [Android platform](app/platforms/android/README.md) - Android source and runtime responsibilities
@@ -55,4 +57,4 @@ git config core.hooksPath .githooks
 Runs `cargo fmt --check` when Rust files are staged and `ktlint` when Kotlin
 files are staged (if ktlint is installed). CI remains the authoritative gate.
 
-See the [architecture documentation](docs/architecture/ARCHITECTURE.md) before adding code to a new layer.
+See the [architecture documentation](docs/dev/architecture/ARCHITECTURE.md) before adding code to a new layer.

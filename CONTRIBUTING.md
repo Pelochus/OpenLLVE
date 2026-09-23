@@ -5,7 +5,7 @@ OpenLLVE is an early-stage project; contributions are welcome.
 ## Ground rules
 
 - **One small, scoped commit per task.** Keep changes reviewable.
-- **Follow the layering** in [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md):
+- **Follow the layering** in [docs/dev/architecture/ARCHITECTURE.md](docs/dev/architecture/ARCHITECTURE.md):
   Rust core for business logic and compute, KMP `:shared` for shared app
   logic, platform code only under `app/platforms/`.
 - **CI is the authoritative gate**: Rust (`cargo test`, clippy, fmt) and

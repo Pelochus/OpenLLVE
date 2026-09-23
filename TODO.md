@@ -8,7 +8,7 @@ table in sync.
 
 1. `IMPROVEMENTS.md` — remaining work + §0 status table (source of truth).
 2. `README.md` — overview + build commands.
-3. `docs/architecture/ARCHITECTURE.md` — layering tenets, repo layout, data flow, inference placement.
+3. `docs/dev/architecture/ARCHITECTURE.md` — layering tenets, repo layout, data flow, inference placement.
 4. `core/README.md` — Rust core modules.
 5. `external/models/README.md` — model convention (default model + submodules).
 
@@ -64,7 +64,7 @@ table in sync.
 7. [ ] **P2.3 — Benchmarks**: benchmark the *model path* (not memcpy); keep
    warm-up exclusion; record device/thermal/battery metadata per run.
 8. [~] **P1.1 — Android native (Rust) wiring**.
-   - Investigation done: `docs/design/FFI-WIRING.md` — direct JNI (Rust
+   - Investigation done: `docs/dev/architecture/FFI-WIRING.md` — direct JNI (Rust
      cdylib → C ABI → Kotlin `external fun`s), **no C++ layer**; Rust-side
      LiteRT runner stays a non-core optional feature (PC-side testing),
      app production inference stays on the Kotlin-side LiteRT engine.
@@ -74,14 +74,14 @@ table in sync.
 ## Recently completed (removed from the list)
 
 - **P2.1 — CI**: ktlint step in `android-ci.yml` + `release.yml` workflow.
-- **P3.2 — Threading model**: decision in `docs/architecture/ARCHITECTURE.md` §12;
-  docs restructured into `docs/architecture/`, `docs/design/`, `docs/guides/`;
-  minimal `CONTRIBUTING.md` added.
+- **P3.2 — Threading model**: decision in `docs/dev/architecture/ARCHITECTURE.md` §12;
+  docs restructured into `docs/dev/` + `docs/guides/` with a `docs/index.md`
+  entry point; minimal `CONTRIBUTING.md` added.
 - **P2.5 — Docs**: LiteRT naming standardized across docs and comments.
 
 ## Notes
 
 - Don't build a complex CI pipeline until the app is functional.
 - Keep commits small and scoped (one task per commit).
-- Review `docs/design/DESIGN_SUGGESTIONS.md` for further improvements where
+- Review `docs/dev/architecture/DESIGN_SUGGESTIONS.md` for further improvements where
   applicable (or defer them if not recommended or too hard/complex).

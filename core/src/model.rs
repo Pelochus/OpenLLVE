@@ -1,4 +1,4 @@
-//! Feature-gated LiteRT model runner (see `docs/architecture/ARCHITECTURE.md` §11).
+//! Feature-gated LiteRT model runner (see `docs/dev/architecture/ARCHITECTURE.md` §11).
 //!
 //! Enabled with `cargo build --features model`. It loads a `.tflite` model via
 //! `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime

@@ -9,7 +9,7 @@ The Android app does **not** store its own copy:
 `app/platforms/android/src/main/assets/models/` contains **symlinks** to the
 files here. Gradle's `mergeAssets` task follows symlinks (`copyFollowsLinks`
 defaults to `true`), so the packaged APK still contains the real model bytes.
-On a PC, the Rust core (`ModelRunner`, see `docs/architecture/ARCHITECTURE.md` §11)
+On a PC, the Rust core (`ModelRunner`, see `docs/dev/architecture/ARCHITECTURE.md` §11)
 loads the file directly from this path — no asset machinery needed.
 
 ## Default test model
@@ -31,7 +31,7 @@ against (symlinked into app assets as
 
 The upstream model ships with a **1×1×1** input tensor that is meant to be
 resized at runtime (`TfLiteInterpreterResizeInputTensor`). The LiteRT C
-runtime used by the Rust core (`tflite-c-rs`, per `docs/architecture/ARCHITECTURE.md` §11) segfaults on that
+runtime used by the Rust core (`tflite-c-rs`, per `docs/dev/architecture/ARCHITECTURE.md` §11) segfaults on that
 resize call for this model, so the committed file is a **re-derived** variant
 with the input shape patched in place from `[1, 1, 1, 4]` to
 `[1, 256, 256, 4]` (a 16-byte flatbuffer edit; no retraining, no weight
