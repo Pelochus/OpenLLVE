@@ -48,6 +48,16 @@ cargo test
 cargo bench
 ```
 
+### Dev environment (Docker)
+
+```text
+podman build -t openllve-dev docker/
+podman run --rm -it -v "$PWD":/workspace openllve-dev
+```
+
+JDK 17, Rust, ktlint, and the Android SDK are preinstalled. See
+[docs/dev/docker-dev-env.md](docs/dev/docker-dev-env.md) for details.
+
 ### Local commit hooks (optional)
 
 ```text
