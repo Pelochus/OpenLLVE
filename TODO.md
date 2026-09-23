@@ -25,8 +25,9 @@ table in sync.
   MediaCodec decode, DataStore settings); domain/UI-state/media contracts
   live in the `:shared` KMP module. **No JNI/Rust wiring** (re-attempt in
   P1.1).
-- **CI**: small `android-ci.yml` (lint, test, assemble) + `rust-core.yml`
-  (test, clippy, fmt).
+- **CI**: `android-ci.yml` (ktlint, androidLint, test, assemble),
+  `rust-core.yml` (test, clippy, fmt), and `release.yml` (on `v*` tags:
+  test, release APK, GitHub Release).
 
 ## Do next (in order)
 
