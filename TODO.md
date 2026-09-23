@@ -8,7 +8,7 @@ table in sync.
 
 1. `IMPROVEMENTS.md` — remaining work + §0 status table (source of truth).
 2. `README.md` — overview + build commands.
-3. `docs/ARCHITECTURE.md` — layering tenets, repo layout, data flow, inference placement.
+3. `docs/architecture/ARCHITECTURE.md` — layering tenets, repo layout, data flow, inference placement.
 4. `core/README.md` — Rust core modules.
 5. `external/models/README.md` — model convention (default model + submodules).
 
@@ -40,10 +40,11 @@ table in sync.
    - `manifest.json` (or a Rust `ModelSpec`) next to each model in
      `external/models/`: id, version, in/out shapes, quantization, supported
      delegates. Unblocks reproducible benchmarks (P2.3) and P3.6.
-3. [ ] **P3.2 — Threading model ADR.**
-   - Short ADR: Rust core stays synchronous (one `process` per frame); the
-     platform owns capture/process/render threads; bounded frame queue with
-     drop-oldest when processing falls behind. Doc only, zero code.
+3. [x] **P3.2 — Threading model ADR**: done (simplified) — decision recorded
+   as §12 in `docs/architecture/ARCHITECTURE.md` (Rust core synchronous, one
+   `process` per frame; platform owns capture/process/render threads; bounded
+   frame queue with drop-oldest). Docs restructured into `docs/architecture/`,
+   `docs/design/`, `docs/guides/`; minimal `CONTRIBUTING.md` added.
 4. [ ] **P3.8 — Property tests for filters.**
    - Add `proptest`; assert EWMA output stays within
      `[min(prev,curr), max(prev,curr)]` per pixel and blend output is a convex
@@ -80,5 +81,5 @@ table in sync.
 
 - Don't build a complex CI pipeline until the app is functional.
 - Keep commits small and scoped (one task per commit).
-- Review `docs/DESIGN_SUGGESTIONS.md` for further improvements where
+- Review `docs/design/DESIGN_SUGGESTIONS.md` for further improvements where
   applicable (or defer them if not recommended or too hard/complex).

@@ -82,7 +82,7 @@ This is more flexible than hard-wiring all filters into every pipeline.
 
 ## Model runner (feature `model`)
 
-Inference runs inside the Rust core (see `docs/ARCHITECTURE.md` §11). The `ModelRunner`
+Inference runs inside the Rust core (see `docs/architecture/ARCHITECTURE.md` §11). The `ModelRunner`
 (`src/model.rs`, behind the `model` cargo feature) loads the Zero-DCE model
 via `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime
 (no build-time link). The library path comes from the `OPENLLVE_TFLITE_LIB`
@@ -112,7 +112,7 @@ OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
 ```
 
 On Android the same cdylib is packaged alongside `libopenllve_core.so` and the
-TFLite shared library (see `docs/ARCHITECTURE.md` §11); Kotlin only calls the FFI.
+TFLite shared library (see `docs/architecture/ARCHITECTURE.md` §11); Kotlin only calls the FFI.
 
 **Scope and performance.** The Rust `ModelRunner` exists for PC-side
 benchmarking and validation (the tenet: "if it can run on a PC with

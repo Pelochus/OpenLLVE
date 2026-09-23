@@ -118,7 +118,7 @@ The benchmark must isolate the inference path from camera I/O, color conversion,
 - **P99 latency**: tail latency under load
 - **Thermal stability**: behavior during sustained processing and throttling
 
-Warm-up frames should be excluded from reported averages. See [BENCHMARK_METHODOLOGY.md](BENCHMARK_METHODOLOGY.md) for the detailed procedure.
+Warm-up frames should be excluded from reported averages. See [BENCHMARK_METHODOLOGY.md](../guides/BENCHMARK_METHODOLOGY.md) for the detailed procedure.
 
 ## 10. Design Principles
 
@@ -145,3 +145,20 @@ for all platforms.
   (`scripts/fetch-tflite-lib.sh`).
 - CPU delegate is the default and the only delegate initially; delegate
   selection (NNAPI/GPU) is a future FFI option.
+
+## 12. Threading model (decision)
+
+Real-time video has three flows — capture, process, render — and the split is
+fixed as follows:
+
+- **The Rust core stays synchronous**: one `process` call per frame, no
+  internal threads. Simplest to test, keeps the benchmark pure, and avoids
+  threading across the FFI.
+- **The platform owns the threads**: a capture thread, a dedicated processing
+  thread, and a render thread.
+- **Bounded frame queue with drop-oldest**: when processing falls behind, the
+  oldest queued frame is dropped — standard real-time video behavior, and it
+  avoids unbounded latency growth.
+
+An async pipeline inside Rust was considered and rejected: it buys nothing at
+this stage and complicates the FFI.

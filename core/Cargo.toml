@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 bytemuck = "1.11"
 thiserror = "1.0"
 
-# TFLite runner (see docs/ARCHITECTURE.md §11). Optional: enabled by the `model` feature so the
+# TFLite runner (see docs/architecture/ARCHITECTURE.md §11). Optional: enabled by the `model` feature so the
 # core still builds and tests without the TFLite runtime present.
 tflite-c-rs = { version = "0.0.1", optional = true }
 
