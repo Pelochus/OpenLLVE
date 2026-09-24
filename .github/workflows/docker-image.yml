@@ -1,0 +1,57 @@
+name: Docker dev image (GHCR)
+
+# Builds docker/Dockerfile on every push to dev/main and pushes the image
+# to the GitHub Container Registry, so the dev image can be pulled without
+# ever building it locally:
+#
+#   podman pull ghcr.io/pelochus/openllve-dev:latest
+#   podman tag ghcr.io/pelochus/openllve-dev:latest \
+#       localhost/openllve-dev:latest
+#   docker/run.sh --skip-build
+#
+# The build runs on the GitHub runner (Docker is preinstalled there); no
+# Docker daemon is needed on the host that pushes.
+
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tags
+        id: tags
+        run: |
+          # GHCR image names must be lowercase.
+          tags="ghcr.io/pelochus/openllve-dev:${GITHUB_REF_NAME}"
+          if [ "$GITHUB_REF_NAME" = "dev" ]; then
+            tags="$tags ghcr.io/pelochus/openllve-dev:latest"
+          fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            openllve.image=dev-environment
+            openllve.branch=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha

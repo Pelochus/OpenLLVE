@@ -6,6 +6,8 @@
 #   docker/run.sh                          # build + run, interactive shell
 #   docker/run.sh --privileged            # extra run options pass through
 #   docker/run.sh --cmd './gradlew assembleDebug'   # one-shot command
+#   docker/run.sh --skip-build            # use the existing image (e.g. one
+#                                         # pulled from GHCR) without rebuilding
 #
 # In interactive mode the repo's pre-commit hooks are enabled once per
 # clone (git config core.hooksPath .githooks), so `git commit` runs
@@ -19,6 +21,7 @@ IMG=${OPENLLVE_DEV_IMAGE:-localhost/openllve-dev:latest}
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
 CMD=""
+SKIP_BUILD=0
 EXTRA=()
 args=("$@")
 i=0
@@ -28,6 +31,9 @@ while [ "$i" -lt "${#args[@]}" ]; do
 		i=$((i + 1))
 		CMD="${args[$i]:?--cmd requires a command}"
 		;;
+	--skip-build)
+		SKIP_BUILD=1
+		;;
 	*)
 		EXTRA+=("${args[$i]}")
 		;;
@@ -35,7 +41,9 @@ while [ "$i" -lt "${#args[@]}" ]; do
 	i=$((i + 1))
 done
 
-"$RUNNER" build -t "$IMG" "$(dirname "$0")"
+if [ "$SKIP_BUILD" -eq 0 ]; then
+	"$RUNNER" build -t "$IMG" "$(dirname "$0")"
+fi
 
 if [ -n "$CMD" ]; then
 	exec "$RUNNER" run --rm -v "$REPO":/workspace "${EXTRA[@]}" "$IMG" \

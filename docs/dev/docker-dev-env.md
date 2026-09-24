@@ -45,6 +45,19 @@ cargo test --manifest-path core/Cargo.toml
 ktlint app/shared/src app/platforms/android/src
 ```
 
+## Prebuilt image from GitHub Container Registry
+
+`.github/workflows/docker-image.yml` builds this image on every push to
+`dev`/`main` and pushes it to GHCR — the build runs on the GitHub runner,
+so no Docker daemon is needed on the host that pushes. Pull the prebuilt
+image and run it without rebuilding:
+
+```bash
+podman pull ghcr.io/pelochus/openllve-dev:latest
+podman tag ghcr.io/pelochus/openllve-dev:latest localhost/openllve-dev:latest
+docker/run.sh --skip-build
+```
+
 ## Notes
 
 - The container runs as **root** so the mounted repo volume is
