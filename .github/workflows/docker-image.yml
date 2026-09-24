@@ -29,12 +29,14 @@ jobs:
       - name: Resolve image tags
         id: tags
         run: |
-          # GHCR image names must be lowercase.
-          tags="ghcr.io/pelochus/openllve-dev:${GITHUB_REF_NAME}"
-          if [ "$GITHUB_REF_NAME" = "dev" ]; then
-            tags="$tags ghcr.io/pelochus/openllve-dev:latest"
-          fi
-          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          # GHCR image names must be lowercase; tags are newline-separated
+          # (repeated keys in GITHUB_OUTPUT join with newlines).
+          {
+            echo "tags=ghcr.io/pelochus/openllve-dev:${GITHUB_REF_NAME}"
+            if [ "$GITHUB_REF_NAME" = "dev" ]; then
+              echo "tags=ghcr.io/pelochus/openllve-dev:latest"
+            fi
+          } >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
