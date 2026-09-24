@@ -8,9 +8,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import openllve.shared.domain.ComputeTarget
 import openllve.shared.domain.EnhancementSettings
+import openllve.shared.domain.SettingsStore
 
 /**
  * DataStore-backed settings. The delegate's `getValue` needs a [Context]
@@ -18,10 +20,14 @@ import openllve.shared.domain.EnhancementSettings
  */
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "openllve_settings")
 
-/** Persists user preferences with Jetpack DataStore (key/value, no database). */
+/**
+ * Persists user preferences with Jetpack DataStore (key/value, no database)
+ * and implements the platform-neutral [SettingsStore] contract from the
+ * shared layer.
+ */
 class SettingsRepository(
     context: Context,
-) {
+) : SettingsStore {
     private val dataStore: DataStore<Preferences> = context.settingsDataStore
 
     private val computeTargetKey = stringPreferencesKey("compute_target")
@@ -38,7 +44,9 @@ class SettingsRepository(
             )
         }
 
-    suspend fun updateSettings(settings: EnhancementSettings) {
+    override suspend fun load(): EnhancementSettings = observeSettings().first()
+
+    override suspend fun save(settings: EnhancementSettings) {
         dataStore.edit { prefs ->
             prefs[computeTargetKey] = settings.computeTarget.name
             prefs[ewmaKey] = settings.ewmaEnabled

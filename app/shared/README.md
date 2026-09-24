@@ -4,7 +4,7 @@ Kotlin Multiplatform module (`:shared`) with app-neutral logic shared by
 Android and (later) iOS:
 
 - `domain/` — contracts: `ComputeTarget`, `EnhancementSettings`, `MediaInput`,
-  `BackendSelection`, `ProcessingMetrics`, `EnhancementEngine`
+  `BackendSelection`, `ProcessingMetrics`, `EnhancementEngine`, `SettingsStore`
 - `media/` — `FrameImage`, `FramePixels`, `VideoMetadata`
 - `ui/` — `UiState`
 

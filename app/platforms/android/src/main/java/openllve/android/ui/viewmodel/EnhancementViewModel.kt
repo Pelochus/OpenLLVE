@@ -67,7 +67,7 @@ class EnhancementViewModel(
     // ---- Settings ----
 
     fun updateSettings(settings: EnhancementSettings) {
-        viewModelScope.launch { settingsRepository.updateSettings(settings) }
+        viewModelScope.launch { settingsRepository.save(settings) }
     }
 
     // ---- Image path ----
