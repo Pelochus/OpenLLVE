@@ -9,7 +9,8 @@ Status of the remaining §4 items:
 | Item | Status |
 | --- | --- |
 | P1.1 wire Rust core into Android | ⚠️ partial — approach decided (`docs/dev/architecture/FFI-WIRING.md`: direct JNI, no C++ layer; Rust-side LiteRT stays non-core); implementation remaining (cargo-ndk, `external fun`s, package `.so`) |
-| P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts; benchmark definitions (P3.6) remaining |
+| P1.3 KMP shared layer | ⚠️ partial — `:shared` KMP module with domain/UI-state/media contracts + `SettingsStore` persistence contract; benchmark definitions (P3.6) remaining |
+| P3.1 model manifest | ✅ done — per-model `<file>.manifest.json` in `external/models/` (schema in the models README); submodule models must ship a `manifest.json` |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.3 benchmarks | ⬜ remaining |
 | P2.4 dependency refresh | ⚠️ partial — ML runtime on LiteRT 2.2.0 (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain |
@@ -31,7 +32,7 @@ Status of the remaining §4 items:
 The docs are clear and good, but the code still contradicts them in places:
 
 1. **"All business logic must live in the Rust core"** — the C FFI is never called from anywhere in the Android app; the entire `ffi.rs` surface is dead code today (P1.1).
-2. **"KMP for all shared app logic"** — `app/shared/` is now a real KMP module (`:shared`) with the domain, UI-state, and media contracts. Remaining: benchmark definitions (P3.6) and a platform-neutral settings persistence contract.
+2. **"KMP for all shared app logic"** — `app/shared/` is now a real KMP module (`:shared`) with the domain, UI-state, and media contracts, plus the platform-neutral `SettingsStore` persistence contract. Remaining: benchmark definitions (P3.6).
 3. **"Zero-copy frame handles"** — `NativeFrameHandle` exists but is **never used by the FFI** (the FFI takes raw `float*` + dimensions) and has no lifetime/aliasing story for the raw `*mut u8`.
 
 ## 3. Concrete code-level bugs & smells
@@ -64,7 +65,6 @@ blocks the build.
 
 | # | Item (`DESIGN_SUGGESTIONS.md` §) | Effort | Verdict | Notes |
 | --- | --- | --- | --- | --- |
-| P3.1 | Model manifest (§2) | easy | **clear win** | `manifest.json` (or a Rust `ModelSpec`) next to each model: id, version, in/out shapes, quantization, supported delegates. Pure data + a tiny loader; makes benchmark runs reproducible and gives model validation something to check against. |
 | P3.3 | Crate additions (§4) | easy | enabler | Add each crate when its paired item lands: `serde`/`serde_json` → P3.6, `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. |
 | P3.6 | `BenchmarkRun` record + persistence (§1) | med | **clear win** | `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples, latencies }` with `median`/`p99`/`fps`/`thermal_drift`; persist runs as JSON/CSV via serde so they are comparable and reproducible. Needs P3.1; builds on the metrics API (done). |
 | P3.8 | Property / FFI-fuzz tests (§3) | med | partial now | proptest for filter invariants (EWMA stays within `[min,max]` per pixel, blend is a convex combination) can start now; golden-frame hashes and FFI fuzzing/miri need P1.1 first (FFI wiring). |
@@ -81,4 +81,4 @@ blocks the build.
 
 ### TL;DR
 
-The build is fixed and the Rust core is real (model path included). The **core promise — Kotlin calling the Rust core — is still not implemented** (P1.1: the FFI is dead code today). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) benchmark the model path with per-run metadata (P2.3), and (3) the P3 design follow-ups (model manifest, property tests, `BenchmarkRun`).
+The build is fixed and the Rust core is real (model path included). The **core promise — Kotlin calling the Rust core — is still not implemented** (P1.1: the FFI is dead code today). The highest-leverage work remaining is: (1) cross-compile the cdylib and call it from Android, (2) benchmark the model path with per-run metadata (P2.3), and (3) the P3 design follow-ups (property tests, `BenchmarkRun`).
