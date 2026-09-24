@@ -51,7 +51,10 @@ jobs:
           context: docker
           file: docker/Dockerfile
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
+          # Block scalar: a plain scalar would fold the newline-separated
+          # tags into one space-separated (invalid) tag.
+          tags: |
+            ${{ steps.tags.outputs.tags }}
           labels: |
             openllve.image=dev-environment
             openllve.branch=${{ github.ref_name }}
