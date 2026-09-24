@@ -56,6 +56,32 @@ identical to upstream) for provenance. It only works with runtimes that
 support `ResizeInputTensor` (e.g. the LiteRT Python runtime); the Rust core
 uses the fixed-shape file above.
 
+## Model manifests
+
+Every model file has a **manifest** next to it: `<model-file>.manifest.json`
+(for submodule models: a `manifest.json` at the submodule repo root).
+The manifest is the single machine-readable description of a model — what
+`BenchmarkRun` (P3.6) will record as model id/version, and what model
+validation (P1.2) checks against.
+
+Fields (all required unless noted):
+
+| Field | Meaning |
+| --- | --- |
+| `manifest_version` | schema version (currently `1`) |
+| `id` | stable identifier, e.g. `zero-dce-int8` |
+| `name` | human-readable model name |
+| `version` | model version (upstream version or local re-derivation) |
+| `file` | the `.tflite` file this manifest describes |
+| `sha256` | file hash (provenance / tamper check) |
+| `source` | upstream repository URL |
+| `license` | model license |
+| `input` / `output` | `shape` (ints), `dtype`, `channels` (what the channels mean) |
+| `quantization` | `int8`, `fp16`, `fp32`, … |
+| `supported_delegates` | delegates verified to work (`cpu`, `gpu`, `nnapi`, …) |
+| `usable` | `false` if the file is provenance-only (optional) |
+| `notes` | anything else (workarounds, caveats) (optional) |
+
 ## Adding new models (external submodules)
 
 New models are added as **external git submodules** under this directory.
@@ -73,5 +99,7 @@ The script adds the submodule and creates the symlink in
 
 1. Validate the model in its upstream repository (e.g. load it with the
    LiteRT Python runtime and check the input/output tensor specs).
-2. Record the model's I/O shape and license in
+2. Add the model's `manifest.json` (see "Model manifests") to the submodule
+   repo.
+3. Record the model's I/O shape and license in
    `app/platforms/android/src/main/assets/models/README.md`.
