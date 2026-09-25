@@ -32,6 +32,8 @@ apt-get install -y --no-install-recommends \
 export PATH="$CARGO_HOME/bin:$PATH"
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
 	sh -s -- -y --default-toolchain stable --profile minimal
+# rustfmt: needed by the repo's pre-commit hook (cargo fmt --check).
+rustup component add rustfmt
 
 # --- ktlint (same version as CI) -------------------------------------------
 curl -sSL -o /usr/local/bin/ktlint \
