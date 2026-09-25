@@ -13,10 +13,11 @@ Index of the project documentation.
 - [Docker dev environment](dev/docker-dev-env.md) — the `docker/` container
   with all build dependencies, and how to use it
 
-## Guides
+## Benchmarks
 
-- [Benchmark methodology](guides/BENCHMARK_METHODOLOGY.md) — measurement
-  rules and interpretation
+- [Benchmark methodology](benchmarks/METHODOLOGY.md) — how to run the
+  benchmark and how to interpret results
+- [Benchmark results](benchmarks/RESULTS.md) — recorded runs
 
 ## Other docs
 

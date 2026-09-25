@@ -15,7 +15,8 @@ Start at the [documentation index](docs/index.md).
 - [Shared app layer](app/shared/README.md) - KMP responsibilities and shared app conventions
 - [Android platform](app/platforms/android/README.md) - Android source and runtime responsibilities
 - [iOS platform](app/platforms/ios/README.md) - reserved placeholder for future iOS development
-- [Benchmark methodology](docs/guides/BENCHMARK_METHODOLOGY.md) - measurement rules and interpretation
+- [Benchmark methodology](docs/benchmarks/METHODOLOGY.md) - how to run the benchmark and interpret results
+- [Benchmark results](docs/benchmarks/RESULTS.md) - recorded runs
 
 ## Repository at a Glance
 

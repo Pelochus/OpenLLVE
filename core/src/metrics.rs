@@ -4,7 +4,7 @@
 /// Warm-up frames can be excluded from all statistics via
 /// [`BenchmarkMetrics::with_warmup`]: the first `n` recorded samples are kept
 /// separately and never included in average/median/p99/FPS (see
-/// `docs/guides/BENCHMARK_METHODOLOGY.md`).
+/// `docs/benchmarks/METHODOLOGY.md`).
 #[derive(Clone)]
 pub struct BenchmarkMetrics {
     latencies_ms: Vec<f64>,
