@@ -10,7 +10,6 @@ Android and (later) iOS:
 
 Android consumes it via `implementation(project(":shared"))` with thin
 boundary adapters (`BitmapFrameAdapter`, `MediaInput.sourceUri()`).
-`benchmarking/` will hold benchmark definitions when P3.6 lands.
 
 Rule: keep here only logic not tied to Android or iOS runtime APIs;
 performance-sensitive compute stays in the `core/` crate.

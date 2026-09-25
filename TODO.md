@@ -21,6 +21,9 @@ table in sync.
 - **Models**: single source of truth in `external/models/` (default
   `zero-dce-int8.tflite` as a raw file; new models as submodules); app
   assets hold symlinks to it.
+- **Benchmarks**: the criterion bench (`core/benches/inference_bench.rs`)
+  covers the model path with warm-up exclusion; minimal methodology +
+  results table in `docs/benchmarks/`.
 - **Android app**: functional vertical slice (Compose UI, LiteRT engine,
   MediaCodec decode, DataStore settings); domain/UI-state/media contracts
   live in the `:shared` KMP module. **No JNI/Rust wiring** (re-attempt in
@@ -49,21 +52,14 @@ table in sync.
      `UiState`, `SettingsStore` persistence contract — Android's
      `SettingsRepository` implements it); Android consumes it via thin
      adapters.
-   - Remaining: benchmark definitions (P3.6).
+   - Remaining: none (P3.6 rejected — see Recently completed).
 4. [~] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: ML runtime
    done (LiteRT 2.2.0 `CompiledModel`) and toolchain bump done (AGP 9.4.0,
    KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36).
    Remaining: the compileSdk 37 lines
    (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x)
    once android-37 is published.
-5. [ ] **P3.6 — `BenchmarkRun` record + persistence.**
-   - `BenchmarkConfig` + `BenchmarkRun { config, device, thermal samples,
-     latencies }` with `median`/`p99`/`fps`/`thermal_drift`; persist runs as
-     JSON/CSV (add `serde`/`serde_json` here, P3.3). Needs P3.1; builds on
-     the metrics API (done).
-6. [ ] **P2.3 — Benchmarks**: benchmark the *model path* (not memcpy); keep
-   warm-up exclusion; record device/thermal/battery metadata per run.
-7. [~] **P1.1 — Android native (Rust) wiring**.
+5. [~] **P1.1 — Android native (Rust) wiring**.
    - Investigation done: `docs/dev/architecture/FFI-WIRING.md` — direct JNI (Rust
      cdylib → C ABI → Kotlin `external fun`s), **no C++ layer**; Rust-side
      LiteRT runner stays a non-core optional feature (PC-side testing),
@@ -73,10 +69,13 @@ table in sync.
 
 ## Recently completed (removed from the list)
 
-- **P3.1 — Model manifest**: per-model `<file>.manifest.json` in
-  `external/models/` (id, version, in/out shapes, quantization, supported
-  delegates, sha256, source, license); schema documented in the models
-  README; submodule models must ship a `manifest.json` at their repo root.
+- **P3.1 — Model manifest**: rejected as overkill (model variations are
+  rare; nothing consumes the manifest) — removed.
+- **P3.6 — `BenchmarkRun` record + persistence**: rejected as overkill —
+  runs are recorded in a simple `docs/benchmarks/RESULTS.md` table instead.
+- **P2.3 — Benchmarks**: the criterion bench benchmarks the model path with
+  warm-up exclusion; minimal methodology + results table in
+  `docs/benchmarks/`.
 - **GHCR dev image**: `docker-image.yml` builds `docker/Dockerfile` on push
   to `dev`/`main` and pushes it to
   `ghcr.io/pelochus/openllve-dev` (build runs on the GitHub runner — no local
