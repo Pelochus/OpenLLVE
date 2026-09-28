@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,8 +28,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import openllve.android.ui.components.SettingsCard
 import openllve.android.ui.viewmodel.EnhancementViewModel
+import openllve.shared.domain.EnhancementSettings
 import openllve.shared.ui.UiState
 
 /**
@@ -111,13 +112,51 @@ fun HomeScreen(
                 }
             }
 
-            SettingsCard(
+            CurrentSettingsCard(
                 settings = uiState.settings,
-                probe = uiState.backendProbe,
-                onSettingsChange = viewModel::updateSettings,
+                onOpenSettings = onOpenSettings,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+/**
+ * Read-only summary of the active configuration; the full configuration
+ * (target selector + toppings) lives on the settings screen.
+ */
+@Composable
+private fun CurrentSettingsCard(
+    settings: EnhancementSettings,
+    onOpenSettings: () -> Unit,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .clickable { onOpenSettings() },
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Current configuration", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Compute target: ${settings.computeTarget.label}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text =
+                    "Toppings: EWMA ${if (settings.ewmaEnabled) "on" else "off"} · " +
+                        "Flicker ${if (settings.flickerReductionEnabled) "on" else "off"}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Change in Settings →",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
