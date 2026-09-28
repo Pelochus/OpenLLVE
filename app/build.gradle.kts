@@ -47,6 +47,9 @@ android {
             res.srcDirs("platforms/android/src/main/res")
             manifest.srcFile("platforms/android/src/main/AndroidManifest.xml")
             assets.srcDirs("platforms/android/src/main/assets")
+            // Vendored Google Tensor NPU runtime (LiteRT 2.2.0 release zip),
+            // arm64-v8a only.
+            jniLibs.srcDirs("platforms/android/src/main/jniLibs")
         }
     }
 

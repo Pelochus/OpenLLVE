@@ -5,6 +5,8 @@ import android.os.SystemClock
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.Environment
+import com.google.ai.edge.litert.NpuAcceleratorProvider
+import com.google.ai.edge.litert.NpuCompatibilityChecker
 import com.google.ai.edge.litert.TensorBuffer
 import com.google.ai.edge.litert.TensorType
 import openllve.shared.domain.BackendProbeResult
@@ -25,6 +27,14 @@ import java.io.File
  * dtype is verified up front (FLOAT32); INT8 outputs are rejected because
  * the runtime exposes no quantization parameters. `configure` never falls
  * back silently — it reports the reason.
+ *
+ * NPU: LiteRT's `Environment.create(context)` never registers the NPU
+ * accelerator — the dispatch library is not statically linked into
+ * `libLiteRt.so`, so the environment must be built with an
+ * [NpuAcceleratorProvider] whose `getLibraryDir()` points at the app's
+ * native library directory (the vendored Google Tensor dispatch runtime,
+ * `app/platforms/android/src/main/jniLibs/arm64-v8a/`). Without that, the
+ * probe always reported "NPU unavailable" even on Tensor devices.
  */
 class AndroidLiteRtEngine(
     private val context: Context,
@@ -44,7 +54,7 @@ class AndroidLiteRtEngine(
     override suspend fun probeBackends(): BackendProbeResult {
         val supported = mutableSetOf<ComputeTarget>()
         val notes = mutableMapOf<ComputeTarget, String>()
-        val available = Environment.create(context).use { it.getAvailableAccelerators() }
+        val available = Environment.create(context, TensorNpuProvider(context)).use { it.getAvailableAccelerators() }
         for (target in ComputeTarget.entries) {
             val ok =
                 when (target) {
@@ -138,17 +148,20 @@ class AndroidLiteRtEngine(
         requested: ComputeTarget,
         threads: Int,
     ): Triple<CompiledModel, ComputeTarget, String?> {
+        // The environment carries the NPU dispatch library directory; it is
+        // harmless for CPU/GPU model creation.
+        val env = Environment.create(context, TensorNpuProvider(context))
         if (requested == ComputeTarget.XNNPACK) {
             // Maps to CPU (no XNNPACK accelerator in `CompiledModel`).
-            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(ComputeTarget.CPU, threads))
+            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(ComputeTarget.CPU, threads), env)
             return Triple(model, ComputeTarget.XNNPACK, null)
         }
         try {
-            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(requested, threads))
+            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(requested, threads), env)
             return Triple(model, requested, null)
         } catch (e: Exception) {
             // Never silently fall back: report why.
-            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(ComputeTarget.CPU, threads))
+            val model = CompiledModel.create(modelFile.absolutePath, buildOptions(ComputeTarget.CPU, threads), env)
             return Triple(model, ComputeTarget.CPU, "${requested.label} unavailable: ${e.message ?: "unknown error"}")
         }
     }
@@ -318,5 +331,36 @@ class AndroidLiteRtEngine(
          * "Output tensor not found".
          */
         const val OUTPUT_TENSOR_NAME = "output_0"
+
+        /** Dispatch library bundled in `jniLibs/arm64-v8a` (LiteRT 2.2.0). */
+        const val TENSOR_DISPATCH_LIBRARY = "libLiteRtDispatch_GoogleTensor.so"
     }
+}
+
+/**
+ * [NpuAcceleratorProvider] for the vendored Google Tensor dispatch runtime.
+ *
+ * LiteRT only registers the NPU accelerator when the environment is given a
+ * provider that reports the device as supported and the library as ready;
+ * `Environment.create(context)` (no provider) leaves the dispatch library
+ * directory unset, so NPU is never available. [NpuCompatibilityChecker]
+ * [GoogleTensor] gates on Tensor G3–G6 on Android 16 (non-BP2A builds).
+ *
+ * [isLibraryReady] additionally requires the dispatch `.so` to actually be
+ * present: it is only bundled for arm64-v8a, so on other ABIs (e.g. x86_64
+ * emulators) the probe honestly reports NPU as unavailable instead of
+ * advertising a backend that would fail at model creation.
+ */
+private class TensorNpuProvider(
+    private val context: Context,
+) : NpuAcceleratorProvider {
+    override fun isDeviceSupported(): Boolean =
+        NpuCompatibilityChecker.GoogleTensor.isDeviceSupported()
+
+    override fun isLibraryReady(): Boolean =
+        File(context.applicationInfo.nativeLibraryDir, AndroidLiteRtEngine.TENSOR_DISPATCH_LIBRARY).exists()
+
+    override suspend fun downloadLibrary() {}
+
+    override fun getLibraryDir(): String = context.applicationInfo.nativeLibraryDir
 }
