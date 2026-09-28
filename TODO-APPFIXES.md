@@ -74,7 +74,7 @@ available to validate. The probe reports it per device via
 
 - **Release signing is opt-in.** Without `RELEASE_*` environment variables,
   release builds are signed with the debug keystore (see
-  `docs/dev/android-release-signing.md`).
+  `scripts/sign-release-apk.sh` and the signing block in `app/build.gradle.kts`).
 - **`namespace = "com.example.openllve"`** is still a placeholder in
   `app/build.gradle.kts`; the About screen reads `BuildConfig.VERSION_NAME`
   from it.
