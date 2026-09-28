@@ -309,7 +309,14 @@ class AndroidLiteRtEngine(
         const val PATCH = 256
         const val OVERLAP = 16
 
-        /** Output tensor name in the model asset; the dtype query is name-based. */
-        const val OUTPUT_TENSOR_NAME = "StatefulPartitionedCall_1:0"
+        /**
+         * Output tensor name in the model asset. `CompiledModel.getOutputTensorType`
+         * matches the *signature* output name (the SignatureDef TensorMap name),
+         * not the graph tensor name: the model's "serving_default" signature
+         * exposes its output as "output_0" while the graph tensor is named
+         * "StatefulPartitionedCall_1:0". Querying the graph name failed with
+         * "Output tensor not found".
+         */
+        const val OUTPUT_TENSOR_NAME = "output_0"
     }
 }
