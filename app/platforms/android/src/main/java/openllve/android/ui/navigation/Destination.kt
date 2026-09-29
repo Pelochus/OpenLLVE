@@ -9,4 +9,5 @@ object Destination {
     const val SETTINGS = "settings"
     const val IMAGE_RESULT = "image_result"
     const val VIDEO_RESULT = "video_result"
+    const val LOGS = "logs"
 }

@@ -13,6 +13,7 @@ import openllve.android.OpenLLVEApp
 import openllve.android.ui.navigation.Destination
 import openllve.android.ui.screens.HomeScreen
 import openllve.android.ui.screens.ImageResultScreen
+import openllve.android.ui.screens.LogScreen
 import openllve.android.ui.screens.SettingsScreen
 import openllve.android.ui.screens.VideoResultScreen
 import openllve.android.ui.theme.OpenLLVETheme
@@ -63,6 +64,12 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             viewModel = viewModel,
                             uiState = uiState,
+                            onBack = { navController.popBackStack() },
+                            onOpenLogs = { navController.navigate(Destination.LOGS) },
+                        )
+                    }
+                    composable(Destination.LOGS) {
+                        LogScreen(
                             onBack = { navController.popBackStack() },
                         )
                     }

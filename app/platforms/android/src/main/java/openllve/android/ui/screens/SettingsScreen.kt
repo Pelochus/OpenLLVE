@@ -1,6 +1,10 @@
 package openllve.android.ui.screens
 
+import android.net.Uri
 import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,8 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.openllve.BuildConfig
+import openllve.android.log.AppLog
 import openllve.android.ui.components.ComputeTargetCard
 import openllve.android.ui.components.ToppingsCard
 import openllve.android.ui.viewmodel.EnhancementViewModel
@@ -43,6 +51,7 @@ fun SettingsScreen(
     viewModel: EnhancementViewModel,
     uiState: UiState,
     onBack: () -> Unit,
+    onOpenLogs: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -80,9 +89,63 @@ fun SettingsScreen(
 
             ComingSoonCard()
 
+            LogsCard(onViewLogs = onOpenLogs)
+
             AboutCard()
 
             PrivacyCard()
+        }
+    }
+}
+
+/**
+ * Log access: view the in-memory buffer, save a copy to a file (Storage
+ * Access Framework), or clear it.
+ */
+@Composable
+private fun LogsCard(onViewLogs: () -> Unit) {
+    val context = LocalContext.current
+    val saveLogs =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri: Uri? ->
+            if (uri != null) {
+                try {
+                    val text = AppLog.snapshot().joinToString("\n")
+                    context.contentResolver.openOutputStream(uri)?.use {
+                        it.write(text.toByteArray(Charsets.UTF_8))
+                    }
+                    Toast.makeText(context, "Logs saved", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Could not save logs: ${e.message ?: "unknown error"}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+    Card(modifier = Modifier.padding(horizontal = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Logs", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text =
+                    "In-memory buffer of the last ${AppLog.MAX_ENTRIES} app events " +
+                        "(mirrored to logcat as tag ${AppLog.LOGCAT_TAG}). " +
+                        "Cleared on app restart; use “Save to file” to keep a copy.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row {
+                Button(onClick = onViewLogs) {
+                    Text("View logs")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = { saveLogs.launch("openllve-logs.txt") }) {
+                    Text("Save to file…")
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = { AppLog.clear() }) {
+                Text("Clear")
+            }
         }
     }
 }
