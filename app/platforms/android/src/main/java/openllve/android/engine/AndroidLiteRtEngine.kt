@@ -9,6 +9,7 @@ import com.google.ai.edge.litert.NpuAcceleratorProvider
 import com.google.ai.edge.litert.NpuCompatibilityChecker
 import com.google.ai.edge.litert.TensorBuffer
 import com.google.ai.edge.litert.TensorType
+import openllve.android.log.AppLog
 import openllve.shared.domain.BackendProbeResult
 import openllve.shared.domain.BackendSelection
 import openllve.shared.domain.ComputeTarget
@@ -54,7 +55,13 @@ class AndroidLiteRtEngine(
     override suspend fun probeBackends(): BackendProbeResult {
         val supported = mutableSetOf<ComputeTarget>()
         val notes = mutableMapOf<ComputeTarget, String>()
-        val available = Environment.create(context, TensorNpuProvider(context)).use { it.getAvailableAccelerators() }
+        val provider = TensorNpuProvider(context)
+        AppLog.info(
+            "NPU provider: deviceSupported=${provider.isDeviceSupported()}, libraryReady=${provider.isLibraryReady()}",
+            "Engine",
+        )
+        val available = Environment.create(context, provider).use { it.getAvailableAccelerators() }
+        AppLog.info("Probe: available accelerators = $available", "Engine")
         for (target in ComputeTarget.entries) {
             val ok =
                 when (target) {
@@ -73,6 +80,7 @@ class AndroidLiteRtEngine(
             } else {
                 notes[target] = "${target.label} unavailable on this device"
             }
+            AppLog.info("Probe: ${target.label} ${if (ok) "available" else "unavailable"}", "Engine")
         }
         return BackendProbeResult(supported, notes)
     }
@@ -84,6 +92,11 @@ class AndroidLiteRtEngine(
 
         val (model, actual, reason) = createModelWithFallback(modelFile, requested, defaultThreads())
         compiledModel = model
+        if (reason != null) {
+            AppLog.warn("Configure: requested ${requested.label}, fell back to ${actual.label}: $reason", "Engine")
+        } else {
+            AppLog.info("Configure: model created on ${actual.label}", "Engine")
+        }
 
         // Verify the output dtype before reading: reinterpreting an INT8
         // buffer as floats would silently produce garbage.
@@ -129,6 +142,7 @@ class AndroidLiteRtEngine(
         val output = FloatArray(width * height * 3)
         applyCurves(input, output, width, height, wPad, accum)
         this.lastInferenceMsValue = SystemClock.elapsedRealtime() - start
+        AppLog.debug("enhanceFrame: ${width}x${height}, ${numW * numH} patches, ${lastInferenceMsValue}ms", "Engine")
         return output
     }
 
@@ -139,6 +153,7 @@ class AndroidLiteRtEngine(
         outputBuffer = null
         compiledModel?.close()
         compiledModel = null
+        AppLog.debug("Engine released", "Engine")
     }
 
     // ---- Model path (mirrors core/src/model.rs) ----

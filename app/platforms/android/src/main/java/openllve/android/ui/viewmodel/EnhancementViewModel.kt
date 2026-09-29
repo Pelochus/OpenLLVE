@@ -16,6 +16,7 @@ import openllve.android.data.SettingsRepository
 import openllve.android.media.BitmapFrameAdapter
 import openllve.android.media.ImageFrameProvider
 import openllve.android.media.VideoFrameProvider
+import openllve.android.log.AppLog
 import openllve.android.media.VideoMetadataReader
 import openllve.android.media.mediaSource
 import openllve.android.media.sourceUri
@@ -67,6 +68,10 @@ class EnhancementViewModel(
     // ---- Settings ----
 
     fun updateSettings(settings: EnhancementSettings) {
+        AppLog.info(
+            "Settings: target=${settings.computeTarget.label}, ewma=${settings.ewmaEnabled}, flicker=${settings.flickerReductionEnabled}",
+            "Settings",
+        )
         viewModelScope.launch { settingsRepository.save(settings) }
     }
 
@@ -78,6 +83,7 @@ class EnhancementViewModel(
     ) {
         resetResult()
         _uiState.update { it.copy(input = ImageInput(uri.mediaSource(), name)) }
+        AppLog.info("Image: processing '$name'", "Image")
         viewModelScope.launch {
             _uiState.update { it.copy(processing = true, error = null) }
             try {
@@ -115,7 +121,12 @@ class EnhancementViewModel(
                         processing = false,
                     )
                 }
+                AppLog.info(
+                    "Image: done ${metrics.inputResolution} in ${metrics.inferenceMs}ms (${metrics.backend.label})",
+                    "Image",
+                )
             } catch (e: Exception) {
+                AppLog.error("Image: failed: ${e.message ?: "unknown error"}", "Image")
                 _uiState.update { it.copy(error = "Image processing failed: ${e.message ?: "unknown error"}", processing = false) }
             }
         }
@@ -135,6 +146,7 @@ class EnhancementViewModel(
         stopVideo()
         resetResult()
         _uiState.update { it.copy(input = VideoInput(uri.mediaSource(), name)) }
+        AppLog.info("Video: selected '$name'", "Video")
         viewModelScope.launch {
             val metadata = withContext(Dispatchers.Default) { VideoMetadataReader.read(context, uri) }
             _uiState.update { it.copy(videoMetadata = metadata) }
@@ -159,6 +171,7 @@ class EnhancementViewModel(
     }
 
     fun stopVideo() {
+        AppLog.info("Video: stopped after ${_uiState.value.videoFrameCount} frames", "Video")
         videoProvider.stop()
         _uiState.update { it.copy(videoPlaying = false) }
     }

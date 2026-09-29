@@ -9,6 +9,7 @@ import android.media.MediaFormat
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import openllve.android.log.AppLog
 import openllve.shared.domain.BackendSelection
 import openllve.shared.domain.EnhancementEngine
 import openllve.shared.domain.EnhancementSettings
@@ -58,9 +59,11 @@ class VideoFrameProvider(
                     try {
                         val selection = runBlocking { engine.configure(settings) }
                         backendSelection.value = selection
+                        AppLog.info("Video: backend ${selection.summary}", "Video")
                         isPlaying.value = true
                         decodeAndEnhance(uri, selection)
                     } catch (e: Exception) {
+                        AppLog.error("Video: failed: ${e.message ?: "unknown error"}", "Video")
                         errorMessage.value = "Video processing failed: ${e.message ?: "unknown error"}"
                     } finally {
                         isPlaying.value = false
@@ -119,6 +122,7 @@ class VideoFrameProvider(
         val colorFormat = outputFormat.getInteger(MediaFormat.KEY_COLOR_FORMAT)
         val frameWidth = outputFormat.getInteger(MediaFormat.KEY_WIDTH)
         val frameHeight = outputFormat.getInteger(MediaFormat.KEY_HEIGHT)
+        AppLog.info("Video: decoding ${frameWidth}x${frameHeight} ($mime)", "Video")
 
         val inputSample = ByteArray(64 * 1024)
         val inputSampleBuffer = ByteBuffer.wrap(inputSample)
@@ -195,8 +199,17 @@ class VideoFrameProvider(
                                     val enhanced = enhanceBitmap(original)
                                     latestOriginal.value = original
                                     latestEnhanced.value = enhanced
-                                    frameCount.value += 1
+                                    val n = frameCount.value + 1
+                                    frameCount.value = n
                                     inferenceMsTotal.value += engine.lastInferenceMs
+                                    // Periodic progress summary (the engine logs
+                                    // each frame at DEBUG level).
+                                    if (n % 30 == 0) {
+                                        AppLog.info(
+                                            "Video: $n frames, avg ${(inferenceMsTotal.value / n)}ms/frame",
+                                            "Video",
+                                        )
+                                    }
                                 }
                                 codec.releaseOutputBuffer(idx, true)
                             }
@@ -213,6 +226,14 @@ class VideoFrameProvider(
             codec.release()
             extractor.release()
             fd.close()
+            val n = frameCount.value
+            if (n > 0) {
+                AppLog.info(
+                    "Video: finished $n frames, ${(inferenceMsTotal.value / n)}ms/frame average, " +
+                        "${inferenceMsTotal.value}ms total inference",
+                    "Video",
+                )
+            }
         }
     }
 
