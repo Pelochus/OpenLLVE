@@ -66,6 +66,21 @@ table in sync.
      app production inference stays on the Kotlin-side LiteRT engine.
    - Remaining: cross-compile cdylib (cargo-ndk), Kotlin `external fun`s,
      package `.so` into the APK.
+6. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
+   - Extend NPU beyond Google Tensor (the only bundled dispatch runtime)
+     to Qualcomm and, if prebuilt libs become available, MediaTek. The
+     official LiteRT 2.2.0 release zip ships Qualcomm dispatch + compiler
+     plugin (QNN v69–v81); MediaTek is not in the zip.
+   - Constraint: LiteRT dlopens the *first* `libLiteRtDispatch*` in the
+     dispatch library dir (multiple found → warning + unspecified first
+     pick), so bundle exactly **one vendor runtime per APK** — Gradle
+     product flavors (per-vendor `jniLibs`) or an AAB with Play Feature
+     Delivery (the official sample's approach).
+   - Per-vendor `NpuCompatibilityChecker` (Qualcomm/Mediatek/Default) plus
+     the `isLibraryReady()` existence check; dispatch shims require the
+     vendor runtime on the device (Tensor: `libedgetpu_litert.so`,
+     Qualcomm: QAIRT). arm64-v8a only; JIT is Beta per vendor, AOT is the
+     supported production path.
 
 ## Recently completed (removed from the list)
 
