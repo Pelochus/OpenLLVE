@@ -10,6 +10,7 @@ in the app (or is too difficult without device hardware).
 | CPU: "output tensor not found" on configure | `AndroidLiteRtEngine` now queries the output dtype with the **signature** output name (`output_0`) instead of the graph tensor name (`StatefulPartitionedCall_1:0`). Verified against the model with the LiteRT C API (`TfLiteSignatureRunnerGetOutputName`). |
 | NPU: "not available" on Tensor devices (e.g. Pixel 10 Pro) | LiteRT's `Environment.create(context)` never registers the NPU accelerator (the dispatch library is not statically linked into `libLiteRt.so`). The app now bundles the Google Tensor dispatch runtime (`libLiteRtDispatch_GoogleTensor.so` + `libLiteRtCompilerPlugin_google_tensor.so`, from the official LiteRT 2.2.0 release zip) into `app/platforms/android/src/main/jniLibs/arm64-v8a/`, and builds the environment with a `TensorNpuProvider` (`NpuAcceleratorProvider`) that exposes the native library directory. The environment is passed to `CompiledModel.create`. |
 | Settings screen too similar to the home screen | Settings now has: **Default compute target** (selector moved from home), **Enhancement toppings** (EWMA + flicker), **Coming soon** placeholder toggles (adaptive exposure, temporal noise suppression, automatic backend selection), **About** (version, model, runtime, device/SoC), and **Privacy**. The home screen shows a read-only "Current configuration" summary that opens Settings. |
+| No way to inspect app behaviour on-device | New **Logs** section in Settings: in-memory ring buffer (last 1000 entries, shared KMP `LogBuffer`) with **View logs** (monospace viewer screen), **Save to file…** (Storage Access Framework, no permissions), and **Clear**. Critical areas are instrumented (probe results, NPU provider status, configure fallback reasons, per-frame timing, video decode progress/errors); every entry is also mirrored to logcat under tag `OpenLLVE`. |
 
 ## Not fixed — cannot be fixed in the app
 
@@ -49,7 +50,12 @@ No Tensor device was available for testing. The fix is verified by
 construction (official LiteRT 2.2.0 runtime libraries + the same
 provider-based environment the official NPU sample uses), but end-to-end
 NPU inference on a Pixel 10 Pro (or other Tensor G3–G6 device, Android 16
-QPR2+) still needs on-device validation.
+QPR2+) still needs on-device validation. The new in-app log viewer makes
+that validation straightforward: Settings → Logs shows the probe verdict
+(NPU provider status + available accelerators), the backend actually used
+(`Configure: model created on NPU` or the CPU fallback with reason), and
+per-frame timing — no adb required (logcat tag `OpenLLVE` shows the same
+stream).
 
 ### 5. XNNPACK has no accelerator in LiteRT
 
@@ -78,3 +84,7 @@ available to validate. The probe reports it per device via
 - **`namespace = "com.example.openllve"`** is still a placeholder in
   `app/build.gradle.kts`; the About screen reads `BuildConfig.VERSION_NAME`
   from it.
+- **The log buffer is RAM-only** (last 1000 entries, cleared on app
+  restart); "Save to file" keeps a copy. The shared `LogBuffer` lives in
+  the KMP layer (`openllve.shared.log`) so the future iOS host reuses it
+  with its own mirroring (os.log) and viewer.
