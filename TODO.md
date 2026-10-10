@@ -54,11 +54,14 @@ table in sync.
      adapters.
    - Remaining: none (P3.6 rejected — see Recently completed).
 4. [~] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: ML runtime
-   done (LiteRT 2.2.0 `CompiledModel`) and toolchain bump done (AGP 9.4.0,
-   KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36).
-   Remaining: the compileSdk 37 lines
-   (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x)
-   once android-37 is published.
+   done (LiteRT 2.3.0 `CompiledModel` + the separate `litert-gpu` package,
+   which 2.3.0 splits out for the ML Drift GPU accelerator) and toolchain
+   bump done (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1,
+   compileSdk 36).
+   Remaining: the compileSdk 37 lines (lifecycle 2.11.0, Compose UI 1.12.x,
+   navigation 2.10.x, core 1.19.x). android-37 is published (Android 17, and
+   AGP 9.4.0 already supports API level 37), so this is a straight bump —
+   deferred, not blocked.
 5. [~] **P1.1 — Android native (Rust) wiring**.
    - Investigation done: `docs/dev/architecture/FFI-WIRING.md` — direct JNI (Rust
      cdylib → C ABI → Kotlin `external fun`s), **no C++ layer**; Rust-side
@@ -69,8 +72,12 @@ table in sync.
 6. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
    - Extend NPU beyond Google Tensor (the only bundled dispatch runtime)
      to Qualcomm and, if prebuilt libs become available, MediaTek. The
-     official LiteRT 2.2.0 release zip ships Qualcomm dispatch + compiler
-     plugin (QNN v69–v81); MediaTek is not in the zip.
+     newest LiteRT release that ships NPU runtime libraries at all is the
+     **2.2.0** zip — the 2.3.0 (October) release ships none — so Qualcomm
+     dispatch + compiler plugin (QNN v69–v81) come from the 2.2.0 zip and
+     pair with the 2.3.0 Kotlin runtime; MediaTek is not in the zip.
+     2.3.0 added Samsung (Exynos AI LiteCore) and Intel (OpenVINO) vendor
+     support, but no prebuilt libraries for them.
    - Constraint: LiteRT dlopens the *first* `libLiteRtDispatch*` in the
      dispatch library dir (multiple found → warning + unspecified first
      pick), so bundle exactly **one vendor runtime per APK** — Gradle

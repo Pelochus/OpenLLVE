@@ -13,17 +13,43 @@ and test the project.
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| JDK | 17 (headless) | what CI uses; Gradle/AGP run on it |
-| Rust | stable (rustup, minimal profile) | `cargo test`/`clippy`/`fmt` for `core/` |
+| JDK | 17 (headless) | what CI uses; the minimum AGP 9.4.0 accepts |
+| Rust | stable (rustup, minimal profile + `rustfmt`/`clippy`) | `cargo test`/`clippy`/`fmt` for `core/` |
+| Rust Android targets | `aarch64`/`armv7`/`x86_64` `linux-android` + `cargo-ndk` | cross-compiling the core cdylib for the APK (P1.1) |
 | ktlint | 1.8.0 | same version pinned in `.github/workflows/android-ci.yml` |
 | Android SDK | cmdline-tools, platform 36, build-tools, platform-tools | `ANDROID_HOME` is set inside the image, so Gradle finds the SDK without a `local.properties` |
+| Android NDK | r30 (current LTS) | `ANDROID_NDK_HOME`; the clang toolchain `cargo-ndk` cross-compiles with |
 | git / curl / unzip / build-essential | — | base tooling |
 
 The **Kotlin compiler does not need a separate install**: Gradle/KGP fetches
 it from the plugin versions declared in the build files.
 
-The **NDK is not installed yet** — it becomes needed for P1.1
-(`cargo-ndk` cross-compilation of the Rust cdylib).
+Everything the repo needs builds inside the container:
+
+```bash
+./gradlew assembleDebug
+cargo test --manifest-path core/Cargo.toml
+ktlint app/shared/src app/platforms/android/src
+cargo ndk -t arm64-v8a -o ./jniLibs build --release   # core cdylib for the APK
+```
+
+## Native host setup (no container)
+
+`docker/envsetup.sh` is also runnable on a host with sudo. On a host without
+one (e.g. Arch), install the Rust side in userspace instead:
+
+```bash
+curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+rustup component add rustfmt clippy
+rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+cargo install cargo-ndk
+```
+
+`rustup` installs into `~/.cargo` and `~/.rustup` and puts its own `bin/` on
+`PATH` (for fish: `source ~/.cargo/env.fish` in `~/.config/fish/config.fish`).
+Cross-compiling additionally needs the NDK unzipped somewhere and exported as
+`ANDROID_NDK_HOME`. The Android app still needs a JDK + Android SDK on the
+host; the container remains the complete environment.
 
 ## Build and run
 

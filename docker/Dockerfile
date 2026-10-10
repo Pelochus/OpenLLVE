@@ -13,6 +13,7 @@ FROM ubuntu:26.04
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_NDK_HOME=/opt/android-ndk
 ENV PATH=/usr/local/cargo/bin:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
 
 COPY envsetup.sh /usr/local/src/envsetup.sh

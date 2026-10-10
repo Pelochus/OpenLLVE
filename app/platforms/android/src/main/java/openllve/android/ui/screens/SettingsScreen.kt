@@ -196,7 +196,7 @@ private fun AboutCard() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            AboutRow("Runtime", "LiteRT 2.2.0 (Google AI Edge LiteRT)")
+            AboutRow("Runtime", "LiteRT 2.3.0 (Google AI Edge LiteRT)")
             AboutRow("Rust core", "pending (TODO.md P1.1)")
             Spacer(modifier = Modifier.height(8.dp))
             AboutRow("Device", "${Build.MANUFACTURER} ${Build.MODEL}")

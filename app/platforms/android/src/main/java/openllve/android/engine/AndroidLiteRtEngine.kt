@@ -19,7 +19,7 @@ import java.io.File
 
 /**
  * Temporary Android [EnhancementEngine]: runs the Zero-DCE model on the
- * LiteRT 2.2.0 `CompiledModel` API, mirroring the Rust `ModelRunner`
+ * LiteRT 2.3.0 `CompiledModel` API, mirroring the Rust `ModelRunner`
  * (patch tiling + learned curves), until the Rust engine is wired via the
  * C FFI (TODO.md P1.1).
  *
@@ -71,8 +71,12 @@ class AndroidLiteRtEngine(
                     // delegate).
                     ComputeTarget.CPU, ComputeTarget.XNNPACK -> true
 
+                    // 2.3.0 ships GPU acceleration as a separate Maven package
+                    // (`litert-gpu`, ML Drift); without it GPU is never
+                    // available.
                     ComputeTarget.GPU -> Accelerator.GPU in available
 
+                    // Needs the vendored dispatch runtime (see TensorNpuProvider).
                     ComputeTarget.NPU -> Accelerator.NPU in available
                 }
             if (ok) {
@@ -106,7 +110,7 @@ class AndroidLiteRtEngine(
             compiledModel = null
             throw IllegalStateException(
                 "unsupported model output dtype ${outType.elementType} (expected FLOAT32; " +
-                    "LiteRT 2.2.0 does not expose INT8 quantization parameters for dequantization)",
+                    "LiteRT 2.3.0 does not expose INT8 quantization parameters for dequantization)",
             )
         }
 
@@ -347,7 +351,8 @@ class AndroidLiteRtEngine(
          */
         const val OUTPUT_TENSOR_NAME = "output_0"
 
-        /** Dispatch library bundled in `jniLibs/arm64-v8a` (LiteRT 2.2.0). */
+        /** Dispatch library bundled in `jniLibs/arm64-v8a` (from the LiteRT
+         * 2.2.0 NPU runtime zip — the newest release that ships one). */
         const val TENSOR_DISPATCH_LIBRARY = "libLiteRtDispatch_GoogleTensor.so"
     }
 }

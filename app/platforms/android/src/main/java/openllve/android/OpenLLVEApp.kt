@@ -22,6 +22,6 @@ class OpenLLVEApp : Application() {
         enhancementEngine = AndroidLiteRtEngine(this)
         settingsRepository = SettingsRepository(this)
         AppLog.info("App initialized (version ${BuildConfig.VERSION_NAME})", "App")
-        AppLog.info("Engine: AndroidLiteRtEngine (LiteRT 2.2.0, model ${enhancementEngine.modelName})", "App")
+        AppLog.info("Engine: AndroidLiteRtEngine (LiteRT 2.3.0, model ${enhancementEngine.modelName})", "App")
     }
 }

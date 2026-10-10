@@ -12,7 +12,7 @@ Status of the remaining §4 items:
 | P1.3 KMP shared layer | ✅ done — `:shared` KMP module with domain/UI-state/media contracts + `SettingsStore` persistence contract (P3.6 rejected) |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.3 benchmarks | ✅ done — criterion bench covers the model path with warm-up exclusion; results table in `docs/benchmarks/` |
-| P2.4 dependency refresh | ⚠️ partial — ML runtime on LiteRT 2.2.0 (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain |
+| P2.4 dependency refresh | ⚠️ partial — ML runtime on LiteRT 2.3.0 + `litert-gpu` (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain (android-37 is published — straight bump, deferred) |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `proptest` waits for P3.8 (`serde` no longer needed — P3.6 rejected) |
 
 ## 1. What this repo is
@@ -36,11 +36,16 @@ The docs are clear and good, but the code still contradicts them in places:
 
 ## 3. Concrete code-level bugs & smells
 
+The earlier round's stale entries (`VideoPipelineManager.kt`, `SystemMonitor.kt`,
+`MainScreen.kt`) no longer exist in the tree — the app was rewritten around
+`MainActivity` + `EnhancementViewModel` + the result screens. The remaining
+real gap is the FFI:
+
 | Location | Issue |
 | --- | --- |
-| `VideoPipelineManager.kt` | `startPipeline()`/`stopPipeline()` are empty comments; `processFrame` is a placeholder copy; no engine, no threading, no lifecycle. |
-| `SystemMonitor.kt` | `getCpuUsage()` is a hardcoded `0.0f` placeholder; `getMemoryUsage()` uses the deprecated `ActivityManager.getMemoryInfo` path. |
-| `MainScreen.kt` | Button is a no-op; no camera preview, no result surface, no state. |
+| `core/src/ffi.rs` | Entire C ABI surface is dead code — never called from Kotlin (P1.1). |
+| `AndroidLiteRtEngine.kt` | Kotlin-side LiteRT engine is a parallel implementation of the Rust `ModelRunner`; the Rust core is not consulted. |
+| `EnhancementSettings.kt` | EWMA/flicker toppings are UI-only — not applied to frames (deferred to the Rust core via P1.1). |
 
 ## 4. Suggested improvements (prioritized, remaining)
 
@@ -53,7 +58,7 @@ The docs are clear and good, but the code still contradicts them in places:
 
 ### P2 — Quality, tests, and process
 
-1. **Dependency refresh**: only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x) once android-37 is published; the ML runtime (LiteRT 2.2.0 `CompiledModel`) and the rest of the toolchain are already bumped.
+1. **Dependency refresh**: only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x). android-37 is published (Android 17, AGP 9.4.0 supports API level 37), so this is a straight bump — deferred, not blocked. The ML runtime (LiteRT 2.3.0 `CompiledModel` + the separate `litert-gpu` package) and the rest of the toolchain are already bumped.
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
 

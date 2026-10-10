@@ -47,7 +47,10 @@ android {
             res.srcDirs("platforms/android/src/main/res")
             manifest.srcFile("platforms/android/src/main/AndroidManifest.xml")
             assets.srcDirs("platforms/android/src/main/assets")
-            // Vendored Google Tensor NPU runtime (LiteRT 2.2.0 release zip),
+            // Vendored Google Tensor NPU dispatch runtime. The newest LiteRT
+            // release that ships NPU runtime libraries at all is the 2.2.0
+            // (August) zip — the 2.3.0 (October) release ships none — so these
+            // libraries stay on 2.2.0 while the Kotlin runtime is 2.3.0.
             // arm64-v8a only.
             jniLibs.srcDirs("platforms/android/src/main/jniLibs")
         }
@@ -126,10 +129,17 @@ dependencies {
     implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
-    // LiteRT 2.2.0 (Google AI Edge) — the modern `CompiledModel` API. The
-    // exclusions drop the unused Google Play "ai-delivery" stack (only
+    // LiteRT 2.3.0 (Google AI Edge, October release) — the modern `CompiledModel`
+    // API. The exclusions drop the unused Google Play "ai-delivery" stack (only
     // ModelProvider/ModelSelector reference it; the model loads from assets).
-    implementation("com.google.ai.edge.litert:litert:2.2.0") {
+    implementation("com.google.ai.edge.litert:litert:2.3.0") {
+        exclude(group = "com.google.android.play")
+        exclude(group = "com.google.android.gms")
+    }
+    // 2.3.0 ships GPU acceleration as a separate Maven package (ML Drift);
+    // without it `Accelerator.GPU` is never reported available by
+    // `Environment.getAvailableAccelerators()`.
+    implementation("com.google.ai.edge.litert:litert-gpu:2.3.0") {
         exclude(group = "com.google.android.play")
         exclude(group = "com.google.android.gms")
     }
