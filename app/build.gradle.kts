@@ -23,10 +23,12 @@ repositories {
 
 android {
     namespace = "com.example.openllve"
-    // compileSdk 36: required by the bumped AndroidX dependencies
-    // (e.g. activity-compose 1.13.0 requires compileSdk 36+). targetSdk
-    // stays at 34 — compileSdk and targetSdk are independent.
-    compileSdk = 36
+    // compileSdk 37 (Android 17, published): required by the newest AndroidX
+    // lines (lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0,
+    // Compose 1.12.x via BOM 2026.09.00 all compile against API 37). AGP 9.4.0
+    // supports API 37. targetSdk stays at 34 — compileSdk and targetSdk are
+    // independent.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.openllve"
@@ -107,9 +109,9 @@ dependencies {
     // KMP shared app layer (domain contracts, UI state, frame/pixel abstractions).
     implementation(project(":shared"))
 
-    // Newest BOM usable with compileSdk 36 (2026.08.00 needs compileSdk 37,
-    // not yet in the stable SDK repo).
-    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
+    // Newest BOM (2026.09.00 → Compose 1.12.1); the 1.12.x line compiles
+    // against API 37, matching compileSdk 37 above.
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
 
     implementation("androidx.compose.ui:ui")
@@ -117,15 +119,16 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
-    // Newest lines usable with compileSdk 36; the newer ones need compileSdk 37.
+    // Newest AndroidX lines, all compiling against API 37 (activity-compose
+    // 1.13.0 is already the newest line and stays).
     implementation("androidx.activity:activity-compose:1.13.0")
-    implementation("androidx.navigation:navigation-compose:2.9.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.navigation:navigation-compose:2.10.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.core:core-ktx:1.19.0")
     implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 

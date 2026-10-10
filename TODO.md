@@ -53,15 +53,13 @@ table in sync.
      `SettingsRepository` implements it); Android consumes it via thin
      adapters.
    - Remaining: none (P3.6 rejected — see Recently completed).
-4. [~] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: ML runtime
-   done (LiteRT 2.3.0 `CompiledModel` + the separate `litert-gpu` package,
-   which 2.3.0 splits out for the ML Drift GPU accelerator) and toolchain
-   bump done (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1,
-   compileSdk 36).
-   Remaining: the compileSdk 37 lines (lifecycle 2.11.0, Compose UI 1.12.x,
-   navigation 2.10.x, core 1.19.x). android-37 is published (Android 17, and
-   AGP 9.4.0 already supports API level 37), so this is a straight bump —
-   deferred, not blocked.
+4. [x] **P2.4 — Dependency refresh** in `app/build.gradle.kts`: done — ML
+   runtime (LiteRT 2.3.0 `CompiledModel` + the separate `litert-gpu` package)
+   and full toolchain bump (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.09.00 →
+   Compose UI 1.12.1, Gradle 9.7.1, compileSdk 37 in `:app` and `:shared`,
+   lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0; `docker/envsetup.sh`
+   installs `platforms;android-37`). targetSdk stays at 34 (independent of
+   compileSdk).
 5. [~] **P1.1 — Android native (Rust) wiring**.
    - Investigation done: `docs/dev/architecture/FFI-WIRING.md` — direct JNI (Rust
      cdylib → C ABI → Kotlin `external fun`s), **no C++ layer**; Rust-side

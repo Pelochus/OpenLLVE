@@ -12,7 +12,7 @@ Status of the remaining §4 items:
 | P1.3 KMP shared layer | ✅ done — `:shared` KMP module with domain/UI-state/media contracts + `SettingsStore` persistence contract (P3.6 rejected) |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.3 benchmarks | ✅ done — criterion bench covers the model path with warm-up exclusion; results table in `docs/benchmarks/` |
-| P2.4 dependency refresh | ⚠️ partial — ML runtime on LiteRT 2.3.0 + `litert-gpu` (app) and toolchain bumped (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.06.01, Gradle 9.7.1, compileSdk 36); only the compileSdk 37 lines remain (android-37 is published — straight bump, deferred) |
+| P2.4 dependency refresh | ✅ done — newest everything: LiteRT 2.3.0 + `litert-gpu`, AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.09.00 (UI 1.12.1), Gradle 9.7.1, compileSdk 37 (app + `:shared`), lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0 |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `proptest` waits for P3.8 (`serde` no longer needed — P3.6 rejected) |
 
 ## 1. What this repo is
@@ -58,7 +58,10 @@ real gap is the FFI:
 
 ### P2 — Quality, tests, and process
 
-1. **Dependency refresh**: only the compileSdk 37 lines remain (lifecycle 2.11.0, Compose UI 1.12.x, navigation 2.10.x, core 1.19.x). android-37 is published (Android 17, AGP 9.4.0 supports API level 37), so this is a straight bump — deferred, not blocked. The ML runtime (LiteRT 2.3.0 `CompiledModel` + the separate `litert-gpu` package) and the rest of the toolchain are already bumped.
+Nothing remaining — P2.4 (dependency refresh) is done: compileSdk 37 with the
+newest AndroidX lines (lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx
+1.19.0, Compose 1.12.1 via BOM 2026.09.00), LiteRT 2.3.0 + `litert-gpu`, AGP
+9.4.0, KGP 2.4.20, Gradle 9.7.1; the dev image installs `platforms;android-37`.
 
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
 

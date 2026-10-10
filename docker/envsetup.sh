@@ -6,7 +6,7 @@
 #
 # Versions pinned here mirror CI: ktlint 1.8.0
 # (.github/workflows/android-ci.yml), JDK 17 (android-ci.yml, the minimum
-# AGP 9.4.0 accepts), Android platform 36 (app/build.gradle.kts compileSdk).
+# AGP 9.4.0 accepts), Android platform 37 (app/build.gradle.kts compileSdk).
 # The image is complete: Rust core (build/test/clippy/fmt), the Android app
 # (Gradle + SDK), and the P1.1 cross-compile path (NDK + cargo-ndk + Android
 # rustup targets for the core cdylib).
@@ -51,7 +51,7 @@ curl -sSL -o /usr/local/bin/ktlint \
 	https://github.com/ktlint/ktlint/releases/download/1.8.0/ktlint
 chmod +x /usr/local/bin/ktlint
 
-# --- Android SDK (cmdline tools + platform 36 + build tools) --------------
+# --- Android SDK (cmdline tools + platform 37 + build tools) --------------
 mkdir -p "$ANDROID_HOME/cmdline-tools"
 curl -sSL -o /tmp/cmdline-tools.zip \
 	https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip
@@ -63,7 +63,7 @@ rm /tmp/cmdline-tools.zip
 
 SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 yes | "$SDKMGR" --licenses >/dev/null
-"$SDKMGR" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+"$SDKMGR" "platforms;android-37" "build-tools;36.0.0" "platform-tools"
 
 # --- Android NDK (cargo-ndk cross-compiles of the core cdylib) -------------
 # NDK r30 (current LTS). cargo-ndk uses its clang toolchain for the

@@ -18,7 +18,7 @@ kotlin {
     // Android target: consumed by :app as a plain AAR dependency.
     android {
         namespace = "openllve.shared"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 26
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
