@@ -126,15 +126,6 @@ which is ~5× faster than the reference kernel. Measured on this desktop:
 (256×256) network, so it is real-time at its native patch size but tiling it
 to 720p (≈18 overlapping patches) is the dominant cost — not the kernel.
 
-**Known workaround (not a fix).** The upstream model ships with a static
-`[1,1,1,4]` input shape and is meant to be resized at runtime, but
-`TfLiteInterpreterResizeInputTensor` **segfaults** in the LiteRT C library for
-this graph (root cause not yet identified). The committed
-`zero-dce-int8.tflite` therefore has the `[1,256,256,4]` input shape baked
-into the flatbuffer (in-place patch, verified bit-exact vs upstream+resize).
-Follow-up: re-export the model with the correct static shape, or root-cause
-the resize segfault (see `TODO.md`).
-
 ## Design principles
 
 1. **Zero-copy friendly**: frame handles abstract native buffers without redundant copying.

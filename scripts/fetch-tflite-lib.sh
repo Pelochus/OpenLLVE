@@ -62,13 +62,13 @@ curl -fSL -o "$tmp/$asset" "${base}/${asset}"
 echo "Extracting ..."
 tar -xzf "$tmp/$asset" -C "$tmp"
 
-# Find the shared library inside the extracted tree.
-found="$(find "$tmp" -name "$lib_name" | head -n 1)"
+# Upstream releases may ship a versioned name (e.g. .so.2.17.1); normalize.
+found="$(find "$tmp" \( -name "$lib_name" -o -name "$lib_name".* \) | head -n 1)"
 if [ -z "$found" ]; then
   echo "error: $lib_name not found in $asset" >&2
   exit 1
 fi
 
-cp "$found" "$dest/$lib_name"
+install -m 0644 "$found" "$dest/$lib_name"
 echo "Wrote $dest/$lib_name"
 echo "Run with: OPENLLVE_TFLITE_LIB=$dest/$lib_name cargo test --features model"

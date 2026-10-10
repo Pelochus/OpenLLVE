@@ -30,12 +30,11 @@ against (symlinked into app assets as
 ### Fixed input shape (256×256)
 
 The upstream model ships with a **1×1×1** input tensor that is meant to be
-resized at runtime (`TfLiteInterpreterResizeInputTensor`). The LiteRT C
-runtime used by the Rust core (`tflite-c-rs`, per `docs/dev/architecture/ARCHITECTURE.md` §11) segfaults on that
-resize call for this model, so the committed file is a **re-derived** variant
-with the input shape patched in place from `[1, 1, 1, 4]` to
-`[1, 256, 256, 4]` (a 16-byte flatbuffer edit; no retraining, no weight
-change). The rest of the graph is byte-identical to upstream.
+resized at runtime (`TfLiteInterpreterResizeInputTensor`). The committed file
+is a **re-derived** variant with the input shape patched in place from
+`[1, 1, 1, 4]` to `[1, 256, 256, 4]` (a 16-byte flatbuffer edit; no
+retraining, no weight change). The rest of the graph is byte-identical to
+upstream.
 
 This is verified bit-exact: running the patched model (no resize) through the
 LiteRT runtime produces output **identical** to running the original model
@@ -45,11 +44,6 @@ resize API — it loads the static-shape model and runs it directly.
 Frames larger than 256×256 are handled by the pipeline itself: it tiles them
 into 256×256 patches with 16 px overlap (reflect padding at edges, linear-ramp
 reassembly), mirroring the upstream `network.py`.
-
-> **Known workaround, not a fix.** The resize segfault's root cause is not yet
-> identified. The in-place flatbuffer patch is a workaround. Follow-up: either
-> re-export the model with the correct static input shape, or root-cause the
-> `TfLiteInterpreterResizeInputTensor` segfault (tracked in `TODO.md`, P1.2).
 
 `zero-dce-int8-upstream.tflite` keeps the **original** 1×1×1 file (byte
 identical to upstream) for provenance. It only works with runtimes that

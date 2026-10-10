@@ -36,12 +36,19 @@ table in sync.
 
 ## Do next (in order)
 
-1. [ ] **P1.2 follow-ups — model validation.**
+1. [~] **P1.2 follow-ups — model validation.**
    - Verify the pipeline on real (non-synthetic) frames; re-confirm the
      global-mean brightness channel vs upstream's 4×4 bilinear downscale.
-   - Re-export the model with the correct static input shape, or root-cause
-     the `TfLiteInterpreterResizeInputTensor` segfault (see
-     `external/models/README.md`).
+   - ✅ ResizeInputTensor "segfault" root-caused (2026-10-10): not a library
+     bug — a call-order misuse. `TfLiteInterpreterResizeInputTensor` returns
+     OK, but called after `AllocateTensors` (which `tflite-c-rs` does eagerly
+     in `Interpreter::new`) it NULLs the input tensor's data pointer until
+     `AllocateTensors` runs again; writing through the tensor dereferences
+     NULL → segfault. Verified with the pinned LiteRT C library (v2.17.1) on
+     the upstream model: resize → allocate → invoke works; allocate → resize
+     → invoke-without-realloc crashes; allocate → resize → re-allocate →
+     invoke works. Docs updated (`external/models/README.md`, `core/README.md`);
+     the fixed-shape model file stays (the crate has no resize API).
 2. [ ] **P3.8 — Property tests for filters.**
    - Add `proptest`; assert EWMA output stays within
      `[min(prev,curr), max(prev,curr)]` per pixel and blend output is a convex
