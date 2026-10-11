@@ -14,7 +14,9 @@ import openllve.shared.domain.EnhancementSettings
  *
  * A core error never propagates: the frame is returned unsmoothed and the code
  * is logged once, so a broken library degrades the picture instead of ending
- * the run.
+ * the run. A library whose ABI disagrees with this contract disables both
+ * toppings at session start (the committed `libbridge.so` can otherwise drift
+ * silently out of step with `core/src/ffi.rs`).
  */
 class CoreToppings(
     private val settings: EnhancementSettings,
@@ -32,9 +34,14 @@ class CoreToppings(
 
         // Bytes per row for a tightly packed RGB `FloatArray` (4 bytes per element).
         private const val STRIDE_SCALE = CHANNELS * 4
+
+        // Must match core/src/ffi.rs OPENLLVE_ABI_VERSION; scripts/build-bridge.sh
+        // rebuilds the library, this constant is what catches a stale one.
+        private const val CORE_ABI_VERSION = 3
     }
 
     private var coreLoaded = false
+    private var coreUnavailable = false
     private var ewmaCodeLogged = false
     private var blendCodeLogged = false
 
@@ -105,24 +112,41 @@ class CoreToppings(
 
     private fun newEwmaHandle(): Long {
         if (!settings.ewmaEnabled) return 0L
-        ensureCoreLoaded()
+        if (!coreReady()) return 0L
         return bridge.ewmaFilterNew(EWMA_ALPHA)
     }
 
     private fun newBlendHandle(): Long {
         if (!settings.flickerReductionEnabled) return 0L
-        ensureCoreLoaded()
+        if (!coreReady()) return 0L
         return bridge.blendFilterNew(BLEND_BETA)
     }
 
-    /** Loads `libbridge.so` once per session; `dlopen` makes repeats cheap. */
-    private fun ensureCoreLoaded() {
+    /**
+     * Loads `libbridge.so` once per session and probes its ABI. JNI symbols
+     * resolve lazily at first call, so without the probe a wrong library would
+     * only fail deep inside a frame; `abiVersion()` is the startup check.
+     *
+     * @return false when the library speaks an unexpected ABI, in which case no
+     * handles are created and frames pass through untouched
+     */
+    private fun coreReady(): Boolean {
         if (!coreLoaded) {
+            coreLoaded = true
             // scripts/build-bridge.sh renames Cargo's artifact (libopenllve_core_bridge.so)
             // to libbridge.so in jniLibs, which is the name the JVM resolves.
             System.loadLibrary("bridge")
-            coreLoaded = true
+            val abi = bridge.abiVersion()
+            if (abi != CORE_ABI_VERSION) {
+                AppLog.error(
+                    "Core: bridge ABI $abi != expected $CORE_ABI_VERSION, " +
+                        "toppings disabled",
+                    "Core",
+                )
+                coreUnavailable = true
+            }
         }
+        return !coreUnavailable
     }
 
     /** Logs a core rejection once per filter, not once per frame. */
