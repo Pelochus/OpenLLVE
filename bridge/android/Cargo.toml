@@ -1,0 +1,20 @@
+[package]
+name = "openllve-core-bridge"
+version = "0.1.0"
+edition = "2024"
+authors = ["OpenLLVE Contributors"]
+description = "JNI bridge exposing the OpenLLVE core to the Kotlin app layer"
+license = "MIT"
+
+# `cdylib` is the artifact Kotlin's JVM `dlopen`s; `Java_*` symbols reach the
+# dynamic symbol table because they are `pub` with default visibility — verified
+# with `llvm-nm -gD` (see docs/dev/architecture/FFI-WIRING.md).
+# `rlib` is kept so `cargo test` can link the host-side helpers.
+[lib]
+name = "openllve_core_bridge"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+openllve_core = { path = "../../core", package = "openllve-core", default-features = false }
+jni = "0.22.4"
+jni-macros = "0.22.4"

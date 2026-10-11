@@ -18,3 +18,13 @@ jobs:
         run: cargo clippy --manifest-path core/Cargo.toml -- -D warnings
       - name: Check formatting
         run: cargo fmt --manifest-path core/Cargo.toml --check
+      # The JNI shim (bridge/android) is the other Rust build: its frames.rs
+      # boundary checks gate like the core.
+      - name: Run bridge tests
+        run: cargo test --manifest-path bridge/android/Cargo.toml
+      - name: Run bridge Clippy (deny warnings)
+        run: >-
+          cargo clippy --manifest-path bridge/android/Cargo.toml
+          -- -D warnings
+      - name: Check bridge formatting
+        run: cargo fmt --manifest-path bridge/android/Cargo.toml --check
