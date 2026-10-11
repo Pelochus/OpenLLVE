@@ -23,8 +23,8 @@ video flow through it.*
 - **Golden-frame tests**: fixed input frame → hash of output, pinned per model
   file. This is what makes CPU/GPU/NPU comparison *valid* (same model, same
   input, comparable outputs).
-- FFI-fuzzing, miri, and JNI round-trip tests wait for P1.1 (FFI wiring into
-  the app).
+- FFI-fuzzing, miri, and JNI round-trip tests are unblocked: P1.1 landed, so
+  `bridge/android/` is the FFI target to fuzz against.
 
 ## 2. Remaining Rust tooling & crates
 
@@ -33,7 +33,7 @@ video flow through it.*
 | `proptest` | property tests for filters | EWMA stays within input bounds, blend is a convex combination (§1) |
 | `miri` (tool, not a dep) | UB detection in unsafe FFI code | `cargo miri test` in CI — exactly what `ffi.rs`/`frame.rs` raw-pointer code needs |
 | `static_assertions` | compile-time invariants | optional; e.g. assert layout/stride constants |
-| `cargo-ndk` / `cargo-mobile2` | cross-compile the cdylib to Android ABIs | not a crate; CI job that produces `libopenllve_core.so` (P1.1) |
+| `cargo-ndk` / `cargo-mobile2` | cross-compile the cdylib to Android ABIs | `cargo-ndk` is installed; `scripts/build-bridge.sh` produces `libbridge.so` for `jniLibs/` |
 
 ## Quick ranking (effort × value)
 

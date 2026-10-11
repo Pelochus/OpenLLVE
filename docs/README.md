@@ -30,6 +30,7 @@ Kotlin sources nest to their package directory; the module list in
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — how to contribute
 - [TODO.md](../TODO.md) / [IMPROVEMENTS.md](../IMPROVEMENTS.md) — open work
 - `core/README.md` — Rust core modules
+- `bridge/android/README.md` — JNI shim (Kotlin `external fun` contract)
 - `app/shared/README.md` — KMP shared layer
 - `app/platforms/android/README.md` — Android platform
 - `external/models/README.md` — model convention

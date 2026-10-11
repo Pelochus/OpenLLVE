@@ -111,8 +111,10 @@ OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
   cargo bench --features model
 ```
 
-On Android the same cdylib is packaged alongside `libopenllve_core.so` and the
-LiteRT shared library (see `docs/dev/architecture/ARCHITECTURE.md` §11); Kotlin only calls the FFI.
+On Android the model path runs in the app's LiteRT runtime; the Rust core ships
+as `libbridge.so` in `jniLibs/<abi>/` — statically linked into the JNI shim, so
+the APK carries one Rust library, not two (see `docs/dev/architecture/FFI-WIRING.md` §4 and
+`docs/dev/architecture/ARCHITECTURE.md` §11). Kotlin calls it through `CoreBridge`.
 
 **Scope and performance.** The Rust `ModelRunner` exists for PC-side
 benchmarking and validation (the tenet: "if it can run on a PC with

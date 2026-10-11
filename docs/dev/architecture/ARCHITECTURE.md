@@ -22,7 +22,7 @@ OpenLLVE/
 │   ├── platforms/
 │   │   ├── android/               # Android-specific runtime sources and glue
 │   │   │   └── src/
-│   │   └── ios/                   # Future iOS SwiftUI / AVFoundation layer (empty placeholder for now)
+│   │   └── ios/                   # iOS host planned as P4 (README only, no code yet)
 │   └── build.gradle.kts
 ├── external/                      # External model submodules (see external/models/README.md)
 ├── docs/

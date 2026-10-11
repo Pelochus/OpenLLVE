@@ -14,7 +14,7 @@ Start at the [documentation index](docs/README.md).
 - [Rust core](core/README.md) - modules, pipelines, filters, FFI, tests, and benchmarks
 - [Shared app layer](app/shared/README.md) - KMP responsibilities and shared app conventions
 - [Android platform](app/platforms/android/README.md) - Android source and runtime responsibilities
-- [iOS platform](app/platforms/ios/README.md) - reserved placeholder for future iOS development
+- [iOS platform](app/platforms/ios/README.md) - planned iOS host (P4, high-level); nothing implemented yet
 - [Benchmark methodology](docs/benchmarks/METHODOLOGY.md) - how to run the benchmark and interpret results
 - [Benchmark results](docs/benchmarks/RESULTS.md) - recorded runs
 

@@ -15,7 +15,7 @@ and test the project.
 | --- | --- | --- |
 | JDK | 17 (headless) | what CI uses; the minimum AGP 9.4.0 accepts |
 | Rust | stable (rustup, minimal profile + `rustfmt`/`clippy`) | `cargo test`/`clippy`/`fmt` for `core/` |
-| Rust Android targets | `aarch64`/`armv7`/`x86_64` `linux-android` + `cargo-ndk` | cross-compiling the core cdylib for the APK (P1.1) |
+| Rust Android targets | `aarch64`/`armv7`/`x86_64` `linux-android` + `cargo-ndk` | cross-compiling the bridge shim for the APK (`scripts/build-bridge.sh`) |
 | ktlint | 1.8.0 | same version pinned in `.github/workflows/android-ci.yml` |
 | Android SDK | cmdline-tools, `platforms;android-37.0`, `build-tools;36.0.0`, platform-tools | `ANDROID_HOME` is set inside the image, so Gradle finds the SDK without a `local.properties` |
 | Android NDK | r30 (current LTS) | `ANDROID_NDK_HOME`; the clang toolchain `cargo-ndk` cross-compiles with |
