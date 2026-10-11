@@ -117,31 +117,24 @@ table in sync.
      signed `jint`). It runs under `cargo test` on a PC, per the AGENTS.md rule of
      thumb — today it sits in a platform crate instead.
 
-7. [ ] **P1.6 — iOS bridge (`bridge/ios/`).**
-   - The header already declares all 22 exports with C types (`uint32_t`, `size_t`,
-     `float`, `double`, opaque handles), so the iOS half is host marshalling only:
-     `@cImport` the header, mirror `CoreToppings` (handle ownership per media
-     session, per-frame apply, close once), reuse the same `abiVersion()` probe.
-   - `app/platforms/ios/` stays a README placeholder until that platform is real.
-
-8. [ ] **P1.7 — build the `x86_64` bridge ABI.**
+7. [ ] **P1.7 — build the `x86_64` bridge ABI.**
    - `scripts/build-bridge.sh` defaults to arm64-v8a, so an x86_64 debug run
      (emulator / PC tester) cannot load `libbridge.so`. Add the ABI; still ship
      exactly one vendor dispatch runtime per APK (AGENTS.md §3).
 
-9. [ ] **P1.8 — promote EWMA/blend weights to `EnhancementSettings`.**
+8. [ ] **P1.8 — promote EWMA/blend weights to `EnhancementSettings`.**
    - `CoreToppings` keeps EWMA_ALPHA = 0.5f / BLEND_BETA = 0.7f as constants while
      the settings UI already exposes `ewmaEnabled` / `flickerReductionEnabled`; the
      weights are the missing half of that contract.
 
-10. [ ] **P2.5 — ktlint debt (31 violations) makes `android-ci.yml` red.**
+9. [ ] **P2.5 — ktlint debt (31 violations) makes `android-ci.yml` red.**
    - `function-signature` 20, `blank-line-before-declaration` 3,
      `class-signature` 2, `import-ordering` 2,
      `spacing-between-declarations-with-comments` 2, `string-template` 2 across
      `app/shared/src` + `app/platforms/android/src`; `ktlint --format` fixes most
      (ktlint 1.8.0 is pinned in the dev image, see `docs/dev/docker-dev-env.md`).
 
-11. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
+10. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
    - Extend NPU beyond Google Tensor (the only bundled dispatch runtime)
      to Qualcomm and, if prebuilt libs become available, MediaTek. The
      newest LiteRT release that ships NPU runtime libraries at all is the
@@ -186,3 +179,16 @@ table in sync.
 - Keep commits small and scoped (one task per commit).
 - Review `docs/dev/architecture/DESIGN_SUGGESTIONS.md` for further improvements where
   applicable (or defer them if not recommended or too hard/complex).
+
+11. [ ] **P4 — iOS platform (high-level only; no implementation detail yet).**
+   - **P4.1 iOS bridge**: `bridge/ios/` Swift shim over the existing C header
+     (`core/include/openllve_core.h`, 22 exports, plain C types) — the core and
+     its ABI are reused unchanged, iOS adds host marshalling only.
+   - **P4.2 media decode/encode**: AVFoundation in `app/platforms/ios/`.
+   - **P4.3 inference runtime on iOS**: Core ML / Metal (LiteRT stays Android-side).
+   - **P4.4 UI + shared contracts**: SwiftUI screens built on the `:shared` KMP
+     contracts (domain, UI state, `SettingsStore`, `LogBuffer`).
+   - Hard rule: nothing iOS-specific may enter `core/` or `app/shared/`; each host
+     gets its own bridge crate (see `docs/dev/architecture/ARCHITECTURE.md` §3).
+   - Keep this list high-level until iOS work actually starts — do not pre-write
+     iOS code in this repo.

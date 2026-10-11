@@ -15,7 +15,7 @@ Status of the remaining §4 items:
 | P2.4 dependency refresh | ✅ done — newest everything: LiteRT 2.3.0 + `litert-gpu`, AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.09.00 (UI 1.12.1), Gradle 9.7.1, compileSdk 37 (app + `:shared`), lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0 |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `proptest` waits for P3.8 (`serde` no longer needed — P3.6 rejected) |
 | P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core + header |
-| P1.6 iOS bridge (`bridge/ios/`) | ⚠️ open — header is C-complete (22 exports, `uint32_t`/`size_t`/`float`/`double`); Swift side not started |
+| P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer, tracked at a high level only (§4 P4); the C header is already complete for it |
 | P1.7 `x86_64` bridge ABI | ⚠️ open — `scripts/build-bridge.sh` builds arm64-v8a only |
 | P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.5f`, `BLEND_BETA = 0.7f` |
 | P2.5 ktlint debt | ⚠️ open — 31 pre-existing violations make the `android-ci.yml` ktlint step fail |
@@ -59,10 +59,8 @@ real gap is the FFI:
 1. ~~Wire the Rust core into Android end-to-end~~ — done (P1.1): the JNI shim lives in its own crate (`bridge/android/`, `libbridge.so` in `jniLibs/arm64-v8a`), and model inference deliberately stays on the Kotlin LiteRT path. `x86_64` is not built (arm64-v8a only).
 2. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used. The bridge validates JVM buffers against declared dimensions in `bridge/android/src/frames.rs` instead, so `NativeFrameHandle` is still unused.
 3. **Move frame validation into the core** (P1.4): the geometry/buffer checks today live in the Android shim, so a C or iOS consumer of `core/include/openllve_core.h` gets no guard while `ffi.rs` builds slices from caller-supplied numbers.
-4. **Add the iOS bridge** (P1.6): `core/include/openllve_core.h` is already C-complete, so iOS needs only a Swift marshalling crate under `bridge/ios/`.
-5. **Build the `x86_64` bridge ABI** (P1.7) so non-arm64 debug runs can load `libbridge.so`.
-6. **Expose the EWMA/blend weights as `EnhancementSettings`** (P1.8) — they are `CoreToppings` constants today.
-2. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used.
+4. **Build the `x86_64` bridge ABI** (P1.7) so non-arm64 debug runs can load `libbridge.so`.
+5. **Expose the EWMA/blend weights as `EnhancementSettings`** (P1.8) — they are `CoreToppings` constants today.
 
 ### P2 — Quality, tests, and process
 
@@ -85,6 +83,22 @@ blocks the build.
 | --- | --- | --- | --- | --- |
 | P3.3 | Crate additions (§2) | easy | enabler | Add each crate when its paired item lands: `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. (`serde` no longer needed — P3.6 rejected.) |
 | P3.8 | Property / FFI-fuzz tests (§1) | med | partial now | proptest for filter invariants (EWMA stays within `[min,max]` per pixel, blend is a convex combination) can start now; golden-frame hashes and FFI fuzzing/miri need P1.1 first (FFI wiring). |
+
+### P4 — iOS platform (deliberately high-level)
+
+iOS is a separate host: no iOS code exists today (`app/platforms/ios/` is a
+README placeholder) and nothing here should be pre-implemented until someone
+actually starts that platform. Keep these as one-liners.
+
+| # | Item | Notes |
+| --- | --- | --- |
+| P4.1 | iOS bridge over the existing C ABI | `bridge/ios/` Swift shim `@cImport`ing `core/include/openllve_core.h`; the core and its ABI are reused unchanged |
+| P4.2 | Media decode/encode | AVFoundation in `app/platforms/ios/` |
+| P4.3 | Inference runtime on iOS | Core ML / Metal; LiteRT stays Android-side |
+| P4.4 | UI on the shared contracts | SwiftUI screens over the `:shared` KMP contracts (domain, UI state, `SettingsStore`, `LogBuffer`) |
+
+Hard rule: nothing iOS-specific may enter `core/` or `app/shared/` — each host
+gets its own bridge crate (`docs/dev/architecture/ARCHITECTURE.md` §3).
 
 ## 5. What's already good
 

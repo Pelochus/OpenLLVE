@@ -14,16 +14,18 @@ investigated and have no app-side fix; do not re-litigate them.
 | Settings screen too similar to the home screen | Settings now has: **Default compute target** (selector moved from home), **Enhancement toppings** (EWMA + flicker), **Coming soon** placeholder toggles (adaptive exposure, temporal noise suppression, automatic backend selection), **About** (version, model, runtime, device/SoC), and **Privacy**. The home screen shows a read-only "Current configuration" summary that opens Settings. |
 | No way to inspect app behaviour on-device | New **Logs** section in Settings: in-memory ring buffer (last 1000 entries, shared KMP `LogBuffer`) with **View logs** (monospace viewer screen), **Save to file…** (Storage Access Framework, no permissions), and **Clear**. Critical areas are instrumented (probe results, NPU provider status, configure fallback reasons, per-frame timing, video decode progress/errors); every entry is also mirrored to logcat under tag `OpenLLVE`. |
 | Placeholder app identity `com.example.openllve` | App namespace/applicationId is now **`app.openllve`** in `app/build.gradle.kts`, with the two `BuildConfig` imports updated (`OpenLLVEApp.kt`, `SettingsScreen.kt`). Kotlin package names (`openllve.android.*`, `openllve.shared.*`) are independent and unchanged. |
+| EWMA / flicker reduction were UI-only placeholders | Now applied by the Rust core through the JNI bridge (P1.1): `openllve/android/core/CoreToppings.kt` owns `openllve_blend_filter_*` + `openllve_ewma_filter_*` handles per media session and `AndroidLiteRtEngine.enhanceFrame` pipes every model output through them; the `EnhancementSettings` toggles decide which handles exist. `CoreBridge.abiVersion()` is checked at session start, and a rejected frame logs once and passes through. |
+| The Rust core was never called from the app | `bridge/android/` crate exports 22 `Java_openllve_android_core_CoreBridge_*` symbols; `scripts/build-bridge.sh` installs `jniLibs/arm64-v8a/libbridge.so` (859,472 bytes) and the APK packages it. |
 
 ## Remaining app work
 
-1. **EWMA / flicker reduction are UI placeholders.** The toggles are exposed,
-   persisted, and passed through the configuration, but the temporal processing
-   belongs to the Rust core (`core/src/filters/ewma.rs`, the `openllve_ewma_filter_*`
-   and `openllve_blend_filter_*` C ABI in `core/src/ffi.rs`), which is not
-   wired into the Android app yet (TODO.md P1.1). They are labelled
-   "prototype — applied by the native pipeline" in the UI until the FFI
-   wiring lands.
+None from this round — the EWMA/flicker work landed with P1.1 (see the table
+above). The remaining UI labels still say "prototype — applied by the native
+pipeline"; they can be reworded once the toppings are verified on a device.
+
+Follow-ups that touch the app layer are tracked in `TODO.md`, not here: P1.7
+(`x86_64` bridge ABI), P1.8 (EWMA/blend weights as settings), P2.5 (ktlint
+debt).
 
 ## Not actionable — vendor/platform constraints (investigated, no app-side fix)
 
