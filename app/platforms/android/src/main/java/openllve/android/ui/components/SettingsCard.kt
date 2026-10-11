@@ -72,10 +72,9 @@ fun ComputeTargetCard(
 }
 
 /**
- * Enhancement toppings: EWMA and flicker reduction toggles. Exposed and
- * persisted here; in this prototype the actual temporal processing is
- * deferred to the Rust core (see TODO.md P1.1), so they are labelled as
- * "applied by the native pipeline".
+ * Enhancement toppings: EWMA smoothing and flicker reduction (blend). The
+ * toggles decide which native filters `CoreToppings` creates for a session;
+ * both run in the Rust core per frame.
  */
 @Composable
 fun ToppingsCard(
@@ -89,13 +88,11 @@ fun ToppingsCard(
             Spacer(modifier = Modifier.height(8.dp))
             ToggleRow(
                 label = "EWMA (temporal smoothing)",
-                pending = true,
                 checked = settings.ewmaEnabled,
                 onCheckedChange = { onSettingsChange(settings.copy(ewmaEnabled = it)) },
             )
             ToggleRow(
                 label = "Flicker reduction",
-                pending = true,
                 checked = settings.flickerReductionEnabled,
                 onCheckedChange = { onSettingsChange(settings.copy(flickerReductionEnabled = it)) },
             )
@@ -154,20 +151,12 @@ private fun ComputeTargetSelector(
 @Composable
 private fun ToggleRow(
     label: String,
-    pending: Boolean,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(modifier = Modifier.padding(vertical = 4.dp)) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label, style = MaterialTheme.typography.bodyMedium)
-            if (pending) {
-                Text(
-                    text = "prototype — applied by the native pipeline",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }

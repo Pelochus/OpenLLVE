@@ -113,8 +113,9 @@ strings, themes), `assets/models/` (`zero-dce-int8.tflite`),
 
 - One small, scoped commit per task; commit message states task + what
   changed.
-- After completing a task: mark it ✅ in `TODO.md`, sync the
-  `IMPROVEMENTS.md` §0 table, add follow-ups if any.
+- After completing a task: remove it from `TODO.md`'s ordered list and add a one-line
+  entry under "Recently completed", drop the row from `IMPROVEMENTS.md` §0, add
+  follow-ups if any.
 - Never mark done with failing tests, partial implementation, or
   unresolved errors.
 

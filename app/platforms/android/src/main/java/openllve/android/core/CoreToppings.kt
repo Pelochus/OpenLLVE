@@ -27,8 +27,8 @@ class CoreToppings(
         private const val CHANNELS = 3
 
         // Weights chosen for video: enough smoothing to damp frame-to-frame
-        // shimmer while a moving subject stays sharp. Exposing them as settings
-        // values is a follow-up (see TODO.md).
+        // shimmer while a moving subject stays sharp. P1.8 promotes them to
+        // `EnhancementSettings` so the user can tune them.
         private const val EWMA_ALPHA = 0.5f
         private const val BLEND_BETA = 0.7f
 

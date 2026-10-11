@@ -46,6 +46,12 @@ is committed: the JVM resolves `System.loadLibrary("bridge")` by **file name**,
 so the name is fixed there, not by Cargo's artifact name. Rebuild and re-commit
 it whenever `bridge/` or `core/src/ffi.rs` changes.
 
+Only `arm64-v8a` ships. Real devices are arm64, and PC-side validation uses the
+core directly (`cargo test`/`bench --features model`, which also builds this crate
+under `rust-core.yml`), so an `x86_64` `jniLibs` flavor is deliberately not built:
+running the APK on an x86_64 emulator fails `dlopen` and `CoreToppings` throws
+`UnsatisfiedLinkError`. Add the flavor only if emulator debugging is ever needed.
+
 ## Contract rules
 
 - Handles are `jlong` (Kotlin `Long`). Not `ULong` — unsigned JVM types change

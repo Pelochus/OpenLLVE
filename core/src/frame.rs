@@ -16,7 +16,7 @@ use crate::error::{CoreError, Result};
 ///
 /// Only `F32` exists today; further formats (e.g. `U8` for hardware
 /// buffers) will be added when `NativeFrameHandle` is wired into the FFI
-/// (P1.1).
+/// (P1.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameFormat {
     /// 32-bit float per channel.
@@ -462,7 +462,7 @@ impl OwnedFrame {
 /// column).
 ///
 /// This is the platform-side wrapper that will *produce* [`Frame`]/[`FrameRef`]
-/// views for the FFI once native buffers are wired in (P1.1).
+/// views for the FFI once native buffers are wired in (P1.5).
 pub struct NativeFrameHandle {
     width: u32,
     height: u32,

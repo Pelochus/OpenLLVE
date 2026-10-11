@@ -19,10 +19,10 @@ import openllve.shared.domain.EnhancementSettings
 import java.io.File
 
 /**
- * Temporary Android [EnhancementEngine]: runs the Zero-DCE model on the
- * LiteRT 2.3.0 `CompiledModel` API, mirroring the Rust `ModelRunner`
- * (patch tiling + learned curves), until the Rust engine is wired via the
- * C FFI (TODO.md P1.1).
+ * Android [EnhancementEngine]: runs the Zero-DCE model on the LiteRT 2.3.0
+ * `CompiledModel` API. Inference deliberately stays Kotlin-side
+ * (`docs/dev/architecture/FFI-WIRING.md` §3 — LiteRT owns the model path);
+ * the temporal toppings run in the Rust core through [CoreToppings].
  *
  * Backend notes: `CompiledModel` has no separate XNNPACK accelerator, so
  * [ComputeTarget.XNNPACK] maps to CPU (a mapping, not a fallback). Output

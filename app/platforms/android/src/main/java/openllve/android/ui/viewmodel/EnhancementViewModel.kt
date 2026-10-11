@@ -47,8 +47,8 @@ class EnhancementViewModel(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     /**
-     * Model display name (domain value; the engine stays hidden from the UI).
-     * Placeholder: no screen reads it yet; kept for the upcoming model-info UI.
+     * Model display name (domain value; the engine itself stays hidden from the
+     * UI). Reported through [ProcessingMetrics] so the result cards can show it.
      */
     val modelName: String
         get() = engine.modelName

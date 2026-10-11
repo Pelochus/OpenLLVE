@@ -150,7 +150,7 @@ private fun LogsCard(onViewLogs: () -> Unit) {
     }
 }
 
-/** Placeholder toggles for features planned in later phases. */
+/** Features not implemented yet, shown disabled so the roadmap is visible. */
 @Composable
 private fun ComingSoonCard() {
     Card(modifier = Modifier.padding(horizontal = 12.dp)) {
@@ -197,7 +197,7 @@ private fun AboutCard() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             AboutRow("Runtime", "LiteRT 2.3.0 (Google AI Edge LiteRT)")
-            AboutRow("Rust core", "pending (TODO.md P1.1)")
+            AboutRow("Rust core", "JNI bridge (bridge/android)")
             Spacer(modifier = Modifier.height(8.dp))
             AboutRow("Device", "${Build.MANUFACTURER} ${Build.MODEL}")
             AboutRow("Android", "API ${Build.VERSION.SDK_INT} (${Build.VERSION.RELEASE})")

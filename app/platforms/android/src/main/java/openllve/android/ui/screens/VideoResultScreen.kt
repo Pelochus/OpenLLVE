@@ -38,8 +38,8 @@ import openllve.shared.ui.UiState
 
 /**
  * Video result: metadata, configuration, and (once started) synchronized
- * original ↔ enhanced playback with live metrics. Synchronized playback with
- * audio is deferred to the Rust/native pipeline (TODO.md P1.1).
+ * original ↔ enhanced playback with live metrics. Audio is not part of the
+ * comparison yet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
