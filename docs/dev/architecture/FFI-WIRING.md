@@ -56,10 +56,47 @@ stays on the Kotlin-side LiteRT engine; the Rust core is wired into the
 app via the FFI for the compute path (pipelines, filters, metrics), not
 for model inference on device.
 
-## 4. Remaining implementation (P1.1, still open)
+## 4. Landed: the bridge crate (P1.1, 2026-10-11)
 
-- `cargo-ndk` cross-compile of the `cdylib` (`arm64-v8a`, `x86_64`).
-- Kotlin `external fun`s for the `openllve_*` FFI surface +
-  `System.loadLibrary("openllve_core")`.
-- Package the `.so` into the APK (`jniLibs`), then replace the Kotlin-side
-  placeholder processing with FFI calls.
+The decision in §2 shipped as a **separate crate**, `bridge/android/`, rather
+than JNI exports inside `core/`: `core/src/ffi.rs` remains the single C ABI
+contract (22 exports, `OPENLLVE_ABI_VERSION = 3`, `OpenLlveError`
+`Ok=0 / NullPointer=1 / InvalidParameter=2 / BufferDimensionMismatch=3 /
+Internal=4`) and is **not** replaced, deleted, or duplicated. The bridge crate
+depends on `openllve_core` as a normal Rust library (path dep, so the core's
+Rust API is called directly — no `dlopen` chain) and adds only the JVM
+marshalling layer.
+
+Layout:
+
+| File | Role |
+| --- | --- |
+| `bridge/android/src/bridge.rs` | one `#[jni_mangle("openllve.android.core.CoreBridge")] pub extern "system" fn` per C ABI export |
+| `bridge/android/src/frames.rs` | boundary validation: JVM `Int` dimensions/strides are signed and JVM buffers can be short, both of which the C ABI trusts (`min_stride`, `invalid_stride`, `short_buffer`, `frame_violation`) with `cargo test`-able cases |
+| `app/platforms/android/src/main/java/openllve/android/core/CoreBridge.kt` | Kotlin `external fun` contract, one declaration per export |
+| `app/platforms/android/src/main/java/openllve/android/core/CoreToppings.kt` | owns the EWMA + blend handles for one media session; `apply()` per frame, `close()` once |
+| `scripts/build-bridge.sh` | `cargo ndk -t arm64-v8a` → installs `jniLibs/<abi>/libbridge.so` |
+
+Verified facts (2026-10-11, dev container):
+
+- `nm -gD jniLibs/arm64-v8a/libbridge.so` → 22 `T Java_openllve_android_core_CoreBridge_<method>`
+  entries; `jni_mangle` converts the Rust `snake_case` names to the Kotlin
+  `lowerCamelCase` methods, so the JVM's lazy symbol lookup resolves them.
+- `libbridge.so` is 859,472 bytes and **statically contains the core** —
+  `libopenllve_core.so` is not a `DT_NEEDED` of the LiteRT dispatch libraries
+  (they need only `libandroid/log/c/m/dl`), so the APK ships one Rust library,
+  not two. The build script keeps Cargo's artifact in the gitignored
+  `bridge/android/target/` tree and installs only the renamed `libbridge.so`.
+- The JVM resolves `System.loadLibrary("bridge")` by **file name**
+  (`libbridge.so`), not by `DT_NEEDED`; that rename is why the crate's
+  `[lib] name` and the loaded name differ.
+- Kotlin side compiles: `docker/run.sh --cmd './gradlew :app:compileDebugKotlin'`
+  is green with JNI bindings declared as **instance** members of `CoreBridge`
+  (a qualified `CoreBridge.method()` call does not resolve — the bindings are
+  instance methods, so Kotlin holds one `CoreBridge()` receiver).
+
+Follow-ups left open: EWMA/blend weights are constants in `CoreToppings`
+(expose them as `EnhancementSettings` values later); `process_frame` and the
+pipeline constructors are wired but not yet used by the app (the app keeps its
+Kotlin LiteRT inference path per §3); `x86_64` ABI is not built (arm64-v8a only);
+P3.8 property tests and FFI-fuzz tests can now target the bridge.

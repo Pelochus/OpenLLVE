@@ -8,7 +8,7 @@ Status of the remaining §4 items:
 
 | Item | Status |
 | --- | --- |
-| P1.1 wire Rust core into Android | ⚠️ partial — approach decided (`docs/dev/architecture/FFI-WIRING.md`: direct JNI, no C++ layer; Rust-side LiteRT stays non-core); implementation remaining (cargo-ndk, `external fun`s, package `.so`) |
+| P1.1 wire Rust core into Android | ✅ done — `bridge/android/` crate (`jni` 0.22.4 + `jni-macros`) exports 22 `Java_openllve_android_core_CoreBridge_*` symbols over the existing `core/src/ffi.rs` C ABI; Kotlin `CoreBridge.kt` + `CoreToppings.kt` run EWMA/blend per frame; `scripts/build-bridge.sh` installs `jniLibs/arm64-v8a/libbridge.so` (see `docs/dev/architecture/FFI-WIRING.md` §4) |
 | P1.3 KMP shared layer | ✅ done — `:shared` KMP module with domain/UI-state/media contracts + `SettingsStore` persistence contract (P3.6 rejected) |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validation added (`new()` now returns `Result`, rejects null ptr / `stride < width`), manual `Debug` impl, lifetime/pixel-format documented; still not wired into the FFI (deferred to P1.1) |
 | P2.3 benchmarks | ✅ done — criterion bench covers the model path with warm-up exclusion; results table in `docs/benchmarks/` |
@@ -23,14 +23,14 @@ Status of the remaining §4 items:
 | --- | --- |
 | `core/` — Rust crate + C FFI (pipelines, filters, metrics) | Real code; **compiles and passes CI** |
 | `app/shared/` — KMP shared app logic | Real module (`:shared`): domain/UI-state/media contracts |
-| `app/platforms/android/` — Kotlin/Compose app | Functional vertical slice (LiteRT engine, media decode, Compose UI); **no FFI calls** |
+| `app/platforms/android/` — Kotlin/Compose app | Functional vertical slice (LiteRT engine, media decode, Compose UI); calls the Rust core through JNI for the temporal toppings |
 | `app/platforms/ios/` — iOS | Placeholder README only |
 
 ## 2. Architecture: stated tenets vs. actual code
 
 The docs are clear and good, but the code still contradicts them in places:
 
-1. **"All business logic must live in the Rust core"** — the C FFI is never called from anywhere in the Android app; the entire `ffi.rs` surface is dead code today (P1.1).
+1. **"All business logic must live in the Rust core"** — the EWMA and blend filters now run in the Rust core and are called from Kotlin through the `bridge/android` JNI shim (P1.1). Model inference deliberately stays on the Kotlin LiteRT path (`docs/dev/architecture/FFI-WIRING.md` §3), so the core's `process_frame`/pipeline constructors are exported but not yet exercised by the app.
 2. **"KMP for all shared app logic"** — `app/shared/` is now a real KMP module (`:shared`) with the domain, UI-state, and media contracts, plus the platform-neutral `SettingsStore` persistence contract.
 3. **"Zero-copy frame handles"** — `NativeFrameHandle` exists but is **never used by the FFI** (the FFI takes raw `float*` + dimensions) and has no lifetime/aliasing story for the raw `*mut u8`.
 
@@ -43,17 +43,16 @@ real gap is the FFI:
 
 | Location | Issue |
 | --- | --- |
-| `core/src/ffi.rs` | Entire C ABI surface is dead code — never called from Kotlin (P1.1). |
+| `core/src/ffi.rs` | C ABI is consumed by the `bridge/android` JNI shim; the pipeline constructors and `process_frame` are exported but unused by the app, which keeps its Kotlin inference path. |
 | `AndroidLiteRtEngine.kt` | Kotlin-side LiteRT engine is a parallel implementation of the Rust `ModelRunner`; the Rust core is not consulted. |
-| `EnhancementSettings.kt` | EWMA/flicker toppings are UI-only — not applied to frames (deferred to the Rust core via P1.1). |
+| `CoreToppings.kt` | Applies the EWMA/flicker toppings through the Rust core per frame; the alpha/beta weights are still constants rather than `EnhancementSettings` values. |
 
 ## 4. Suggested improvements (prioritized, remaining)
 
 ### P1 — Make the architecture real (align code with the tenets)
 
-1. **Wire the Rust core into Android end-to-end** (the single highest-value step):
-   - Cross-compile `openllve-core` to Android ABIs (`arm64-v8a`, `x86_64`) via `cargo-ndk` or a CI matrix job, packaging the `cdylib` as `libopenllve_core.so`.
-   - Load it with `System.loadLibrary("openllve_core")` and call `openllve_*` from Kotlin via `external` functions.
+1. ~~Wire the Rust core into Android end-to-end~~ — done (P1.1): the JNI shim lives in its own crate (`bridge/android/`, `libbridge.so` in `jniLibs/arm64-v8a`), and model inference deliberately stays on the Kotlin LiteRT path. `x86_64` is not built (arm64-v8a only).
+2. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used. The bridge validates JVM buffers against declared dimensions in `bridge/android/src/frames.rs` instead, so `NativeFrameHandle` is still unused.
 2. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used.
 
 ### P2 — Quality, tests, and process

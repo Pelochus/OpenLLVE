@@ -40,7 +40,9 @@ before making changes. Keep it updated when conventions change.
 - Platform code (`app/platforms/android/`) is thin glue/adapters only — SDK
   types, UI, MediaCodec, LiteRT engine.
 - FFI path is direct JNI: Rust `cdylib` → C ABI → Kotlin `external fun`s.
-  **No C++ layer.**
+  **No C++ layer.** The JVM shim is its own crate (`bridge/android/`);
+  `core/src/ffi.rs` stays the single C ABI contract and the shim calls the
+  core's Rust API through a path dependency — it is **not** a second ABI.
 - Bundle exactly **one** LiteRT vendor dispatch runtime per APK in
   `jniLibs/` (LiteRT dlopens the first `libLiteRtDispatch*` found).
 
@@ -53,7 +55,11 @@ before making changes. Keep it updated when conventions change.
   the dev container (`docker/run.sh`, see `docs/dev/docker-dev-env.md`); CI
   (`.github/workflows/android-ci.yml`) still gates Kotlin changes. Make Kotlin
   changes conservative and ktlint-clean.
-- Rust cross-compile for Android: `cargo-ndk` is installed locally.
+- Rust cross-compile for Android: `cargo-ndk` is installed locally; the JNI
+  shim is packaged into the APK by `scripts/build-bridge.sh` (run it in the
+  dev container, where the NDK lives) — see `bridge/android/README.md`.
+  `rust-core.yml` gates `core/` and `bridge/android/` with the same three
+  commands.
 
 ## 5. Commit discipline
 
