@@ -4,20 +4,43 @@
 #
 # Usage:
 #   docker/run.sh                          # build + run, interactive shell
-#   docker/run.sh --privileged            # extra run options pass through
 #   docker/run.sh --cmd './gradlew assembleDebug'   # one-shot command
 #   docker/run.sh --skip-build            # use the existing image (e.g. one
 #                                         # pulled from GHCR) without rebuilding
+#   docker/run.sh --privileged            # extra run options pass through
+#
+# Runner: CONTAINER_RUNNER=podman|docker (default: podman if installed, else
+# docker); the two runners differ in image tagging and in which uid the
+# container runs as — see docs/dev/docker-dev-env.md.
 #
 # In interactive mode the repo's pre-commit hooks are enabled once per
 # clone (git config core.hooksPath .githooks), so `git commit` runs
 # `cargo fmt --check` and `ktlint` on staged files.
 set -euo pipefail
 
-RUNNER=${CONTAINER_RUNNER:-podman}
-# Fully-qualified name: some podman versions treat bare short names as
-# needing registry resolution (and prompt, which fails without a TTY).
-IMG=${OPENLLVE_DEV_IMAGE:-localhost/openllve-dev:latest}
+RUNNER=${CONTAINER_RUNNER:-}
+if [ -z "$RUNNER" ]; then
+	if command -v podman >/dev/null 2>&1; then
+		RUNNER=podman
+	else
+		RUNNER=docker
+	fi
+fi
+case "$RUNNER" in
+podman | docker) ;;
+*)
+	echo "run.sh: CONTAINER_RUNNER must be podman or docker" >&2
+	exit 1
+	;;
+esac
+
+if [ "$RUNNER" = podman ]; then
+	IMG=${OPENLLVE_DEV_IMAGE:-localhost/openllve-dev:latest}
+	USER_OPTS=()
+else
+	IMG=${OPENLLVE_DEV_IMAGE:-openllve-dev:latest}
+	USER_OPTS=(--user "$(id -u):$(id -g)" --env HOME=/workspace)
+fi
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
 CMD=""
@@ -46,9 +69,9 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
 fi
 
 if [ -n "$CMD" ]; then
-	exec "$RUNNER" run --rm -v "$REPO":/workspace "${EXTRA[@]}" "$IMG" \
-		sh -c "$CMD"
+	exec "$RUNNER" run --rm -v "$REPO":/workspace "${EXTRA[@]}" "${USER_OPTS[@]}" \
+		"$IMG" sh -c "$CMD"
 else
-	exec "$RUNNER" run --rm -it -v "$REPO":/workspace "${EXTRA[@]}" "$IMG" \
-		sh -c 'git config core.hooksPath .githooks; exec bash'
+	exec "$RUNNER" run --rm -it -v "$REPO":/workspace "${EXTRA[@]}" "${USER_OPTS[@]}" \
+		"$IMG" sh -c 'git config core.hooksPath .githooks; exec bash'
 fi
