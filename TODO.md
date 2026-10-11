@@ -72,8 +72,58 @@ table in sync.
      cdylib → C ABI → Kotlin `external fun`s), **no C++ layer**; Rust-side
      LiteRT runner stays a non-core optional feature (PC-side testing),
      app production inference stays on the Kotlin-side LiteRT engine.
-   - Remaining: cross-compile cdylib (cargo-ndk), Kotlin `external fun`s,
-     package `.so` into the APK.
+   - **Session status (2026-10-11, interrupted — resume here).** Design settled,
+     bridge crate scaffolded but **does not compile yet**. Do not re-do the
+     investigation; the crate facts below are verified.
+   - Decisions:
+     - `core/src/ffi.rs` stays the single C ABI contract (22 exports, `OPENLLVE_ABI_VERSION
+       = 3`, `OpenLlveError` Ok=0/NullPointer=1/InvalidParameter=2/BufferDimensionMismatch=3/Internal=4,
+       `as_i32()`). The JNI layer is a **thin marshalling shim** that calls those
+       Rust functions directly — no second ABI, `ffi.rs` is NOT replaced or deleted.
+     - Crate choice: `jni` 0.22.4 + `jni-macros` 0.22.4 (`#[jni_mangle]`). Alternative
+       considered: `prebindgen` 0.5 (emits Rust+Kotlin, `ptr_class!` opaque handles).
+       **UniFFI is not usable** (v4 = Python bindings only, cannot express opaque handles).
+       Crate names `jni-native` and `jaribo` **do not exist** in the registry — verified
+       with `cargo add --dry-run` (authoritative check; crates.io HTML/API is blocked here).
+     - JNI namespace: `#[jni_mangle("openllve.android.core.CoreBridge")]` →
+       symbols `Java_openllve_android_core_CoreBridge_<method>`; Rust `snake_case` fn
+       names auto-convert to Kotlin `lowerCamelCase` methods. Kotlin class package
+       `openllve.android.core`, `System.loadLibrary("bridge")`.
+     - Handles cross as Kotlin `Long` (jlong), **not** `ULong` — unsigned JVM types
+       trigger name mangling. Never overload an `external fun`.
+     - ART resolves lazily at first call → call `abiVersion()` at startup so a
+       missing/mismatched `.so` fails fast.
+   - Verified `jni` 0.22.4 API (read from local sources under
+     `target/cargo-home/registry/src/index.crates.io-*/jni-0.22.4/`):
+     - `#[unsafe(no_mangle)] pub extern "system" fn Java_...<'caller>(mut e: EnvUnowned<'caller>, ...)`;
+       body: `e.with_env(|env| -> errors::Result<_> { ... }).resolve::<jni::errors::ThrowRuntimeExAndDefault>()`.
+     - `jni::sys::{jint=i32, jlong=i64, jfloat=f32, jdouble=f64}`; `JFloatArray<'l> = JPrimitiveArray<'l, jfloat>`.
+     - `array.get_elements(env, ReleaseMode)` is `pub unsafe fn` → `AutoElements<'l, T, &Self>`
+       (`len()`, `as_ptr() -> *mut T`, Deref→`[T]`, Drop auto-releases). Use
+       `ReleaseMode::NoCopyBack` for read-only inputs, `CopyBack` for output buffers.
+     - `JString::try_to_string(env) -> errors::Result<String>`; no `as_z_utf8` in 0.22.4.
+     - `jni.h` for cross-compile: `/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/jni.h`
+       (present in NDK r30) → set `JNI_H_INCLUDE` / `JNI_HEADER_SEARCH_PATH`.
+   - Blocked state of `bridge/android/` (new crate, crate-type `[cdylib, rlib]`, path-dep
+     `../../core`, default-features=false): `Cargo.toml` is good (invalid `linker` key removed),
+     but `src/bridge.rs` (337 L) and `src/frames.rs` (91 L) were drafted in pseudo-Rust and
+     fail to parse. Fix these constructs: `private fn`, `buffers: [usize]` (needs `&[usize]`),
+     `buffers.any(|it| …)` → `.iter().any(...)`, `std.os.raw.c_char` → `std::os::raw::c_char`,
+     missing `unsafe {}` around `get_elements`, tail `;` swallowing `jint` returns,
+     `use openllve_core::ffi::OpenLlveError` (confirm the module path `core/src/lib.rs` actually
+     publishes).
+   - Resume order: (a) make `bridge/android/src/*.rs` valid Rust against the API above →
+     (b) host `cargo build` + `llvm-nm -gD` to confirm `Java_openllve_android_core_*` symbols →
+     (c) `cargo ndk -t arm64-v8a` `.so` into `app/platforms/android/src/main/jniLibs/` (`.gitignore`
+     already negates `*.so` there) → (d) Kotlin `CoreBridge.kt` with `@JNI private external fun`
+     decls + startup `abiVersion()` → (e) wire EWMA/blend into `VideoFrameProvider.kt` (currently
+     UI-only placeholders) → (f) docs: FFI-WIRING.md §4, TODO.md ✅, IMPROVEMENTS.md §0.
+   - Known non-blockers: `openllve_metrics_new_with_warmup(warmup_frames: usize)` is `usize` in the
+     C ABI (non-standard for C; Kotlin sends `jlong`) — narrow in the bridge, do not edit `ffi.rs`.
+     ktlint CI currently has 29 pre-existing style violations (function-signature 20,
+     blank-line-before-declaration 3, class-signature 2, import-ordering 2, string-template 2)
+     to fix separately. GHCR push is blocked (no gh CLI/token: `unauthenticated: User cannot be
+     authenticated with the token provided`).
 6. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
    - Extend NPU beyond Google Tensor (the only bundled dispatch runtime)
      to Qualcomm and, if prebuilt libs become available, MediaTek. The
