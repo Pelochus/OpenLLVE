@@ -15,6 +15,8 @@ OpenLLVE is a high-performance system for real-time low-light video enhancement.
 ```text
 OpenLLVE/
 ├── core/                          # Portable Rust core + C FFI; platform-agnostic compute
+├── bridge/                        # Per-platform FFI shims over the core's one C ABI
+│   └── android/                   #   JNI shim (Kotlin `external fun`s); iOS bridge planned as bridge/ios/
 ├── app/
 │   ├── shared/                    # KMP shared app logic: contracts, UI state, domain, benchmark orchestration
 │   ├── platforms/
@@ -39,6 +41,8 @@ OpenLLVE/
 ```
 
 The important architectural rule is that `core/` stays independent from the app runtime, and Android-specific code is kept under `app/platforms/android` rather than being mixed into the shared layer.
+
+The same rule applies one level down: `core/src/ffi.rs` + `core/include/openllve_core.h` is the **one** ABI contract for every host (22 exports, C types: `uint32_t`, `size_t`, `float`, `double`, opaque handles), and each host gets its own shim crate under `bridge/` that only marshals host types. Nothing host-specific may be added to `core/`, and a shim must not redefine the ABI — it calls the core's Rust API through a path dependency. A new host (iOS/Swift, a future desktop harness) adds `bridge/<platform>/` and reuses the same header; see `bridge/android/README.md` for the worked example and `docs/dev/architecture/FFI-WIRING.md` for the decision record.
 
 ## 4. Platform Boundary
 

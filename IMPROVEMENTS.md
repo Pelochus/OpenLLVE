@@ -14,6 +14,11 @@ Status of the remaining §4 items:
 | P2.3 benchmarks | ✅ done — criterion bench covers the model path with warm-up exclusion; results table in `docs/benchmarks/` |
 | P2.4 dependency refresh | ✅ done — newest everything: LiteRT 2.3.0 + `litert-gpu`, AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.09.00 (UI 1.12.1), Gradle 9.7.1, compileSdk 37 (app + `:shared`), lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0 |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `proptest` waits for P3.8 (`serde` no longer needed — P3.6 rejected) |
+| P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core + header |
+| P1.6 iOS bridge (`bridge/ios/`) | ⚠️ open — header is C-complete (22 exports, `uint32_t`/`size_t`/`float`/`double`); Swift side not started |
+| P1.7 `x86_64` bridge ABI | ⚠️ open — `scripts/build-bridge.sh` builds arm64-v8a only |
+| P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.5f`, `BLEND_BETA = 0.7f` |
+| P2.5 ktlint debt | ⚠️ open — 31 pre-existing violations make the `android-ci.yml` ktlint step fail |
 
 ## 1. What this repo is
 
@@ -53,11 +58,20 @@ real gap is the FFI:
 
 1. ~~Wire the Rust core into Android end-to-end~~ — done (P1.1): the JNI shim lives in its own crate (`bridge/android/`, `libbridge.so` in `jniLibs/arm64-v8a`), and model inference deliberately stays on the Kotlin LiteRT path. `x86_64` is not built (arm64-v8a only).
 2. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used. The bridge validates JVM buffers against declared dimensions in `bridge/android/src/frames.rs` instead, so `NativeFrameHandle` is still unused.
+3. **Move frame validation into the core** (P1.4): the geometry/buffer checks today live in the Android shim, so a C or iOS consumer of `core/include/openllve_core.h` gets no guard while `ffi.rs` builds slices from caller-supplied numbers.
+4. **Add the iOS bridge** (P1.6): `core/include/openllve_core.h` is already C-complete, so iOS needs only a Swift marshalling crate under `bridge/ios/`.
+5. **Build the `x86_64` bridge ABI** (P1.7) so non-arm64 debug runs can load `libbridge.so`.
+6. **Expose the EWMA/blend weights as `EnhancementSettings`** (P1.8) — they are `CoreToppings` constants today.
 2. **Either wire `NativeFrameHandle` into the FFI** (pass pointer + stride + pixel format, validate dimensions) **or delete it** until it's used.
 
 ### P2 — Quality, tests, and process
 
-Nothing remaining — P2.4 (dependency refresh) is done: compileSdk 37 with the
+- **P2.5 — ktlint debt**: 31 pre-existing style violations (`function-signature` 20,
+  `blank-line-before-declaration` 3, `class-signature` 2, `import-ordering` 2,
+  `spacing-between-declarations-with-comments` 2, `string-template` 2) make the
+  `android-ci.yml` ktlint step fail; `ktlint --format` fixes most of them.
+
+P2.4 (dependency refresh) is done: compileSdk 37 with the
 newest AndroidX lines (lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx
 1.19.0, Compose 1.12.1 via BOM 2026.09.00), LiteRT 2.3.0 + `litert-gpu`, AGP
 9.4.0, KGP 2.4.20, Gradle 9.7.1; the dev image installs `platforms;android-37`.
