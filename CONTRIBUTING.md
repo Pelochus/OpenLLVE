@@ -4,6 +4,9 @@ OpenLLVE is an early-stage project; contributions are welcome.
 
 ## Ground rules
 
+Agent-facing conventions (code style, environment limits, gotchas) live in
+[AGENTS.md](AGENTS.md) — read it before contributing.
+
 - **One small, scoped commit per task.** Keep changes reviewable.
 - **Follow the layering** in [docs/dev/architecture/ARCHITECTURE.md](docs/dev/architecture/ARCHITECTURE.md):
   Rust core for business logic and compute, KMP `:shared` for shared app
