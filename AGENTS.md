@@ -111,6 +111,9 @@ strings, themes), `assets/models/` (`zero-dce-int8.tflite`),
 
 ## 5. Commit discipline
 
+- Never `git push` by default — pushing is the user's call. Push only when the
+  user explicitly asks. Every other git operation is allowed (stage, commit,
+  amend, branch, rebase).
 - One small, scoped commit per task; commit message states task + what
   changed.
 - After completing a task: remove it from `TODO.md`'s ordered list and add a one-line
