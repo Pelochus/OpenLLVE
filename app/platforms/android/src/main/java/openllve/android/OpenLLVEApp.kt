@@ -1,7 +1,7 @@
 package openllve.android
 
 import android.app.Application
-import com.example.openllve.BuildConfig
+import app.openllve.BuildConfig
 import openllve.android.data.SettingsRepository
 import openllve.android.engine.AndroidLiteRtEngine
 import openllve.android.log.AppLog

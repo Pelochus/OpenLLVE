@@ -22,7 +22,7 @@ repositories {
 }
 
 android {
-    namespace = "com.example.openllve"
+    namespace = "app.openllve"
     // compileSdk 37 (Android 17, published): required by the newest AndroidX
     // lines (lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0,
     // Compose 1.12.x via BOM 2026.09.00 all compile against API 37). AGP 9.4.0
@@ -31,7 +31,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.openllve"
+        applicationId = "app.openllve"
         // 26 (Android 8.0): floor for hardware-buffer frame decoding and the
         // NNAPI (NPU) delegate.
         minSdk = 26

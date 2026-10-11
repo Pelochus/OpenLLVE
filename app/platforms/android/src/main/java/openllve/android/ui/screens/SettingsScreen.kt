@@ -32,7 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.openllve.BuildConfig
+import app.openllve.BuildConfig
 import openllve.android.log.AppLog
 import openllve.android.ui.components.ComputeTargetCard
 import openllve.android.ui.components.ToppingsCard
