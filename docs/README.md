@@ -12,6 +12,11 @@ Index of the project documentation.
   approach and the LiteRT-on-Rust decision
 - [Docker dev environment](dev/docker-dev-env.md) — the `docker/` container
   with all build dependencies, and how to use it
+- [App fixes record](dev/app-fixes.md) — what the app layer already fixed, and
+  the vendor/platform dead ends not to re-attempt
+
+Kotlin sources nest to their package directory; the module list in
+[`../AGENTS.md`](../AGENTS.md) §3 maps those directories to roles.
 
 ## Benchmarks
 

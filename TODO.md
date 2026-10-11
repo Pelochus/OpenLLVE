@@ -170,7 +170,7 @@ table in sync.
 - **P2.1 — CI**: ktlint step in `android-ci.yml` + `release.yml` workflow.
 - **P3.2 — Threading model**: decision in `docs/dev/architecture/ARCHITECTURE.md` §12;
   docs restructured into `docs/dev/` + `docs/benchmarks/` with a
-  `docs/index.md` entry point; minimal `CONTRIBUTING.md` added.
+  `docs/README.md` entry point; minimal `CONTRIBUTING.md` added.
 - **P2.5 — Docs**: LiteRT naming standardized across docs and comments.
 
 ## Notes

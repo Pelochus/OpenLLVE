@@ -9,7 +9,7 @@ before making changes. Keep it updated when conventions change.
 - `docs/dev/architecture/ARCHITECTURE.md` — layering tenets and data flow (authoritative)
 - `TODO.md` — current task list, work one item at a time, in order
 - `IMPROVEMENTS.md` — §0 status table is the source of truth for feature status
-- `TODO-APPFIXES.md` — app fixes applied last round and what is NOT fixable in the app (vendor gates, missing hardware) — do not re-attempt those items
+- `docs/dev/app-fixes.md` — app fixes already applied and what is NOT fixable in the app (vendor gates, missing hardware) — do not re-attempt those items
 - `docs/dev/architecture/FFI-WIRING.md` — decision record for Rust↔Kotlin wiring (direct JNI, no C++ layer)
 
 ## 2. Code style — hard rules
@@ -46,6 +46,54 @@ before making changes. Keep it updated when conventions change.
 - Bundle exactly **one** LiteRT vendor dispatch runtime per APK in
   `jniLibs/` (LiteRT dlopens the first `libLiteRtDispatch*` found).
 
+### Where the code lives
+
+The Kotlin source roots nest to their package directory (`app/shared/…/openllve/shared/`, `app/platforms/android/src/main/java/openllve/android/`), so agents should navigate by this list instead of walking the tree.
+
+`core/src/` (Rust — the one C ABI):
+
+| Path | Role |
+| --- | --- |
+| `ffi.rs` | the 22 `pub unsafe extern "C"` exports + `OpenLlveError`/`OpenLlvePipeline` contracts |
+| `error.rs` | `OpenLlveError` codes (`Ok=0 NullPointer=1 InvalidParameter=2 BufferDimensionMismatch=3 Internal=4`) |
+| `frame.rs` | `FrameRef`/`Frame` pixel-buffer views + `NativeFrameHandle` (unused — P1 item 2) |
+| `filters.rs` · `filters/{blend,ewma}.rs` | `FrameBlendFilter`, `EwmaFilter` |
+| `pipelines.rs` · `pipelines/{llie,temporal}.rs` | `OpenLlvePipeline`, LLIE curve, `TemporalPipeline` |
+| `model.rs` | model/LLIE inference types |
+| `metrics.rs` | `BenchmarkMetrics` (warm-up budget, median/p95/p99/FPS) |
+| `lib.rs` · `tests/` · `benches/` | module wiring, `cargo test` gates |
+
+`bridge/android/src/` (JNI shim — JVM marshalling only):
+
+| Path | Role |
+| --- | --- |
+| `bridge.rs` | 22 `Java_openllve_android_core_CoreBridge_*` exports |
+| `frames.rs` | JVM frame-buffer guards run before pointers cross |
+| `lib.rs` | module wiring + ABI probe |
+
+`app/shared/src/commonMain/kotlin/openllve/shared/` (KMP — no platform API):
+
+| Path | Role |
+| --- | --- |
+| `domain/` | `BackendSelection`, `ComputeTarget`, `EnhancementEngine`, `EnhancementSettings`, `MediaInput`, `ProcessingMetrics`, `SettingsStore` |
+| `log/` | `LogBuffer` ring buffer, `LogEntry`, `LogLevel`, `LogLock` (+ `androidMain/`, `iosMain/` mirrors) |
+| `media/` | `FrameImage`, `FramePixels`, `VideoMetadata` |
+| `ui/` | `UiState` |
+
+`app/platforms/android/src/main/java/openllve/android/` (thin host):
+
+| Path | Role |
+| --- | --- |
+| `core/` | `CoreBridge` (`external fun`s), `CoreToppings` (filter handles per session) |
+| `engine/` | `AndroidLiteRtEngine` (LiteRT inference, `enhanceFrame`) |
+| `media/` | `VideoFrameProvider`, `ImageFrameProvider`, `BitmapFrameAdapter`, `VideoMetadataReader` |
+| `ui/` | `MainActivity`, `OpenLLVEApp`, `screens/`, `components/`, `viewmodel/`, `navigation/`, `theme/` |
+| `data/` · `log/` | DataStore settings (`SettingsRepository`), logcat mirror (`AppLog`) |
+
+`app/platforms/android/src/main/` non-code: `AndroidManifest.xml`, `res/` (icons,
+strings, themes), `assets/models/` (`zero-dce-int8.tflite`),
+`jniLibs/arm64-v8a/` (`libbridge.so` + LiteRT NPU dispatch libs), `src/test/`.
+
 ## 4. Build & test
 
 - Rust: `cargo test --manifest-path core/Cargo.toml`,
@@ -76,9 +124,10 @@ before making changes. Keep it updated when conventions change.
   NULLs the input data pointer — order must be resize → allocate → invoke
   (see `external/models/README.md`).
 - NPU items gated by vendor/OS (BP2A builds, non-arm64-v8a, missing
-  dispatch libs) are **not app bugs** — see `TODO-APPFIXES.md` before
+  dispatch libs) are **not app bugs** — see `docs/dev/app-fixes.md` before
   "fixing" them.
-- EWMA/flicker toggles are real settings but their computation belongs to
-  the Rust core; they only become effective once P1.1 (FFI wiring) lands.
+- EWMA/flicker toggles are real settings and their computation now runs in
+  the Rust core through the JNI bridge (P1.1); the weights are `CoreToppings`
+  constants until P1.8 promotes them to `EnhancementSettings`.
 - No Android device hardware available: end-to-end NPU/GPU validation
   cannot be done here; never claim device-verified results.

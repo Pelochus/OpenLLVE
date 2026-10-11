@@ -8,7 +8,7 @@ OpenLLVE is an early implementation: the Rust core and the KMP shared layer are 
 
 ## Documentation
 
-Start at the [documentation index](docs/index.md).
+Start at the [documentation index](docs/README.md).
 
 - [Architecture](docs/dev/architecture/ARCHITECTURE.md) - boundaries, tenets, data flow, and repository structure
 - [Rust core](core/README.md) - modules, pipelines, filters, FFI, tests, and benchmarks
@@ -20,10 +20,26 @@ Start at the [documentation index](docs/index.md).
 
 ## Repository at a Glance
 
-- `core/` - platform-independent Rust business logic and compute
+Source layers (the only things you edit):
+
+- `core/` - platform-independent Rust business logic and compute (the one C ABI)
+- `bridge/android/` - JNI marshalling shim for the JVM host (P1.1)
 - `app/shared/` - Kotlin Multiplatform shared app logic
-- `app/platforms/android/` - Android-specific source tree and integration
-- `app/platforms/ios/` - future iOS integration
+- `app/platforms/android/` - Android host: UI, MediaCodec, LiteRT, `jniLibs/`
+- `app/platforms/ios/` - reserved for the future iOS host (P4)
+- `external/models/` - vendored model + LiteRT NPU dispatch libraries
+- `docs/` - documentation (`docs/README.md` is the index)
+- `scripts/`, `docker/` - build helpers and the dev container
+- `.github/workflows/` - CI gates
+
+Generated, never pushed (`git ls-files` lists only what is pushed):
+
+- `target/`, `bridge/android/target/` - cargo build dirs
+- `app/build/`, `build/`, `.gradle/`, `.kotlin/` - Gradle outputs; the debug APK
+  is `app/build/outputs/apk/debug/app-debug.apk` once `./gradlew assembleDebug`
+  has run
+
+Kotlin sources nest to their package directory (`app/shared/…/openllve/shared/`, `app/platforms/android/src/…/openllve/android/`); the module list in [`AGENTS.md`](AGENTS.md) §3 maps those directories to roles.
 
 ## Getting Started
 
