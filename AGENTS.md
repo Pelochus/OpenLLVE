@@ -49,9 +49,10 @@ before making changes. Keep it updated when conventions change.
 - Rust: `cargo test --manifest-path core/Cargo.toml`,
   `cargo clippy … -- -D warnings`, `cargo fmt --check` (all three are CI gates).
 - Android: `./gradlew assembleDebug` / `testDebugUnitTest` — needs JDK 17 +
-  Android SDK. **This dev box has no JDK**, so Kotlin cannot be compiled
-  locally; CI (`.github/workflows/android-ci.yml`) is the gate for Kotlin
-  changes. Make Kotlin changes conservative and ktlint-clean.
+  Android SDK. The host has a JDK but no Android SDK, so Kotlin builds run in
+  the dev container (`docker/run.sh`, see `docs/dev/docker-dev-env.md`); CI
+  (`.github/workflows/android-ci.yml`) still gates Kotlin changes. Make Kotlin
+  changes conservative and ktlint-clean.
 - Rust cross-compile for Android: `cargo-ndk` is installed locally.
 
 ## 5. Commit discipline

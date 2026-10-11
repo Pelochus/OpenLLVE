@@ -65,7 +65,7 @@ table in sync.
    and full toolchain bump (AGP 9.4.0, KGP 2.4.20, Compose BOM 2026.09.00 →
    Compose UI 1.12.1, Gradle 9.7.1, compileSdk 37 in `:app` and `:shared`,
    lifecycle 2.11.0, navigation-compose 2.10.2, core-ktx 1.19.0; `docker/envsetup.sh`
-   installs `platforms;android-37`). targetSdk stays at 34 (independent of
+   installs `platforms;android-37.0`). targetSdk stays at 34 (independent of
    compileSdk).
 5. [~] **P1.1 — Android native (Rust) wiring**.
    - Investigation done: `docs/dev/architecture/FFI-WIRING.md` — direct JNI (Rust
