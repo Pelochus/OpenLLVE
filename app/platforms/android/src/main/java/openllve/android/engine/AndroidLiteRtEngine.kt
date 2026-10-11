@@ -9,6 +9,7 @@ import com.google.ai.edge.litert.NpuAcceleratorProvider
 import com.google.ai.edge.litert.NpuCompatibilityChecker
 import com.google.ai.edge.litert.TensorBuffer
 import com.google.ai.edge.litert.TensorType
+import openllve.android.core.CoreToppings
 import openllve.android.log.AppLog
 import openllve.shared.domain.BackendProbeResult
 import openllve.shared.domain.BackendSelection
@@ -48,6 +49,12 @@ class AndroidLiteRtEngine(
 
     @Volatile
     private var lastInferenceMsValue = 0L
+    /** Native temporal toppings for the current session, rebuilt on size/toggle change. */
+    private var sessionToppings: CoreToppings? = null
+    private var sessionWidth = 0
+    private var sessionHeight = 0
+    /** Toggles captured at configure() time, which is the only place they arrive. */
+    private var configureSettings: EnhancementSettings? = null
 
     override val lastInferenceMs: Long
         get() = lastInferenceMsValue
@@ -93,6 +100,7 @@ class AndroidLiteRtEngine(
         val modelFile = loadModelFile(context)
         val requested = settings.computeTarget
         release()
+        configureSettings = settings
 
         val (model, actual, reason) = createModelWithFallback(modelFile, requested, defaultThreads())
         compiledModel = model
@@ -143,14 +151,44 @@ class AndroidLiteRtEngine(
                 accumulate(i, j, numH, numW, wPad, patchOut, accum)
             }
         }
-        val output = FloatArray(width * height * 3)
-        applyCurves(input, output, width, height, wPad, accum)
+        val modelOutput = FloatArray(width * height * 3)
+        applyCurves(input, modelOutput, width, height, wPad, accum)
         this.lastInferenceMsValue = SystemClock.elapsedRealtime() - start
         AppLog.debug("enhanceFrame: ${width}x${height}, ${numW * numH} patches, ${lastInferenceMsValue}ms", "Engine")
-        return output
+        val toppings = coreToppingsFor(width, height)
+        if (toppings == null) {
+            return modelOutput
+        }
+        return toppings.apply(input, modelOutput)
+    }
+
+    /**
+     * Returns the native filters for this session, or null when no topping is
+     * enabled or `configure()` has not run yet. Filters keep state across frames,
+     * so they are rebuilt only when the frame size changes, never per frame.
+     */
+    private fun coreToppingsFor(
+        width: Int,
+        height: Int,
+    ): CoreToppings? {
+        val settings = configureSettings ?: return null
+        val current = sessionToppings
+        if (current != null && sessionWidth == width && sessionHeight == height) {
+            return current
+        }
+        sessionToppings?.close()
+        val created = CoreToppings(settings, width, height)
+        sessionToppings = created
+        sessionWidth = width
+        sessionHeight = height
+        return created
     }
 
     override fun release() {
+        sessionToppings?.close()
+        sessionToppings = null
+        sessionWidth = 0
+        sessionHeight = 0
         inputBuffer?.close()
         inputBuffer = null
         outputBuffer?.close()
