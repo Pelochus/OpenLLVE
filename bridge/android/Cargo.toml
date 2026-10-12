@@ -18,3 +18,8 @@ crate-type = ["cdylib", "rlib"]
 openllve_core = { path = "../../core", package = "openllve-core", default-features = false }
 jni = "0.22.4"
 jni-macros = "0.22.4"
+
+[dev-dependencies]
+# Property/fuzz harnesses (`src/frames.rs::ffi_fuzz`) — test-only, never linked
+# into the shipped `libbridge.so`.
+proptest = "1.1"
