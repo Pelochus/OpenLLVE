@@ -21,7 +21,7 @@ is statically linked into `libbridge.so`.
 | Path | Role |
 | --- | --- |
 | `src/bridge.rs` | one export per `core/src/ffi.rs` function, named by `#[jni_mangle("openllve.android.core.CoreBridge")]` |
-| `src/frames.rs` | boundary checks for JVM-supplied frame geometry + buffers, with `cargo test` coverage |
+| `src/frames.rs` | host facts only (JVM `Int` sign, JVM array element counts) checked against the core's frame contract, with `cargo test` coverage |
 | `../app/platforms/android/src/main/java/openllve/android/core/CoreBridge.kt` | the Kotlin `external fun` contract (must match 1:1) |
 | `../app/platforms/android/src/main/java/openllve/android/core/CoreToppings.kt` | app-side owner of the filter handles |
 
@@ -59,9 +59,12 @@ running the APK on an x86_64 emulator fails `dlopen` and `CoreToppings` throws
 - Frames are `jfloatarray` (Kotlin `FloatArray`); strides are **bytes** per row.
 - Core-level failures return an `OpenLlveError` code (`0` = success); JNI-level
   failures (bad array reference, a Rust panic) throw a JVM exception.
-- `frames.rs` runs before any pointer crosses the boundary: the C ABI derives
-  buffer lengths from its dimension arguments and trusts the caller, so a short
-  Kotlin array would otherwise be read past its allocation.
+- `frames.rs` runs before any pointer crosses the boundary. It keeps only JVM
+  facts — `Int` is signed, and a Kotlin array reports an element count, not a
+  byte length. The frame contract itself (positive dimensions, stride alignment,
+  row width, buffer requirement) is the core's: `crate::frame.validate_dimensions`
+  and `crate::frame.buffer_elements`, the same functions `core/src/ffi.rs` runs
+  before it sizes any caller memory. One contract, every host.
 - The library is loaded lazily on first call. `CoreBridge.abiVersion()` is the
   startup probe: call it early so a missing or mismatched `.so` fails at startup
   instead of mid-frame.

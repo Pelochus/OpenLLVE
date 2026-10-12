@@ -3,43 +3,46 @@
 //! `core/src/ffi.rs` derives each buffer's length from the dimensions it is handed and
 //! trusts the caller's pointer, so a JVM array shorter than those dimensions would be
 //! read past its allocation. Every check here runs before any pointer crosses the
-//! boundary; the core re-validates the same invariants on its side.
+//! boundary; the frame contract itself is the core's (`crate::frame`) and is called
+//! through, never duplicated here — see docs/dev/architecture/FFI-WIRING.md.
 
 use jni::sys::jint;
 use openllve_core::ffi::OpenLlveError;
-
-/// JVM `Int`s are signed, so non-positive dimensions/stride are caller errors, and
-/// a stride that is not a whole number of `f32` elements is the core's own
-/// rejection — with an unaligned stride the buffer requirement would round down
-/// past the allocation, so it is rejected before any pointer crosses.
-fn unusable_dimensions(width: jint, height: jint, channels: jint, stride: jint) -> bool {
-    width <= 0 || height <= 0 || channels <= 0 || stride <= 0 || stride % 4 != 0
-}
-
-/// Elements a JVM buffer must hold to cover `stride` bytes per row over `height`
-/// rows of `f32`. Assumes usable dimensions, so the division is exact.
-fn required_elements(height: jint, stride: jint) -> usize {
-    (stride as usize).saturating_mul(height as usize) / 4
-}
+use openllve_core::frame::{buffer_elements, validate_dimensions};
 
 /// The [`OpenLlveError`] code for these dimensions and buffer element counts,
 /// [`Ok`] when every buffer is large enough. `buffers` holds the element count of
 /// each JVM frame buffer the call touches.
+///
+/// Only host facts live here: JVM `Int` is signed, so a non-positive dimension is
+/// a caller error the core never sees, and `buffers` is how a JVM array reports
+/// its length. Dimensions, stride alignment, row width and the buffer requirement
+/// are the core's checks.
 pub fn frame_violation(width: jint, height: jint, channels: jint, stride: jint, buffers: &[usize]) -> jint {
-    if unusable_dimensions(width, height, channels, stride) {
+    if [width, height, channels, stride].iter().any(|it| *it <= 0) {
         return OpenLlveError::InvalidParameter.as_i32();
     }
-    // Saturating math: JVM `Int` is unbounded relative to these products, so an
-    // absurd dimension must classify as invalid rather than wrap or trap.
-    let row_bytes: usize = (width as usize).saturating_mul(channels as usize).saturating_mul(4);
-    if (stride as usize) < row_bytes {
+    let dimensions = validate_dimensions(
+        width as u32,
+        height as u32,
+        channels as u32,
+        stride as usize,
+    );
+    if dimensions.is_err() {
         return OpenLlveError::InvalidParameter.as_i32();
     }
-    let required: usize = required_elements(height, stride);
-    if buffers.iter().any(|it| *it < required) {
-        return OpenLlveError::BufferDimensionMismatch.as_i32();
+    // JVM array lengths are `Int`, so a frame whose requirement overflows u64
+    // cannot exist here; the core rejects those dimensions outright.
+    match buffer_elements(height as u32, stride as usize) {
+        None => OpenLlveError::InvalidParameter.as_i32(),
+        Some(required) => {
+            if buffers.iter().any(|it| (*it as u64) < required) {
+                OpenLlveError::BufferDimensionMismatch.as_i32()
+            } else {
+                OpenLlveError::Ok.as_i32()
+            }
+        }
     }
-    OpenLlveError::Ok.as_i32()
 }
 
 #[cfg(test)]
