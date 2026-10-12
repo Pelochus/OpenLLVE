@@ -38,7 +38,9 @@ live in `AGENTS.md`.
      functions, return the same `OpenLlveError` codes), have both bridges call it, and
      keep in the shim only host facts (JVM array element count, signed `jint`).
 4. [ ] **P1.8 — Promote EWMA/blend weights to `EnhancementSettings`.** `CoreToppings`
-   keeps `EWMA_ALPHA = 0.5f` / `BLEND_BETA = 0.7f` as constants while the UI already
+   keeps `EWMA_ALPHA = 0.8f` / `BLEND_BETA = 0.85f` (defaults tuned for video:
+   alpha weights the current frame — no ghosting, mild flicker damping) as
+   constants while the UI already
    exposes `ewmaEnabled` / `flickerReductionEnabled`; the weights are the missing half.
 5. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
     - Beyond Google Tensor: Qualcomm, then MediaTek if prebuilt libs appear. The newest

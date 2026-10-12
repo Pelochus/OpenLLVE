@@ -26,11 +26,15 @@ class CoreToppings(
     companion object {
         private const val CHANNELS = 3
 
-        // Weights chosen for video: enough smoothing to damp frame-to-frame
-        // shimmer while a moving subject stays sharp. P1.8 promotes them to
-        // `EnhancementSettings` so the user can tune them.
-        private const val EWMA_ALPHA = 0.5f
-        private const val BLEND_BETA = 0.7f
+        // EWMA_ALPHA weights the CURRENT frame (core/src/filters/ewma.rs:
+        // out = alpha*current + (1-alpha)*previous); 0.8 keeps most of the
+        // current frame so ghosting stays invisible on video while still
+        // damping frame-to-frame shimmer. BLEND_BETA weights the
+        // AI-enhanced frame — 0.9 keeps the picture mostly model output. P1.8
+        // promotes both to `EnhancementSettings`; core/tests/filters_properties.rs
+        // pins this pair in a golden-frame hash.
+        private const val EWMA_ALPHA = 0.8f
+        private const val BLEND_BETA = 0.9f
 
         // Bytes per row for a tightly packed RGB `FloatArray` (4 bytes per element).
         private const val STRIDE_SCALE = CHANNELS * 4

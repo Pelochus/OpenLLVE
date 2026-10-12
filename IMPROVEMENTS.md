@@ -13,7 +13,7 @@ Status of the remaining §4 items (finished work is not listed — see `TODO.md`
 | P3.3 crate additions | ⚠️ partial — `bytemuck` added; `proptest` waits for P3.8 (`serde` no longer needed — P3.6 rejected) |
 | P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core + header |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer, tracked at a high level only (§4 P4); the C header is already complete for it |
-| P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.5f`, `BLEND_BETA = 0.7f` |
+| P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.8f`, `BLEND_BETA = 0.85f` (video-tuned defaults) |
 
 ## 1. What this repo is
 
