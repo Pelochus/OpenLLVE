@@ -57,6 +57,13 @@ live in `AGENTS.md`.
      P4.4 SwiftUI on the `:shared` contracts.
    - Hard rule: nothing iOS-specific enters `core/` or `app/shared/` — one bridge crate
      per host.
+5. [ ] **P5 — App UI in the Morphe Manager style** ([MorpheApp/morphe-manager](https://github.com/MorpheApp/morphe-manager)).
+   - Look-and-structure reference only: Material 3 surfaces, card + toggle layout, icon-led
+     settings rows, step/progress indicators while a session runs.
+   - License gate: `morphe-manager` is GPL-3.0, this repo is Apache-2.0 — imitate the design,
+     never port its code.
+   - Parked: no UI work until asked; UI lives in `app/platforms/android/…/ui/` on top of the
+     `:shared` UI-state contracts.
 
 ## Notes
 

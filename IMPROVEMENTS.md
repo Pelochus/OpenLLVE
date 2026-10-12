@@ -11,6 +11,7 @@ this file tracks what remains.*
 | P3.3 crate additions | ⚠️ partial — `bytemuck` + `proptest` added (`serde` no longer needed — P3.6 rejected) |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer tracked at a high level only (§4 P4); the C ABI in `ffi.rs` is already complete for it |
 | P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.8f`, `BLEND_BETA = 0.9f` (80 % of the current frame: flicker damped without visible ghosting; 90 % AI-enhanced) |
+| P5 Morphe-style app UI | ⏸ parked — design reference recorded (§4 P5, `TODO.md` item 5), no UI work started |
 
 ## 1. What this repo is
 
@@ -79,6 +80,12 @@ platform actually starts. Keep these as one-liners.
 
 Hard rule: nothing iOS-specific may enter `core/` or `app/shared/` — each host gets
 its own bridge crate.
+
+### P5 — App UI (parked idea)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| P5 | Morphe Manager-style UI | Look-and-structure reference: [MorpheApp/morphe-manager](https://github.com/MorpheApp/morphe-manager) — Material 3 surfaces, card + toggle layout, icon-led settings rows, step/progress indicators. License gate: that repo is GPL-3.0, this one Apache-2.0 — imitate the design, never port its code. UI is host-side (`app/platforms/android/…/ui/`) over the `:shared` UI-state contracts |
 
 ## 5. What's already good
 
