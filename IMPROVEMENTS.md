@@ -63,8 +63,7 @@ Nothing here blocks the build.
 
 | # | Item | Effort | Verdict | Notes |
 | --- | --- | --- | --- | --- |
-| P3.3 | Crate additions | easy | enabler | Add each crate when its paired item lands: `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. |
-| P3.8 | Property / FFI-fuzz tests | med | done | `core/tests/filters_properties.rs`: EWMA-bounds, blend-convexity, blend-endpoint proptests + golden-frame hash pinning the app defaults (EWMA 0.8 / blend 0.9). FFI fuzzing landed on both boundaries: `core/tests/ffi_fuzz.rs` (C-ABI handles, dims, strides, weights — nulls/dims/params classified, no UB) and `bridge/android/src/frames.rs::ffi_fuzz` (adversarial JVM `Int` tuples against an independent oracle). The bridge fuzz caught the guard accepting a stride that is not a whole number of `f32`, whose requirement rounds down past the allocation — now rejected there as in the core. |
+| P3.3 | Crate additions | easy | enabler | Add each crate when its paired item lands: `proptest` (added) → property tests; `miri` as a CI job later; `static_assertions` optional. |
 
 ### P4 — iOS platform (deliberately high-level)
 
