@@ -3,11 +3,11 @@
 // `OpenLlveError` codes, must never write outside the buffers the caller owns,
 // and must never free a handle twice.
 //
-// Fuzz envelope: `stride * height` stays inside `usize`, so the ABI's length math
-// is exact and every call here is defined behaviour. Strides large enough to wrap
-// that product are the P1.4 gap (frame validation must use saturating math); the
-// JVM guard in `bridge/android/src/frames.rs` rejects them with saturating
-// arithmetic, so no JNI caller can reach the wrap.
+// Fuzz envelope: `stride * height` stays inside `usize` for the frame properties
+// below, so the ABI's length math is exact and every call there is defined
+// behaviour. Pairs whose product leaves the address space are asserted rejected
+// instead (P1.4): the ABI used to wrap them into a short slice, which then
+// validated as a legal frame over memory the caller does not own.
 
 use openllve_core::ffi::{
     OpenLlveError, openllve_blend_filter_apply, openllve_blend_filter_free, openllve_blend_filter_new,
@@ -68,6 +68,12 @@ const BAD_WIDTH: [u32; 5] = [0, 1, 5, u32::MAX, 0xFFFF_FFFC];
 const BAD_HEIGHT: [u32; 4] = [0, 1, 2, 8];
 const BAD_CHANNELS: [u32; 5] = [0, 1, 3, 4, 1024];
 const BAD_STRIDE: [usize; 5] = [0, 3, 4, 16, 1024];
+
+// Stride/height pairs whose product leaves the address space, so no buffer can
+// ever satisfy them; the stride itself is aligned and wide enough, so the only
+// reason to reject these is that the frame cannot be sized.
+const IMPOSSIBLE_STRIDE: [usize; 3] = [1usize << 62, (1usize << 62) + 4, usize::MAX - 3];
+const IMPOSSIBLE_HEIGHT: u32 = 8;
 
 // Weights outside the unit interval, including the non-ordered float values.
 const WEIGHTS: [f32; 9] = [
@@ -213,6 +219,27 @@ proptest! {
         assert!(out.iter().all(|it| *it == 0.0));
         unsafe {
             openllve_blend_filter_free(handle)
+        };
+    }
+
+    #[test]
+    fn fuzz_frames_larger_than_the_address_space_are_rejected(
+        w in select(WIDTH.to_vec()),
+        c in select(CHANNELS.to_vec()),
+        stride in select(IMPOSSIBLE_STRIDE.to_vec()),
+    ) {
+        let data = vec![0.5f32; 16];
+        let mut out = vec![0.0f32; 16];
+        let handle = openllve_ewma_filter_new(0.5);
+        assert!(!handle.is_null());
+        let code = unsafe {
+            openllve_ewma_filter_apply( handle, w, IMPOSSIBLE_HEIGHT, c, stride, data.as_ptr(), out.as_mut_ptr(), )
+        };
+        assert_eq!(code, OpenLlveError::InvalidParameter.as_i32());
+        // The frame was never sized, so nothing was read or written.
+        assert!(out.iter().all(|it| *it == 0.0));
+        unsafe {
+            openllve_ewma_filter_free(handle)
         };
     }
 

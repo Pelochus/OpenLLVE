@@ -32,8 +32,14 @@ impl FrameFormat {
     }
 }
 
-/// Validates frame dimensions against a data buffer length (in elements).
-fn validate(width: u32, height: u32, channels: u32, stride: usize, data_len: usize) -> Result<()> {
+/// The frame contract that needs no buffer: non-zero dimensions, a stride that
+/// is a whole number of elements, and a stride at least one row wide.
+///
+/// Every consumer of the C ABI calls this before it views caller memory. The
+/// arithmetic is u64 because a language boundary accepts dimensions whose
+/// products do not fit any sane buffer — those must classify as errors rather
+/// than wrap into a short slice.
+pub fn validate_dimensions(width: u32, height: u32, channels: u32, stride: usize) -> Result<()> {
     let elem = FrameFormat::F32.element_size();
     if width == 0 || height == 0 || channels == 0 {
         return Err(CoreError::InvalidParameter(
@@ -46,21 +52,42 @@ fn validate(width: u32, height: u32, channels: u32, stride: usize, data_len: usi
             stride, elem
         )));
     }
-    let min_stride = width as usize * channels as usize * elem;
-    if stride < min_stride {
+    let min_stride = (width as u64) * (channels as u64) * (elem as u64);
+    if (stride as u64) < min_stride {
         return Err(CoreError::InvalidParameter(format!(
             "stride {} bytes must be >= width*channels*element_size ({})",
             stride, min_stride
         )));
     }
-    let min_len = stride * height as usize / elem;
-    if data_len < min_len {
-        return Err(CoreError::InvalidParameter(format!(
-            "buffer of {} elements must be >= stride*height/element_size ({})",
-            data_len, min_len
-        )));
-    }
     Ok(())
+}
+
+/// Elements a buffer must hold to back a frame of these dimensions, [`None`]
+/// when the frame is larger than any buffer could be: `stride * height` beyond
+/// the address space cannot exist, and it must not wrap into a short slice —
+/// that wrap is what once let the C ABI size an empty view of a huge frame.
+pub fn buffer_elements(height: u32, stride: usize) -> Option<u64> {
+    let elem = FrameFormat::F32.element_size();
+    (stride as u64).checked_mul(height as u64).map(|it| it / (elem as u64))
+}
+
+/// Validates frame dimensions against a data buffer length (in elements).
+///
+/// The buffer length is what the host reports; on the JVM that is the array's
+/// real element count, which is why this check must not be duplicated per
+/// bridge — see bridge/android/README.md.
+pub fn validate(width: u32, height: u32, channels: u32, stride: usize, data_len: usize) -> Result<()> {
+    validate_dimensions(width, height, channels, stride)?;
+    match buffer_elements(height, stride) {
+        None => Err(CoreError::InvalidParameter(
+            "stride * height describes a frame larger than any buffer could be".to_string(),
+        )),
+        Some(min_len) if (data_len as u64) < min_len => Err(CoreError::BufferDimensionMismatch {
+            expected: min_len.try_into().unwrap_or(usize::MAX),
+            actual: data_len,
+        }),
+        Some(_) => Ok(()),
+    }
 }
 
 /// Immutable, zero-copy view of a caller-owned frame buffer.
@@ -621,7 +648,28 @@ mod tests {
     fn test_frame_rejects_small_buffer() {
         let mut data = vec![0.0f32; 10];
         let err = Frame::new(W, H, C, STRIDE, &mut data).unwrap_err();
+        assert!(matches!(err, CoreError::BufferDimensionMismatch { .. }));
+    }
+
+    #[test]
+    fn test_stride_height_products_never_wrap() {
+        // 2^62 * 8 does not fit u64: it is rejected, where the old `stride * height
+        // / 4` wrapped to zero and sized an empty view of a frame claiming 2^60
+        // elements.
+        let stride = 1usize << 62;
+        let empty: [f32; 0] = [];
+        assert_eq!(buffer_elements(8, stride), None);
+        let err = FrameRef::new(1, 8, 1, stride, &empty).unwrap_err();
         assert!(matches!(err, CoreError::InvalidParameter(_)));
+        assert_eq!(buffer_elements(8, 16), Some(32u64));
+    }
+
+    #[test]
+    fn test_dimensions_are_checked_before_any_buffer_exists() {
+        assert!(validate_dimensions(0, 1, 1, 4).is_err());
+        assert!(validate_dimensions(1, 1, 1, 3).is_err());
+        assert!(validate_dimensions(4, 1, 1, 4).is_err());
+        assert!(validate_dimensions(4, 1, 1, 16).is_ok());
     }
 
     #[test]

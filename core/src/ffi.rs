@@ -14,7 +14,7 @@ use std::slice;
 
 use crate::error::CoreError;
 use crate::filters::{EwmaFilter, FrameBlendFilter};
-use crate::frame::{Frame, FrameRef};
+use crate::frame::{Frame, FrameRef, buffer_elements, validate_dimensions};
 use crate::metrics::BenchmarkMetrics;
 use crate::pipelines::{LliePipeline, LlveTemporalPipeline, Pipeline};
 
@@ -46,6 +46,19 @@ fn core_error_to_abi(error: &CoreError) -> OpenLlveError {
         CoreError::BufferDimensionMismatch { .. } => OpenLlveError::BufferDimensionMismatch,
         CoreError::InferenceFailure(_) | CoreError::HardwareError(_) => OpenLlveError::Internal,
     }
+}
+
+/// Element count for a frame buffer the caller describes with these numbers,
+/// [`None`] when the description is unusable: invalid dimensions, or a `stride *
+/// height` product that cannot be a buffer length. The core derives slice
+/// lengths from caller numbers, so every frame-taking export runs this check
+/// before it views a pointer. Only the dimensions are known on this side of the
+/// boundary, so an unusable description is reported as a parameter error.
+fn frame_elements(width: u32, height: u32, channels: u32, stride: usize) -> Option<usize> {
+    if validate_dimensions(width, height, channels, stride).is_err() {
+        return None;
+    }
+    buffer_elements(height, stride).and_then(|it| it.try_into().ok())
 }
 
 /// Pipeline handle: LLIE (static frame enhancer) or temporal (sequence model).
@@ -146,7 +159,10 @@ pub unsafe extern "C" fn openllve_pipeline_free(pipeline: *mut OpenLlvePipeline)
 /// `pipeline` must be a valid, non-null pipeline handle owned by the calling
 /// thread. `in_data` must be non-null, aligned, and valid for reads of at
 /// least `in_stride * in_height` bytes; `out_data` must be non-null, aligned,
-/// and valid for writes of at least `out_stride * out_height` bytes.
+/// and valid for writes of at least `out_stride * out_height` bytes. A frame
+/// the core cannot size (non-zero dimensions, an element-aligned stride, or a
+/// `stride * height` that is not a buffer length) is reported as
+/// [`OpenLlveError::InvalidParameter`] before either pointer is touched.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_process_frame(
     pipeline: *mut OpenLlvePipeline,
@@ -165,36 +181,42 @@ pub unsafe extern "C" fn openllve_process_frame(
         return OpenLlveError::NullPointer.as_i32();
     }
 
-    unsafe {
-        let pipeline = &mut *pipeline;
-        let input = FrameRef::new(
-            in_width,
-            in_height,
-            in_channels,
-            in_stride,
-            slice::from_raw_parts(in_data, in_stride * in_height as usize / 4),
-        );
-        let output = Frame::new(
-            out_width,
-            out_height,
-            out_channels,
-            out_stride,
-            slice::from_raw_parts_mut(out_data, out_stride * out_height as usize / 4),
-        );
+    match (
+        frame_elements(in_width, in_height, in_channels, in_stride),
+        frame_elements(out_width, out_height, out_channels, out_stride),
+    ) {
+        (None, _) | (_, None) => OpenLlveError::InvalidParameter.as_i32(),
+        (Some(in_len), Some(out_len)) => unsafe {
+            let pipeline = &mut *pipeline;
+            let input = FrameRef::new(
+                in_width,
+                in_height,
+                in_channels,
+                in_stride,
+                slice::from_raw_parts(in_data, in_len),
+            );
+            let output = Frame::new(
+                out_width,
+                out_height,
+                out_channels,
+                out_stride,
+                slice::from_raw_parts_mut(out_data, out_len),
+            );
 
-        match (input, output) {
-            (Ok(input), Ok(mut output)) => {
-                let result = match pipeline {
-                    OpenLlvePipeline::Llie(s) => s.process(&input, &mut output),
-                    OpenLlvePipeline::Temporal(s) => s.process(&input, &mut output),
-                };
-                match result {
-                    Ok(()) => 0,
-                    Err(e) => core_error_to_abi(&e).as_i32(),
+            match (input, output) {
+                (Ok(input), Ok(mut output)) => {
+                    let result = match pipeline {
+                        OpenLlvePipeline::Llie(s) => s.process(&input, &mut output),
+                        OpenLlvePipeline::Temporal(s) => s.process(&input, &mut output),
+                    };
+                    match result {
+                        Ok(()) => 0,
+                        Err(e) => core_error_to_abi(&e).as_i32(),
+                    }
                 }
+                (Err(e), _) | (_, Err(e)) => core_error_to_abi(&e).as_i32(),
             }
-            (Err(e), _) | (_, Err(e)) => core_error_to_abi(&e).as_i32(),
-        }
+        },
     }
 }
 
@@ -223,7 +245,9 @@ pub extern "C" fn openllve_ewma_filter_new(alpha: f32) -> *mut EwmaFilter {
 /// `openllve_ewma_filter_new` and owned by the calling thread. `input_data`
 /// must be non-null, aligned, and valid for reads of at least `stride *
 /// height` bytes; `output_data` must be non-null, aligned, and valid for
-/// writes of at least `stride * height` bytes.
+/// writes of at least `stride * height` bytes. Dimensions the core cannot size are
+/// reported as `InvalidParameter` before either pointer is touched (see
+/// [`frame_elements`]).
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_ewma_filter_apply(
     filter: *mut EwmaFilter,
@@ -238,30 +262,33 @@ pub unsafe extern "C" fn openllve_ewma_filter_apply(
         return OpenLlveError::NullPointer.as_i32();
     }
 
-    unsafe {
-        let filter = &mut *filter;
-        let input = FrameRef::new(
-            width,
-            height,
-            channels,
-            stride,
-            slice::from_raw_parts(input_data, stride * height as usize / 4),
-        );
-        let output = Frame::new(
-            width,
-            height,
-            channels,
-            stride,
-            slice::from_raw_parts_mut(output_data, stride * height as usize / 4),
-        );
+    match frame_elements(width, height, channels, stride) {
+        None => OpenLlveError::InvalidParameter.as_i32(),
+        Some(elements) => unsafe {
+            let filter = &mut *filter;
+            let input = FrameRef::new(
+                width,
+                height,
+                channels,
+                stride,
+                slice::from_raw_parts(input_data, elements),
+            );
+            let output = Frame::new(
+                width,
+                height,
+                channels,
+                stride,
+                slice::from_raw_parts_mut(output_data, elements),
+            );
 
-        match (input, output) {
-            (Ok(input), Ok(mut output)) => match filter.apply(&input, &mut output) {
-                Ok(()) => 0,
-                Err(e) => core_error_to_abi(&e).as_i32(),
-            },
-            (Err(e), _) | (_, Err(e)) => core_error_to_abi(&e).as_i32(),
-        }
+            match (input, output) {
+                (Ok(input), Ok(mut output)) => match filter.apply(&input, &mut output) {
+                    Ok(()) => 0,
+                    Err(e) => core_error_to_abi(&e).as_i32(),
+                },
+                (Err(e), _) | (_, Err(e)) => core_error_to_abi(&e).as_i32(),
+            }
+        },
     }
 }
 
@@ -301,7 +328,9 @@ pub extern "C" fn openllve_blend_filter_new(beta: f32) -> *mut FrameBlendFilter 
 /// `filter` must be a valid, non-null handle returned by
 /// `openllve_blend_filter_new` and owned by the calling thread. `raw_data`,
 /// `enhanced_data`, and `output_data` must be non-null, aligned, and valid
-/// for reads/writes of at least `stride * height` bytes respectively.
+/// for reads/writes of at least `stride * height` bytes respectively. Dimensions
+/// the core cannot size are reported as `InvalidParameter` before any pointer is
+/// touched (see [`frame_elements`]).
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_blend_filter_apply(
     filter: *const FrameBlendFilter,
@@ -317,38 +346,40 @@ pub unsafe extern "C" fn openllve_blend_filter_apply(
         return OpenLlveError::NullPointer.as_i32();
     }
 
-    unsafe {
-        let filter = &*filter;
-        let len = stride * height as usize / 4;
-        let raw = FrameRef::new(
-            width,
-            height,
-            channels,
-            stride,
-            slice::from_raw_parts(raw_data, len),
-        );
-        let enhanced = FrameRef::new(
-            width,
-            height,
-            channels,
-            stride,
-            slice::from_raw_parts(enhanced_data, len),
-        );
-        let output = Frame::new(
-            width,
-            height,
-            channels,
-            stride,
-            slice::from_raw_parts_mut(output_data, len),
-        );
+    match frame_elements(width, height, channels, stride) {
+        None => OpenLlveError::InvalidParameter.as_i32(),
+        Some(elements) => unsafe {
+            let filter = &*filter;
+            let raw = FrameRef::new(
+                width,
+                height,
+                channels,
+                stride,
+                slice::from_raw_parts(raw_data, elements),
+            );
+            let enhanced = FrameRef::new(
+                width,
+                height,
+                channels,
+                stride,
+                slice::from_raw_parts(enhanced_data, elements),
+            );
+            let output = Frame::new(
+                width,
+                height,
+                channels,
+                stride,
+                slice::from_raw_parts_mut(output_data, elements),
+            );
 
-        match (raw, enhanced, output) {
-            (Ok(raw), Ok(enhanced), Ok(mut output)) => match filter.apply(&raw, &enhanced, &mut output) {
-                Ok(()) => 0,
-                Err(e) => core_error_to_abi(&e).as_i32(),
-            },
-            (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => core_error_to_abi(&e).as_i32(),
-        }
+            match (raw, enhanced, output) {
+                (Ok(raw), Ok(enhanced), Ok(mut output)) => match filter.apply(&raw, &enhanced, &mut output) {
+                    Ok(()) => 0,
+                    Err(e) => core_error_to_abi(&e).as_i32(),
+                },
+                (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => core_error_to_abi(&e).as_i32(),
+            }
+        },
     }
 }
 

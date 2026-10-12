@@ -56,6 +56,8 @@ All processing operates on validated frame views, not flat slices:
 
 Frames carry `width`, `height`, `channels`, `stride` (bytes per row, multiple of the element size, at least `width * channels * element_size`) and a `FrameFormat` (currently `F32`). Constructors validate dimensions and buffer size; mismatches between frames are checked errors (`CoreError::BufferDimensionMismatch`), not silent truncation. `bytemuck` provides typed views from raw byte buffers (`Frame::from_bytes` / `FrameRef::from_bytes`).
 
+The two checks behind those constructors — `validate_dimensions` (geometry) and `buffer_elements` (buffer requirement, computed in `u64` so an absurd `stride * height` cannot wrap) — are the frame contract every consumer runs: the frame-taking `ffi.rs` exports run them *before* sizing caller memory, and host bridges call the same functions, so a shim carries only its own facts (JVM `Int` is signed, a JVM array reports an element count). See `bridge/android/README.md` and `docs/dev/architecture/FFI-WIRING.md`.
+
 The processing API writes into a caller-owned output buffer — no per-frame allocation:
 
 ```rust
