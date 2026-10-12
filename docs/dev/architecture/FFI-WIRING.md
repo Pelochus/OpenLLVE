@@ -95,11 +95,9 @@ Verified facts (2026-10-11, dev container):
   (a qualified `CoreBridge.method()` call does not resolve — the bindings are
   instance methods, so Kotlin holds one `CoreBridge()` receiver).
 
-Follow-ups left open: EWMA/blend weights are constants in `CoreToppings`
-(expose them as `EnhancementSettings` values later); `process_frame` and the
-pipeline constructors are wired but not yet used by the app (the app keeps its
-Kotlin LiteRT inference path per §3); `x86_64` ABI is not built (arm64-v8a only);
-P3.8 property tests and FFI-fuzz tests can now target the bridge.
+Follow-ups left open: EWMA/blend weights are `CoreToppings` constants (promote them
+to `EnhancementSettings` values later); `process_frame` and the pipeline constructors
+are wired but unused by the app, which keeps its Kotlin LiteRT inference path per §3.
 
 ## 5. The C header was dropped (2026-10-12)
 

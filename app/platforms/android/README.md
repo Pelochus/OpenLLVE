@@ -1,15 +1,9 @@
 # Android Platform Layer
 
-This directory contains Android-specific runtime code for the app.
+Android-specific runtime code — thin glue only: SAF media selection and
+MediaCodec/MediaExtractor decode, Compose UI, lifecycle, device accelerator
+integration, and the Kotlin half of the JNI bridge (`CoreBridge` `external fun`s,
+`CoreToppings` filter handles).
 
-## Purpose
-
-- SAF media selection and MediaCodec/MediaExtractor decode
-- Compose UI and screen composition
-- Android lifecycle management
-- device-specific accelerator integration
-- bridge code into the shared abstractions and Rust core
-
-## Rule
-
-Keep Android-specific behavior confined here so the shared logic remains portable. The actual Android source tree lives under `app/platforms/android/src`, while `app/shared` remains the KMP/shared app boundary.
+Rule: anything not tied to SDK types, UI, MediaCodec or the LiteRT engine
+belongs in `app/shared/` or the Rust core.

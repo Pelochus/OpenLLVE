@@ -6,7 +6,7 @@
 #
 # The script also creates a symlink to the model's .tflite in
 # app/platforms/android/src/main/assets/models/ so the app can load it from
-# assets (see external/models/README.md).
+# assets.
 set -euo pipefail
 
 if [ $# -ne 2 ]; then

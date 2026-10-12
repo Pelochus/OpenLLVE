@@ -56,7 +56,7 @@ The Kotlin source roots nest to their package directory (`app/shared/…/openllv
 | --- | --- |
 | `ffi.rs` | the 22 `pub unsafe extern "C"` exports + `OpenLlveError`/`OpenLlvePipeline` contracts |
 | `error.rs` | `OpenLlveError` codes (`Ok=0 NullPointer=1 InvalidParameter=2 BufferDimensionMismatch=3 Internal=4`) |
-| `frame.rs` | `FrameRef`/`Frame` pixel-buffer views + `NativeFrameHandle` (unused — P1 item 2) |
+| `frame.rs` | `FrameRef`/`Frame`/`OwnedFrame` pixel-buffer views + the frame contract (`validate_dimensions`, `buffer_elements`); `NativeFrameHandle` exists but is unused |
 | `filters.rs` · `filters/{blend,ewma}.rs` | `FrameBlendFilter`, `EwmaFilter` |
 | `pipelines.rs` · `pipelines/{llie,temporal}.rs` | `OpenLlvePipeline`, LLIE curve, `TemporalPipeline` |
 | `model.rs` | model/LLIE inference types |
@@ -116,9 +116,9 @@ strings, themes), `assets/models/` (`zero-dce-int8.tflite`),
   amend, branch, rebase).
 - One small, scoped commit per task; commit message states task + what
   changed.
-- After completing a task: remove it from `TODO.md`'s ordered list and add a one-line
-  entry under "Recently completed", drop the row from `IMPROVEMENTS.md` §0, add
-  follow-ups if any.
+- After completing a task: remove it from `TODO.md`'s ordered list and drop the row
+  from `IMPROVEMENTS.md` §0; record the result in the module README or `docs/`,
+  and add follow-ups if any.
 - Never mark done with failing tests, partial implementation, or
   unresolved errors.
 

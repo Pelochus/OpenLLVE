@@ -9,8 +9,8 @@ The Android app does **not** store its own copy:
 `app/platforms/android/src/main/assets/models/` contains **symlinks** to the
 files here. Gradle's `mergeAssets` task follows symlinks (`copyFollowsLinks`
 defaults to `true`), so the packaged APK still contains the real model bytes.
-On a PC, the Rust core (`ModelRunner`, see `docs/dev/architecture/ARCHITECTURE.md` §11)
-loads the file directly from this path — no asset machinery needed.
+On a PC, the Rust core (`ModelRunner`, cargo feature `model`) loads the file
+directly from this path — no asset machinery needed.
 
 ## Default test model
 
@@ -67,5 +67,4 @@ The script adds the submodule and creates the symlink in
 
 1. Validate the model in its upstream repository (e.g. load it with the
    LiteRT Python runtime and check the input/output tensor specs).
-2. Record the model's I/O shape and license in
-   `app/platforms/android/src/main/assets/models/README.md`.
+2. Record the model's I/O shape and license in this README.

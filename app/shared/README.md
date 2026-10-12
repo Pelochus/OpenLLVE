@@ -1,15 +1,17 @@
 # Shared Layer
 
-Kotlin Multiplatform module (`:shared`) with app-neutral logic shared by
-Android and (later) iOS:
+Kotlin Multiplatform module (`:shared`) — app logic shared by Android and
+(later) iOS, with no host SDK APIs.
 
-- `domain/` — contracts: `ComputeTarget`, `EnhancementSettings`, `MediaInput`,
-  `BackendSelection`, `ProcessingMetrics`, `EnhancementEngine`, `SettingsStore`
+- `domain/` — `BackendSelection`, `ComputeTarget`, `EnhancementEngine`,
+  `EnhancementSettings`, `MediaInput`, `ProcessingMetrics`, `SettingsStore`
 - `media/` — `FrameImage`, `FramePixels`, `VideoMetadata`
 - `ui/` — `UiState`
+- `log/` — `LogBuffer` ring buffer, `LogEntry`, `LogLevel`, `LogLock`
+  (+ `androidMain/`, `iosMain/` mirrors)
 
-Android consumes it via `implementation(project(":shared"))` with thin
+Android consumes it with `implementation(project(":shared"))` and thin
 boundary adapters (`BitmapFrameAdapter`, `MediaInput.sourceUri()`).
 
-Rule: keep here only logic not tied to Android or iOS runtime APIs;
-performance-sensitive compute stays in the `core/` crate.
+Rule: keep here only logic not tied to a host runtime API; performance-sensitive
+compute stays in the Rust `core/` crate.

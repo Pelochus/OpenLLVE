@@ -1,9 +1,8 @@
 # App fixes — record
 
-Archive of the app-side investigation that landed with P1.1 (2026-10). It was
-a root-level `TODO-APPFIXES.md` scratch file; the work is done, so this file
-exists only to stop agents and humans from re-litigating the same dead ends.
-App work that is still open lives in `TODO.md`, not here.
+Archive of the app-side investigation that landed with P1.1 (2026-10); it began as
+a root-level scratch file. Kept so agents and humans do not re-litigate the same
+dead ends. Open app work lives in `TODO.md`, not here.
 
 ## Fixed (app layer)
 
@@ -39,12 +38,10 @@ App work that is still open lives in `TODO.md`, not here.
 
 ## Notes (by design, not bugs)
 
-- **Release signing is opt-in.** Without `RELEASE_*` environment variables,
-  release builds are signed with the debug keystore
-  (`scripts/sign-release-apk.sh`, signing block in `app/build.gradle.kts`).
-- **The log buffer is RAM-only** (last 1000 entries, cleared on restart);
-  "Save to file" keeps a copy. `LogBuffer` lives in the KMP layer
-  (`openllve.shared.log`) so the future iOS host (P4.4) reuses it with its own
-  mirroring and viewer.
+- **Release signing is opt-in.** Without `RELEASE_*` environment variables, release
+  builds are signed with the debug keystore.
+- **The log buffer is RAM-only** (last 1000 entries, cleared on restart; "Save to
+  file" keeps a copy). `LogBuffer` lives in the KMP layer so a future host reuses it
+  with its own mirroring and viewer.
 - UI labels for the toppings still read "prototype — applied by the native
-  pipeline"; reword once the toppings are verified on a device.
+  pipeline"; reword once they are verified on a device.

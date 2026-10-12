@@ -73,14 +73,6 @@ The runner defaults to `podman` when installed, otherwise `docker`
 qualified (`localhost/…`) only for podman, whose bare names resolve through
 registries and prompt without a TTY.
 
-From inside, the usual commands work:
-
-```bash
-./gradlew assembleDebug
-cargo test --manifest-path core/Cargo.toml
-ktlint app/shared/src app/platforms/android/src
-```
-
 ## Prebuilt image from GitHub Container Registry
 
 `.github/workflows/docker-image.yml` builds this image on every push to

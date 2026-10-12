@@ -1,14 +1,6 @@
 # iOS Platform Layer
 
-This directory is the future iOS host implementation for OpenLLVE.
-
-## Purpose
-
-- AVFoundation capture pipeline
-- SwiftUI or UIKit view layer
-- CoreML / MPS integration
-- iOS runtime lifecycle and adapters
-
-## Rule
-
-Re-use shared domain logic and benchmarking contracts here instead of duplicating the compute layer.
+Placeholder — no iOS code yet (tracked as P4, high-level only). A future host
+would add AVFoundation capture, a SwiftUI view layer, Core ML / Metal inference,
+and adapters onto the `:shared` contracts, with a `bridge/ios/` shim reusing the
+core's existing C ABI. Nothing iOS-specific may enter `core/` or `app/shared/`.

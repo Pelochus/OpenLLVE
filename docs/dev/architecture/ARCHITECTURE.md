@@ -40,9 +40,17 @@ OpenLLVE/
 └── gradle.properties
 ```
 
-The important architectural rule is that `core/` stays independent from the app runtime, and Android-specific code is kept under `app/platforms/android` rather than being mixed into the shared layer.
+The important rule is that `core/` stays independent from the app runtime and
+Android-specific code stays under `app/platforms/android` rather than being mixed
+into the shared layer.
 
-The same rule applies one level down: `core/src/ffi.rs` is the **one** ABI contract for every host (22 exports, C types: `uint32_t`, `size_t`, `float`, `double`, opaque handles), and each host gets its own shim crate under `bridge/` that only marshals host types. Nothing host-specific may be added to `core/`, and a shim must not redefine the ABI — it calls the core's Rust API through a path dependency. A new host (iOS/Swift, a future desktop harness) adds `bridge/<platform>/` and reuses the same ABI, deriving its host-side declarations from `ffi.rs`; see `bridge/android/README.md` for the worked example and `docs/dev/architecture/FFI-WIRING.md` for the decision record.
+The rule applies one level down: `core/src/ffi.rs` is the **one** ABI contract for
+every host (22 exports, C types `uint32_t`, `size_t`, `float`, `double`, opaque
+handles), and each host gets its own shim crate under `bridge/` that only marshals
+host types. Nothing host-specific may be added to `core/`, and a shim must not
+redefine the ABI — it calls the core's Rust API through a path dependency. A new
+host adds `bridge/<platform>/` and reuses the same ABI, deriving its host-side
+declarations from `ffi.rs`.
 
 ## 4. Platform Boundary
 
@@ -132,23 +140,26 @@ Warm-up frames should be excluded from reported averages. See [METHODOLOGY.md](.
 - **Pure benchmarking** for the inference path only
 - **Cross-platform reuse** of core logic across mobile runtimes
 
-## 11. Inference placement (decision, accepted 2026-09-15)
+## 11. Inference placement (decision, revised 2026-10)
 
-Inference runs **inside the Rust core**, not on the platform: a `ModelRunner`
-(feature `model` in `core/`) loads the `.tflite` model via `tflite-c-rs`
-(CPU delegate, dynamically loaded at runtime — no build-time link). The
-platform never links LiteRT directly; Kotlin/Swift only call the C
-FFI. This satisfies tenet 2 and the "cargo bench on a PC" rule: the same
-inference path is benchmarkable on a desktop, and there is one implementation
-for all platforms.
+Inference has two homes, split by where it is measured:
 
-- The model file's single source of truth is `external/models/`; the app
-  assets entry is a symlink to it.
-- On Android, `libtensorflowlite_c.so` is packaged in `jniLibs` alongside the
-  Rust cdylib; on a PC it is loaded from `OPENLLVE_TFLITE_LIB`
-  (`scripts/fetch-tflite-lib.sh`).
-- CPU delegate is the default and the only delegate initially; delegate
-  selection (NNAPI/GPU) is a future FFI option.
+- **PC-side**: a `ModelRunner` in the Rust core (cargo feature `model`) loads the
+  `.tflite` model via `tflite-c-rs`, which opens `libtensorflowlite_c` at runtime
+  (no build-time link). This is the validation + benchmark path: the pipeline is
+  exercisable with `cargo test`/`cargo bench` on a desktop, which is what the
+  "runs on a PC" rule of thumb asks for. It runs the LiteRT C **reference kernel**
+  (no XNNPACK delegate), so its numbers understate on-device performance.
+- **On-device production path**: the Kotlin LiteRT engine (`litert-gpu`/XNNPACK/GPU/NPU
+  delegates) in `app/platforms/android/`. The Rust core is wired into the app for
+  the compute around inference — pipelines, filters, metrics, frame checks — not for
+  model inference itself.
+
+Consequences: the model file's single source of truth is `external/models/` and the
+app assets entry is a symlink to it; on Android `libtensorflowlite_c.so` sits in
+`jniLibs` next to the Rust cdylib, on a PC it is loaded from
+`OPENLLVE_TFLITE_LIB` (`scripts/fetch-tflite-lib.sh`); delegate selection is a
+future FFI option.
 
 ## 12. Threading model (decision)
 

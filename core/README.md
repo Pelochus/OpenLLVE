@@ -1,136 +1,121 @@
 # OpenLLVE Core (`openllve-core`)
 
-The Rust core for **OpenLLVE** is the portable, performance-sensitive layer that owns pipeline execution, frame abstractions, filtering, and telemetry. It is intentionally separate from Android and iOS app code so the same benchmarking logic can run across platforms without duplicating logic.
+Portable, performance-sensitive Rust layer: pipeline execution, frame
+abstractions, filtering, telemetry. Deliberately separate from app code so the
+same compute and benchmarking logic runs on every platform.
 
 ## Why the C FFI layer exists
 
-The Rust core is not meant to be directly embedded into the Kotlin or Swift host runtime. Instead, `src/ffi.rs` exposes a C-compatible API: the `extern "C"` exports, their handle types, and their error codes are the contract every host bridge reuses.
+The core is not embedded in the Kotlin/Swift runtime. `src/ffi.rs` exposes a C-compatible
+API — its `extern "C"` exports, handle types and error codes are the contract every
+host bridge reuses (see `bridge/android/README.md` for the JVM half). The app owns
+the mobile runtime; the core owns compute and metrics.
 
-This is the standard pattern when you need:
+## Module shape
 
-- a safe, fast compute layer in Rust
-- platform app code in Kotlin/Swift
-- a stable ABI boundary across toolchains and operating systems
-- low overhead and no dependency on the JVM or Apple runtime internals
-
-In other words: the app owns the mobile runtime, while the core owns the compute and metrics logic.
-
-## Recommended module shape
-
-Modern Rust prefers folder modules without `mod.rs` when using 2018+ edition. This keeps the tree easy to read and avoids a proliferation of `mod.rs` files.
+Folder modules, no `mod.rs`:
 
 ```text
 core/
 ├── Cargo.toml
-├── README.md
 ├── src/
-│   ├── lib.rs
-│   ├── error.rs
-│   ├── frame.rs
-│   ├── metrics.rs
-│   ├── filters.rs                # module declaration for ewma.rs + blend.rs
-│   ├── filters/
-│   │   ├── ewma.rs                # temporal anti-flicker filter
-│   │   └── blend.rs               # raw/enhanced blending filter
-│   ├── model.rs                  # LiteRT ModelRunner (feature `model`)
-│   ├── pipelines.rs              # module declaration for llie.rs + temporal.rs
-│   ├── pipelines/
-│   │   ├── llie.rs                # LLIE pipeline, optionally configured with EWMA
-│   │   └── temporal.rs            # LLVE pipeline, optionally configured with blend
-│   ├── ffi.rs                    # C ABI bindings
-│   └── lib.rs
-├── tests/
-│   └── integration_pipeline.rs
-├── benches/
-│   └── inference_bench.rs
+│   ├── lib.rs                    # module wiring + ABI probe
+│   ├── error.rs                  # OpenLlveError codes
+│   ├── frame.rs                  # FrameRef / Frame / OwnedFrame + frame contract
+│   ├── metrics.rs                # BenchmarkMetrics
+│   ├── filters.rs                # declarations for filters/
+│   ├── filters/{ewma,blend}.rs
+│   ├── model.rs                  # LiteRT ModelRunner (cargo feature `model`)
+│   ├── pipelines.rs              # declarations for pipelines/
+│   ├── pipelines/{llie,temporal}.rs
+│   └── ffi.rs                    # the one C ABI
+├── tests/                        # integration + property + FFI fuzz gates
+├── benches/inference_bench.rs
 └── Cargo.lock
 ```
 
 ## Frame model
 
-All processing operates on validated frame views, not flat slices:
+Processing operates on validated views of caller-owned memory, never flat slices:
 
-- `FrameRef` — immutable, zero-copy view of a caller-owned buffer (input frames; C `const float*`).
-- `Frame` — mutable, zero-copy view (output frames; C `float*`).
-- `OwnedFrame` — owned, compact frame (no stride padding) for temporal model state.
+- `FrameRef` — immutable zero-copy view (input; C `const float*`)
+- `Frame` — mutable zero-copy view (output; C `float*`)
+- `OwnedFrame` — owned, compact frame (no stride padding), for temporal state
 
-Frames carry `width`, `height`, `channels`, `stride` (bytes per row, multiple of the element size, at least `width * channels * element_size`) and a `FrameFormat` (currently `F32`). Constructors validate dimensions and buffer size; mismatches between frames are checked errors (`CoreError::BufferDimensionMismatch`), not silent truncation. `bytemuck` provides typed views from raw byte buffers (`Frame::from_bytes` / `FrameRef::from_bytes`).
+Frames carry `width`, `height`, `channels`, `stride` (bytes per row: a multiple of
+the element size, at least `width * channels * element_size`) and a `FrameFormat`
+(currently `F32`). Mismatched frames are check errors (`CoreError::BufferDimensionMismatch`),
+not silent truncation; `bytemuck` gives typed views from raw bytes
+(`Frame::from_bytes` / `FrameRef::from_bytes`).
 
-The two checks behind those constructors — `validate_dimensions` (geometry) and `buffer_elements` (buffer requirement, computed in `u64` so an absurd `stride * height` cannot wrap) — are the frame contract every consumer runs: the frame-taking `ffi.rs` exports run them *before* sizing caller memory, and host bridges call the same functions, so a shim carries only its own facts (JVM `Int` is signed, a JVM array reports an element count). See `bridge/android/README.md` and `docs/dev/architecture/FFI-WIRING.md`.
+Two functions are the frame contract every consumer runs: `validate_dimensions`
+(geometry) and `buffer_elements` (buffer requirement, in `u64` so an absurd
+`stride * height` cannot wrap). The frame-taking `ffi.rs` exports run them
+*before* sizing caller memory, host bridges call the same pair, and
+`Frame::new`/`FrameRef::new` are thin wrappers — so the safe API and the C ABI
+cannot drift apart.
 
-The processing API writes into a caller-owned output buffer — no per-frame allocation:
+Processing writes into a caller-owned buffer, so platforms pre-allocate two
+buffers and ping-pong them:
 
 ```rust
 fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()>;
 ```
 
-Platforms pre-allocate two frame buffers and ping-pong them (double buffering). The FFI mirrors this: `openllve_process_frame(pipeline, in_w, in_h, in_ch, in_stride, in, out_w, out_h, out_ch, out_stride, out)` with independent input/output dims (a model may change the channel count, e.g. Zero-DCE 4 → 24).
+The FFI mirrors this with independent input/output geometry
+(`openllve_process_frame(pipeline, in_w, in_h, in_ch, in_stride, in, out_w, out_h, out_ch, out_stride, out)`)
+because a model may change the channel count (Zero-DCE 4 → 24).
 
 ## Pipeline and topping model
 
-The architecture separates the main model pipeline from optional post-processing "toppings":
+- `LliePipeline` — frame-by-frame enhancement, `TemporalMode::Stateless`; may
+  attach `EwmaFilter` for anti-flicker and `FrameBlendFilter` for exposure control.
+- `LlveTemporalPipeline` — stateful temporal model, `TemporalMode::Recurrent`; may
+  attach `FrameBlendFilter`, and usually should not add EWMA, since the model
+  already encodes temporal behaviour.
 
-- `LliePipeline`: frame-by-frame enhancement, can optionally use `EwmaFilter` as a temporal smoothing layer.
-- `LlveTemporalPipeline`: stateful temporal model, may optionally use `FrameBlendFilter`, but should not usually add EWMA because the model already encodes temporal behavior.
+Toppings stay separate from pipelines so each combination is intentional.
 
-Each pipeline reports its `TemporalMode`: `LliePipeline` is `Stateless` and `LlveTemporalPipeline` is `Recurrent`.
+## Model runner (cargo feature `model`)
 
-- `FrameBlendFilter`: mixes raw input with processed output for stability and exposure control.
-- `EwmaFilter`: anti-flicker smoothing for LLIE-style pipelines.
+`src/model.rs` runs inference in Rust via `tflite-c-rs`, which opens
+`libtensorflowlite_c` at runtime (no build-time link); the library comes from
+`OPENLLVE_TFLITE_LIB`, falling back to the default search path.
 
-This is more flexible than hard-wiring all filters into every pipeline.
-
-## Model runner (feature `model`)
-
-Inference runs inside the Rust core (see `docs/dev/architecture/ARCHITECTURE.md` §11). The `ModelRunner`
-(`src/model.rs`, behind the `model` cargo feature) loads the Zero-DCE model
-via `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime
-(no build-time link). The library path comes from the `OPENLLVE_TFLITE_LIB`
-environment variable, falling back to the default search path.
-
-- `ModelRunner::new(model_path, num_threads)` loads the model and validates its
+- `ModelRunner::new(model_path, num_threads)` loads a model and validates its
   `(1, 256, 256, 4) → (1, 256, 256, 24)` I/O shape.
 - `ModelRunner::run_frame(input, output)` maps an RGB `[0, 1]` frame to an
-  enhanced RGB `[0, 1]` frame: it derives the 4th (brightness) input channel
-  as the frame's global mean clamped to `0.5`, runs the model (tiling frames
-  larger than 256×256 into overlapping 256×256 patches with 16 px overlap,
-  reflect padding, and linear-ramp reassembly — mirroring the upstream
-  `network.py`), and applies the 8 learned curves per pixel.
-- `LliePipeline::with_model(path, num_threads)` attaches a runner; `process`
-  then runs the model instead of the identity stub. The FFI exposes it via
-  `openllve_pipeline_new_llie_with_model(model_path, num_threads)`.
+  enhanced RGB `[0, 1]` frame: it derives the 4th (brightness) channel as the
+  frame's global mean clamped to `0.5`, tiles frames larger than 256×256 into
+  overlapping 256×256 patches (16 px overlap, reflect padding, linear-ramp
+  reassembly — mirroring upstream `network.py`), and applies the 8 learned curves
+  per pixel.
+- `LliePipeline::with_model(path, num_threads)` attaches a runner, so `process`
+  runs the model instead of the identity stub; the FFI exposes it as
+  `openllve_pipeline_new_llie_with_model`.
 
-The feature is off by default so `cargo test` / `cargo clippy` / `cargo fmt`
-pass without the LiteRT runtime present. To run the real model path on a PC:
+The feature is off by default so plain `cargo test`/`clippy`/`fmt` need no LiteRT
+runtime. To exercise the real path on a PC:
 
 ```bash
-scripts/fetch-tflite-lib.sh core/native          # downloads libtensorflowlite_c
-OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
-  cargo test --features model
-OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so \
-  cargo bench --features model
+scripts/fetch-tflite-lib.sh core/native
+OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so cargo test --features model
+OPENLLVE_TFLITE_LIB=core/native/libtensorflowlite_c.so cargo bench --features model
 ```
 
-On Android the model path runs in the app's LiteRT runtime; the Rust core ships
-as `libbridge.so` in `jniLibs/<abi>/` — statically linked into the JNI shim, so
-the APK carries one Rust library, not two (see `docs/dev/architecture/FFI-WIRING.md` §4 and
-`docs/dev/architecture/ARCHITECTURE.md` §11). Kotlin calls it through `CoreBridge`.
-
-**Scope and performance.** The Rust `ModelRunner` exists for PC-side
-benchmarking and validation (the tenet: "if it can run on a PC with
-`cargo bench`, it's in the right layer"), **not** for production throughput.
-It runs the LiteRT C **reference kernel** (`tflite-c-rs` does not expose the
-XNNPACK delegate), so its numbers are not representative of on-device
-performance: on Android the real LiteRT runtime uses XNNPACK (or GPU/NPU),
-which is ~5× faster than the reference kernel. Measured on this desktop:
-256×256 ≈ 11 ms (87 FPS) and 1280×720 ≈ 337 ms (3 FPS) under XNNPACK, versus
-≈ 1.68 s/frame under the reference kernel. The model is a small-patch
-(256×256) network, so it is real-time at its native patch size but tiling it
-to 720p (≈18 overlapping patches) is the dominant cost — not the kernel.
+**Scope.** This runner exists for PC-side validation and benchmarking, not
+production throughput: it uses the LiteRT C reference kernel (`tflite-c-rs`
+exposes no XNNPACK delegate), so its numbers understate on-device LiteRT, which
+measured ~5× faster here (256×256 ≈ 11 ms / 87 FPS, 1280×720 ≈ 337 ms / 3 FPS
+under XNNPACK versus ≈ 1.68 s/frame on the reference kernel). The dominant cost
+at 720p is tiling a 256×256-patch network (~18 overlapping patches), not the
+kernel. On Android the app infers in its own LiteRT runtime and the core ships
+inside `libbridge.so` in `jniLibs/<abi>/` — statically linked, so the APK carries
+one Rust library. Kotlin calls it through `CoreBridge`.
 
 ## Design principles
 
-1. **Zero-copy friendly**: frame handles abstract native buffers without redundant copying.
-2. **Modular pipelines**: the algorithm pipeline is independent from the temporal tuning layer.
-3. **Benchmark purity**: measure only the pure inference path, excluding camera I/O and UI render latency.
-4. **Cross-platform portability**: Rust logic stays reusable while the app layer handles JVM/Swift integration.
+1. Zero-copy frame handles over native buffers.
+2. Pipelines independent of temporal tuning.
+3. Benchmark only the inference path — no camera I/O or render latency.
+4. Rust logic stays reusable while app layers handle JVM/Swift integration.
