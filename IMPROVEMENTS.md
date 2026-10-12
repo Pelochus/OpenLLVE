@@ -14,7 +14,6 @@ Status of the remaining §4 items (finished work is not listed — see `TODO.md`
 | P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core + header |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer, tracked at a high level only (§4 P4); the C header is already complete for it |
 | P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.5f`, `BLEND_BETA = 0.7f` |
-| P2.5 ktlint debt | ⚠️ open — 31 pre-existing violations make the `android-ci.yml` ktlint step fail |
 
 ## 1. What this repo is
 
@@ -60,13 +59,6 @@ The earlier round's stale entries (`VideoPipelineManager.kt`, `SystemMonitor.kt`
 3. **Expose the EWMA/blend weights as `EnhancementSettings`** (P1.8) — they are `CoreToppings`
    constants today.
 
-### P2 — Quality, tests, and process
-
-- **P2.5 — ktlint debt**: 31 pre-existing style violations (`function-signature` 20,
-  `blank-line-before-declaration` 3, `class-signature` 2, `import-ordering` 2,
-  `spacing-between-declarations-with-comments` 2, `string-template` 2) make the
-  `android-ci.yml` ktlint step fail; `ktlint --format` fixes most of them.
-
 ### P3 — Design follow-ups from `DESIGN_SUGGESTIONS.md`
 
 Ranked easiest/most-recommended → hardest/least-useful right now. Nothing here
@@ -105,4 +97,4 @@ gets its own bridge crate (`docs/dev/architecture/ARCHITECTURE.md` §3).
 
 ### TL;DR
 
-The Rust core is real and the app now calls it: P1.1 landed (22 JNI exports, `libbridge.so` in the APK, EWMA + blend applied per frame). Highest-leverage work remaining: (1) move frame validation into the core (P1.4 — only the JVM is guarded today), (2) property/FFI-fuzz tests (P3.8, unblocked), (3) ktlint debt (P2.5 — the only CI gate that is red).
+The Rust core is real and the app now calls it: P1.1 landed (22 JNI exports, `libbridge.so` in the APK, EWMA + blend applied per frame). Highest-leverage work remaining: (1) move frame validation into the core (P1.4 — only the JVM is guarded today), (2) property/FFI-fuzz tests (P3.8, unblocked).

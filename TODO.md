@@ -18,7 +18,7 @@ live in `AGENTS.md`.
 - **Bridge**: `bridge/android/` crate (P1.1) builds host-side and cross-compiles via `scripts/build-bridge.sh`; `rust-core.yml` gates it with the same three commands as `core/`.
 - **Models**: single source of truth in `external/models/` (default `zero-dce-int8.tflite` as a raw file, new models as submodules); app assets symlink to it.
 - **Android app**: functional vertical slice (Compose UI, LiteRT engine, MediaCodec decode, DataStore settings) over the `:shared` KMP contracts; EWMA + blend now run in the Rust core per frame.
-- **CI**: `android-ci.yml` (ktlint, androidLint, test, assemble — ktlint step red, P2.5), `rust-core.yml` (test, clippy, fmt), `release.yml` (on `v*` tags), `docker-image.yml` (push to `dev`/`main` → GHCR `ghcr.io/pelochus/openllve-dev:latest`).
+- **CI**: `android-ci.yml` (ktlint green after P2.5 debt clear, androidLint, test, assemble), `rust-core.yml` (test, clippy, fmt), `release.yml` (on `v*` tags), `docker-image.yml` (push to `dev`/`main` → GHCR `ghcr.io/pelochus/openllve-dev:latest`).
 
 ## Do next (in order)
 
@@ -40,12 +40,7 @@ live in `AGENTS.md`.
 4. [ ] **P1.8 — Promote EWMA/blend weights to `EnhancementSettings`.** `CoreToppings`
    keeps `EWMA_ALPHA = 0.5f` / `BLEND_BETA = 0.7f` as constants while the UI already
    exposes `ewmaEnabled` / `flickerReductionEnabled`; the weights are the missing half.
-5. [ ] **P2.5 — ktlint debt (31 violations) makes `android-ci.yml` red.**
-   `function-signature` 20, `blank-line-before-declaration` 3, `class-signature` 2,
-   `import-ordering` 2, `spacing-between-declarations-with-comments` 2,
-   `string-template` 2 across `app/shared/src` + `app/platforms/android/src`;
-   `ktlint --format` fixes most (ktlint 1.8.0 is pinned in the dev image).
-6. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
+5. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
     - Beyond Google Tensor: Qualcomm, then MediaTek if prebuilt libs appear. The newest
       LiteRT release that ships NPU runtime libraries at all is the **2.2.0** zip (2.3.0
       ships none); 2.3.0 added Samsung (Exynos AI LiteCore) and Intel (OpenVINO) support
@@ -56,7 +51,7 @@ live in `AGENTS.md`.
     - Per-vendor `NpuCompatibilityChecker` + the `isLibraryReady()` existence check;
       dispatch shims need the vendor runtime on-device (Tensor `libedgetpu_litert.so`,
       Qualcomm QAIRT). arm64-v8a only; JIT is Beta per vendor, AOT is the supported path.
-7. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
+6. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
     - P4.1 `bridge/ios/` Swift shim `@cImport`ing `core/include/openllve_core.h` (core +
       ABI reused unchanged); P4.2 AVFoundation media; P4.3 Core ML / Metal inference
       (LiteRT stays Android-side); P4.4 SwiftUI on the `:shared` contracts.
@@ -67,5 +62,4 @@ live in `AGENTS.md`.
 
 - Review `docs/dev/architecture/DESIGN_SUGGESTIONS.md` where it is cheap; defer the
   hard/complex suggestions.
-- The `android-ci.yml` ktlint gate is red because of P2.5 — Kotlin changes cannot be
-  validated green until that debt is cleared.
+- Kotlin changes are gated by `android-ci.yml`; the ktlint step is green (P2.5 debt cleared via `ktlint --format` in the dev container).

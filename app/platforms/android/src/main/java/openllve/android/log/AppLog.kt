@@ -1,13 +1,13 @@
 package openllve.android.log
 
 import android.util.Log
+import openllve.shared.log.LogBuffer
+import openllve.shared.log.LogEntry
+import openllve.shared.log.LogLevel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.time.Clock
-import openllve.shared.log.LogBuffer
-import openllve.shared.log.LogEntry
-import openllve.shared.log.LogLevel
 
 /**
  * Android-facing log facade over the shared [LogBuffer] (KMP common layer,
@@ -26,10 +26,25 @@ object AppLog {
     private val buffer = LogBuffer(MAX_ENTRIES)
     private val timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
 
-    fun debug(message: String, tag: String = "App") = record(LogLevel.DEBUG, tag, message)
-    fun info(message: String, tag: String = "App") = record(LogLevel.INFO, tag, message)
-    fun warn(message: String, tag: String = "App") = record(LogLevel.WARN, tag, message)
-    fun error(message: String, tag: String = "App") = record(LogLevel.ERROR, tag, message)
+    fun debug(
+        message: String,
+        tag: String = "App",
+    ) = record(LogLevel.DEBUG, tag, message)
+
+    fun info(
+        message: String,
+        tag: String = "App",
+    ) = record(LogLevel.INFO, tag, message)
+
+    fun warn(
+        message: String,
+        tag: String = "App",
+    ) = record(LogLevel.WARN, tag, message)
+
+    fun error(
+        message: String,
+        tag: String = "App",
+    ) = record(LogLevel.ERROR, tag, message)
 
     /** Snapshot of the buffer as display lines, oldest first. */
     fun snapshot(): List<String> = buffer.snapshot().map { formatLine(it) }
@@ -39,7 +54,11 @@ object AppLog {
 
     fun clear() = buffer.clear()
 
-    private fun record(level: LogLevel, tag: String, message: String) {
+    private fun record(
+        level: LogLevel,
+        tag: String,
+        message: String,
+    ) {
         val entry = LogEntry(Clock.System.now().toEpochMilliseconds(), level, tag, message)
         buffer.record(entry)
         val line = formatLine(entry)

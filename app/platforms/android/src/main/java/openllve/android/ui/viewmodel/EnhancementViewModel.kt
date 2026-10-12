@@ -13,10 +13,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import openllve.android.data.SettingsRepository
+import openllve.android.log.AppLog
 import openllve.android.media.BitmapFrameAdapter
 import openllve.android.media.ImageFrameProvider
 import openllve.android.media.VideoFrameProvider
-import openllve.android.log.AppLog
 import openllve.android.media.VideoMetadataReader
 import openllve.android.media.mediaSource
 import openllve.android.media.sourceUri

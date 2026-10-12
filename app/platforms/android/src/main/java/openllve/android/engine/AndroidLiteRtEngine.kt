@@ -49,10 +49,12 @@ class AndroidLiteRtEngine(
 
     @Volatile
     private var lastInferenceMsValue = 0L
+
     /** Native temporal toppings for the current session, rebuilt on size/toggle change. */
     private var sessionToppings: CoreToppings? = null
     private var sessionWidth = 0
     private var sessionHeight = 0
+
     /** Toggles captured at configure() time, which is the only place they arrive. */
     private var configureSettings: EnhancementSettings? = null
 
@@ -154,7 +156,7 @@ class AndroidLiteRtEngine(
         val modelOutput = FloatArray(width * height * 3)
         applyCurves(input, modelOutput, width, height, wPad, accum)
         this.lastInferenceMsValue = SystemClock.elapsedRealtime() - start
-        AppLog.debug("enhanceFrame: ${width}x${height}, ${numW * numH} patches, ${lastInferenceMsValue}ms", "Engine")
+        AppLog.debug("enhanceFrame: ${width}x$height, ${numW * numH} patches, ${lastInferenceMsValue}ms", "Engine")
         val toppings = coreToppingsFor(width, height)
         if (toppings == null) {
             return modelOutput
@@ -412,8 +414,7 @@ class AndroidLiteRtEngine(
 private class TensorNpuProvider(
     private val context: Context,
 ) : NpuAcceleratorProvider {
-    override fun isDeviceSupported(): Boolean =
-        NpuCompatibilityChecker.GoogleTensor.isDeviceSupported()
+    override fun isDeviceSupported(): Boolean = NpuCompatibilityChecker.GoogleTensor.isDeviceSupported()
 
     override fun isLibraryReady(): Boolean =
         File(context.applicationInfo.nativeLibraryDir, AndroidLiteRtEngine.TENSOR_DISPATCH_LIBRARY).exists()

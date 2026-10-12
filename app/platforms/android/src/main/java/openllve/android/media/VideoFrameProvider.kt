@@ -122,7 +122,7 @@ class VideoFrameProvider(
         val colorFormat = outputFormat.getInteger(MediaFormat.KEY_COLOR_FORMAT)
         val frameWidth = outputFormat.getInteger(MediaFormat.KEY_WIDTH)
         val frameHeight = outputFormat.getInteger(MediaFormat.KEY_HEIGHT)
-        AppLog.info("Video: decoding ${frameWidth}x${frameHeight} ($mime)", "Video")
+        AppLog.info("Video: decoding ${frameWidth}x$frameHeight ($mime)", "Video")
 
         val inputSample = ByteArray(64 * 1024)
         val inputSampleBuffer = ByteBuffer.wrap(inputSample)

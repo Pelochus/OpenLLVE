@@ -210,7 +210,10 @@ private fun AboutCard() {
 }
 
 @Composable
-private fun AboutRow(label: String, value: String) {
+private fun AboutRow(
+    label: String,
+    value: String,
+) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(
             text = label,
