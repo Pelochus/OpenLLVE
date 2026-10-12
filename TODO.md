@@ -25,10 +25,11 @@ live in `AGENTS.md`.
 1. [~] **P1.2 follow-ups — model validation on real frames.**
    - Verify the pipeline on real (non-synthetic) frames; re-confirm the global-mean
      brightness channel against upstream's 4×4 bilinear downscale.
-2. [ ] **P3.8 — Property / FFI-fuzz tests.**
-   - `proptest`: EWMA output stays within `[min(prev,curr), max(prev,curr)]` per
-     pixel; blend output is a convex combination. Add golden-frame hashes and
-     FFI fuzzing against the bridge crate (P1.1 landed, so it is the FFI target).
+2. [~] **P3.8 — Property / FFI-fuzz tests.**
+   - Remaining: FFI fuzzing against the bridge crate (P1.1 landed, so it is the FFI
+     target). Done: `core/tests/filters_properties.rs` — three proptests (EWMA bounds,
+     blend convexity, blend endpoints) + golden-frame hash pinning the CoreToppings
+     defaults (EWMA 0.7f / blend 0.9f).
 3. [ ] **P1.4 — Move frame validation into the core (every host bridge reuses it).**
    - `bridge/android/src/frames.rs` holds platform-neutral checks (positive dims,
      `stride >= width*channels*4`, buffer element count vs `stride*height/4`) that only
