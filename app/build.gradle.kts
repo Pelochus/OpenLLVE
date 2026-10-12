@@ -58,9 +58,8 @@ android {
         }
     }
 
-    // Release signing is opt-in: scripts/sign-release-apk.sh (the single
-    // source of truth) sets the RELEASE_* environment variables consumed
-    // here. Without them, release builds fall back to the debug keystore.
+    // Release signing is opt-in: the RELEASE_* env vars below enable it; without
+    // them release builds use the debug keystore.
     signingConfigs {
         val keystore = providers.environmentVariable("RELEASE_KEYSTORE")
         if (keystore.isPresent) {
@@ -78,8 +77,6 @@ android {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Falls back to the debug keystore unless the RELEASE_* env vars
-            // (set by scripts/sign-release-apk.sh) define a release key.
-            signingConfig = if (signingConfigs.names.contains("release")) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")

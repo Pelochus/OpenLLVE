@@ -1,4 +1,4 @@
-// Fuzz harness (P3.8) for the C ABI in `core/src/ffi.rs`: adversarial handles,
+// Fuzz harness for the C ABI: adversarial handles,
 // dimensions, strides and filter weights must be classified by the documented
 // `OpenLlveError` codes, must never write outside the buffers the caller owns,
 // and must never free a handle twice.
@@ -6,7 +6,7 @@
 // Fuzz envelope: `stride * height` stays inside `usize` for the frame properties
 // below, so the ABI's length math is exact and every call there is defined
 // behaviour. Pairs whose product leaves the address space are asserted rejected
-// instead (P1.4): the ABI used to wrap them into a short slice, which then
+// instead: the ABI used to wrap them into a short slice, which then
 // validated as a legal frame over memory the caller does not own.
 
 use openllve_core::ffi::{

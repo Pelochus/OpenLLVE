@@ -48,12 +48,9 @@ fn core_error_to_abi(error: &CoreError) -> OpenLlveError {
     }
 }
 
-/// Element count for a frame buffer the caller describes with these numbers,
-/// [`None`] when the description is unusable: invalid dimensions, or a `stride *
-/// height` product that cannot be a buffer length. The core derives slice
-/// lengths from caller numbers, so every frame-taking export runs this check
-/// before it views a pointer. Only the dimensions are known on this side of the
-/// boundary, so an unusable description is reported as a parameter error.
+/// Elements a caller-described buffer must hold, [`None`] when the description
+/// is unusable (invalid dimensions, or a `stride * height` that cannot be a buffer
+/// length). Every frame-taking export runs this before viewing a pointer.
 fn frame_elements(width: u32, height: u32, channels: u32, stride: usize) -> Option<usize> {
     if validate_dimensions(width, height, channels, stride).is_err() {
         return None;
@@ -246,8 +243,7 @@ pub extern "C" fn openllve_ewma_filter_new(alpha: f32) -> *mut EwmaFilter {
 /// must be non-null, aligned, and valid for reads of at least `stride *
 /// height` bytes; `output_data` must be non-null, aligned, and valid for
 /// writes of at least `stride * height` bytes. Dimensions the core cannot size are
-/// reported as `InvalidParameter` before either pointer is touched (see
-/// [`frame_elements`]).
+/// reported as `InvalidParameter` before either pointer is touched.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_ewma_filter_apply(
     filter: *mut EwmaFilter,
@@ -329,8 +325,7 @@ pub extern "C" fn openllve_blend_filter_new(beta: f32) -> *mut FrameBlendFilter 
 /// `openllve_blend_filter_new` and owned by the calling thread. `raw_data`,
 /// `enhanced_data`, and `output_data` must be non-null, aligned, and valid
 /// for reads/writes of at least `stride * height` bytes respectively. Dimensions
-/// the core cannot size are reported as `InvalidParameter` before any pointer is
-/// touched (see [`frame_elements`]).
+/// the core cannot size are reported as `InvalidParameter` before any pointer is touched.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn openllve_blend_filter_apply(
     filter: *const FrameBlendFilter,

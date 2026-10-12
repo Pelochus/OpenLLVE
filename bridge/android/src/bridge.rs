@@ -1,22 +1,9 @@
 //! JNI exports for the Kotlin app layer.
 //!
-//! Each export is an instance method of `openllve.android.core.CoreBridge`, so the
-//! symbols defined here (`Java_openllve_android_core_CoreBridge_<method>`) are the
-//! ones Kotlin's `@JNI external fun` declarations resolve against. Rust names are
-//! `snake_case`; `jni_mangle` converts them to the Kotlin `lowerCamelCase` method
-//! names, one per `core/src/ffi.rs` export:
-//!
-//! | Kotlin method | C ABI export |
-//! | --- | --- |
-//! | `abiVersion` | `openllve_abi_version` |
-//! | `pipelineNewLlie` / `pipelineNewLlieWithModel` / `pipelineNewTemporal` | same |
-//! | `pipelineFree` | `openllve_pipeline_free` |
-//! | `processFrame` | `openllve_process_frame` |
-//! | `ewmaFilterNew` / `ewmaFilterApply` / `ewmaFilterFree` | same |
-//! | `blendFilterNew` / `blendFilterApply` / `blendFilterFree` | same |
-//! | `metricsNew` / `metricsNewWithWarmup` / `metricsRecord` / `metricsAverage` /
-//!   `metricsMedian` / `metricsFps` / `metricsP99` / `metricsCount` / `metricsReset` /
-//!   `metricsFree` | same |
+//! Each export is an instance method of `openllve.android.core.CoreBridge`, so
+//! the symbols defined here (`Java_openllve_android_core_CoreBridge_<method>`)
+//! are what Kotlin's `@JNI external fun` declarations resolve against. Rust
+//! names are `snake_case`; `jni_mangle` converts them to Kotlin `lowerCamelCase`.
 //!
 //! Handles are JVM `jlong` (Kotlin `Long`, never `ULong`), frames are JVM
 //! `jfloatarray` (Kotlin `FloatArray`), and strides are bytes per row. Core-level

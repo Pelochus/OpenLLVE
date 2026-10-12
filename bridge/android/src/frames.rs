@@ -1,10 +1,10 @@
 //! Frame-buffer validation at the JVM boundary.
 //!
-//! `core/src/ffi.rs` derives each buffer's length from the dimensions it is handed and
-//! trusts the caller's pointer, so a JVM array shorter than those dimensions would be
-//! read past its allocation. Every check here runs before any pointer crosses the
-//! boundary; the frame contract itself is the core's (`crate::frame`) and is called
-//! through, never duplicated here — see docs/dev/architecture/FFI-WIRING.md.
+//! The core derives each buffer's length from the dimensions it is handed and
+//! trusts the caller's pointer, so a JVM array shorter than that would be read
+//! past its allocation. Every check here runs before any pointer crosses the
+//! boundary; the frame contract itself is the core's (`crate::frame`), called
+//! through, never duplicated here.
 
 use jni::sys::jint;
 use openllve_core::ffi::OpenLlveError;
@@ -53,8 +53,7 @@ mod tests {
     const HEIGHT: jint = 2;
     const CHANNELS: jint = 3;
     const TIGHT_STRIDE: jint = WIDTH * CHANNELS * 4; // 48 bytes = 12 elements per row
-    const TIGHT_ELEMENTS: usize = TIGHT_STRIDE as usize / 4 * HEIGHT as usize; // 24
-
+    const TIGHT_ELEMENTS: usize = TIGHT_STRIDE as usize / 4 * HEIGHT as usize;
     #[test]
     fn accepts_tightly_packed_buffers() {
         assert_eq!(
@@ -145,7 +144,7 @@ mod tests {
         );
     }
 }
-// Fuzz harness (P3.8) for the JVM frame guards: adversarial JVM `Int` tuples
+// Fuzz harness for the JVM frame guards: adversarial JVM `Int` tuples
 // must be classified by an independent oracle, and a guard that waves a frame
 // through must never let a pointer cross past the JVM allocation.
 #[cfg(test)]

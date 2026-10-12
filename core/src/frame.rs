@@ -1,22 +1,13 @@
-//! First-class frame types.
+//! First-class frame types: validated, zero-copy views over caller-owned buffers.
+//! `stride` is in **bytes per row** and must be at least `width * channels * element_size`.
 //!
-//! Frames are validated, zero-copy views over caller-owned buffers. The
-//! caller owns the memory for the lifetime of the view; the views never
-//! free it. `stride` is in **bytes per row** and must be at least
-//! `width * channels * element_size`.
-//!
-//! - [`FrameRef`] is an immutable view (input frames; C `const float*`).
-//! - [`Frame`] is a mutable view (output frames; C `float*`).
-//! - [`OwnedFrame`] is an owned, compact frame (no stride padding) used for
-//!   temporal model state (e.g. EWMA's previous frame).
+//! - [`FrameRef`] immutable input view (C `const float*`)
+//! - [`Frame`] mutable output view (C `float*`)
+//! - [`OwnedFrame`] owned compact copy for temporal state (no stride padding)
 
 use crate::error::{CoreError, Result};
 
 /// Element format of a frame buffer.
-///
-/// Only `F32` exists today; further formats (e.g. `U8` for hardware
-/// buffers) will be added when `NativeFrameHandle` is wired into the FFI
-/// (P1.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameFormat {
     /// 32-bit float per channel.
@@ -32,13 +23,11 @@ impl FrameFormat {
     }
 }
 
-/// The frame contract that needs no buffer: non-zero dimensions, a stride that
-/// is a whole number of elements, and a stride at least one row wide.
+/// Validate frame geometry without touching the buffer: non-zero dimensions,
+/// a stride that is a whole number of elements, and a stride at least one row wide.
 ///
-/// Every consumer of the C ABI calls this before it views caller memory. The
-/// arithmetic is u64 because a language boundary accepts dimensions whose
-/// products do not fit any sane buffer — those must classify as errors rather
-/// than wrap into a short slice.
+/// u64 arithmetic: dimensions whose products overflow must classify as errors,
+/// never wrap into a short slice.
 pub fn validate_dimensions(width: u32, height: u32, channels: u32, stride: usize) -> Result<()> {
     let elem = FrameFormat::F32.element_size();
     if width == 0 || height == 0 || channels == 0 {
@@ -62,20 +51,14 @@ pub fn validate_dimensions(width: u32, height: u32, channels: u32, stride: usize
     Ok(())
 }
 
-/// Elements a buffer must hold to back a frame of these dimensions, [`None`]
-/// when the frame is larger than any buffer could be: `stride * height` beyond
-/// the address space cannot exist, and it must not wrap into a short slice —
-/// that wrap is what once let the C ABI size an empty view of a huge frame.
+/// Elements a buffer must hold for these dimensions, [`None`] when the frame
+/// is larger than any buffer could be (`stride * height` must not wrap).
 pub fn buffer_elements(height: u32, stride: usize) -> Option<u64> {
     let elem = FrameFormat::F32.element_size();
     (stride as u64).checked_mul(height as u64).map(|it| it / (elem as u64))
 }
 
-/// Validates frame dimensions against a data buffer length (in elements).
-///
-/// The buffer length is what the host reports; on the JVM that is the array's
-/// real element count, which is why this check must not be duplicated per
-/// bridge — see bridge/android/README.md.
+/// Validate geometry plus the host-reported buffer length (in elements).
 pub fn validate(width: u32, height: u32, channels: u32, stride: usize, data_len: usize) -> Result<()> {
     validate_dimensions(width, height, channels, stride)?;
     match buffer_elements(height, stride) {
@@ -105,15 +88,11 @@ pub struct FrameRef<'a> {
 }
 
 impl<'a> FrameRef<'a> {
-    /// Creates a validated frame view over `data`.
-    ///
-    /// `stride` is in bytes per row and must be a multiple of the element
-    /// size, at least `width * channels * element_size`; `data` must hold at
-    /// least `stride * height / element_size` elements.
+    /// Validated view over `data`.
     ///
     /// # Errors
-    /// Returns [`CoreError::InvalidParameter`] if any dimension or buffer
-    /// size is invalid.
+    /// [`CoreError::InvalidParameter`] if a dimension, the stride, or `data` is
+    /// too small for the frame contract.
     pub fn new(width: u32, height: u32, channels: u32, stride: usize, data: &'a [f32]) -> Result<Self> {
         validate(width, height, channels, stride, data.len())?;
         Ok(Self {
@@ -126,13 +105,11 @@ impl<'a> FrameRef<'a> {
         })
     }
 
-    /// Views a caller-owned byte buffer as an F32 frame (bytemuck typed
-    /// view). The buffer must be 4-byte aligned and at least
-    /// `stride * height` bytes long.
+    /// View a caller-owned byte buffer as an F32 frame (4-byte aligned, at least
+    /// `stride * height` bytes).
     ///
     /// # Errors
-    /// Returns [`CoreError::InvalidParameter`] if the buffer is misaligned
-    /// or any dimension is invalid.
+    /// [`CoreError::InvalidParameter`] if misaligned or the contract fails.
     pub fn from_bytes(width: u32, height: u32, channels: u32, stride: usize, bytes: &'a [u8]) -> Result<Self> {
         if !(bytes.as_ptr() as usize).is_multiple_of(FrameFormat::F32.element_size()) {
             return Err(CoreError::InvalidParameter(
@@ -158,7 +135,6 @@ impl<'a> FrameRef<'a> {
         self.channels
     }
 
-    /// Stride in bytes per row.
     #[inline]
     pub fn stride(&self) -> usize {
         self.stride
@@ -169,28 +145,21 @@ impl<'a> FrameRef<'a> {
         self.format
     }
 
-    /// `(width, height, channels)`.
     #[inline]
     pub fn dims(&self) -> (u32, u32, u32) {
         (self.width, self.height, self.channels)
     }
 
-    /// Number of valid pixels (`width * height * channels`).
     #[inline]
     pub fn pixel_count(&self) -> usize {
         self.width as usize * self.height as usize * self.channels as usize
     }
 
-    /// Number of elements in the underlying buffer (`stride * height / element_size`).
     #[inline]
     pub fn num_elements(&self) -> usize {
         self.stride * self.height as usize / self.format.element_size()
     }
 
-    /// Reads the pixel at `(x, y)` in channel `c`.
-    ///
-    /// Panics if the coordinates are out of range (caller invariant; the
-    /// FFI validates dimensions before views are created).
     #[inline]
     pub fn pixel(&self, x: u32, y: u32, c: u32) -> f32 {
         debug_assert!((x < self.width) && (y < self.height) && (c < self.channels));
@@ -198,9 +167,6 @@ impl<'a> FrameRef<'a> {
         self.data[(y as usize) * row_stride + (x as usize) * (self.channels as usize) + (c as usize)]
     }
 
-    /// The valid pixels of row `y` (`width * channels` elements).
-    ///
-    /// Panics if `y` is out of range.
     #[inline]
     pub fn row(&self, y: u32) -> &[f32] {
         debug_assert!(y < self.height);
@@ -231,15 +197,11 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    /// Creates a validated frame view over `data`.
-    ///
-    /// `stride` is in bytes per row and must be a multiple of the element
-    /// size, at least `width * channels * element_size`; `data` must hold at
-    /// least `stride * height / element_size` elements.
+    /// Validated view over `data`.
     ///
     /// # Errors
-    /// Returns [`CoreError::InvalidParameter`] if any dimension or buffer
-    /// size is invalid.
+    /// [`CoreError::InvalidParameter`] if a dimension, the stride, or `data` is
+    /// too small for the frame contract.
     pub fn new(width: u32, height: u32, channels: u32, stride: usize, data: &'a mut [f32]) -> Result<Self> {
         validate(width, height, channels, stride, data.len())?;
         Ok(Self {
@@ -252,13 +214,11 @@ impl<'a> Frame<'a> {
         })
     }
 
-    /// Views a caller-owned byte buffer as a mutable F32 frame (bytemuck
-    /// typed view). The buffer must be 4-byte aligned and at least
-    /// `stride * height` bytes long.
+    /// View a caller-owned byte buffer as a mutable F32 frame (4-byte aligned, at least
+    /// `stride * height` bytes).
     ///
     /// # Errors
-    /// Returns [`CoreError::InvalidParameter`] if the buffer is misaligned
-    /// or any dimension is invalid.
+    /// [`CoreError::InvalidParameter`] if misaligned or the contract fails.
     pub fn from_bytes(width: u32, height: u32, channels: u32, stride: usize, bytes: &'a mut [u8]) -> Result<Self> {
         if !(bytes.as_ptr() as usize).is_multiple_of(FrameFormat::F32.element_size()) {
             return Err(CoreError::InvalidParameter(
@@ -269,7 +229,6 @@ impl<'a> Frame<'a> {
         Self::new(width, height, channels, stride, data)
     }
 
-    /// Borrows the frame as an immutable view (valid for this borrow).
     #[inline]
     pub fn as_ref(&self) -> FrameRef<'_> {
         FrameRef {
@@ -297,7 +256,6 @@ impl<'a> Frame<'a> {
         self.channels
     }
 
-    /// Stride in bytes per row.
     #[inline]
     pub fn stride(&self) -> usize {
         self.stride
@@ -308,27 +266,21 @@ impl<'a> Frame<'a> {
         self.format
     }
 
-    /// `(width, height, channels)`.
     #[inline]
     pub fn dims(&self) -> (u32, u32, u32) {
         (self.width, self.height, self.channels)
     }
 
-    /// Number of valid pixels (`width * height * channels`).
     #[inline]
     pub fn pixel_count(&self) -> usize {
         self.width as usize * self.height as usize * self.channels as usize
     }
 
-    /// Number of elements in the underlying buffer (`stride * height / element_size`).
     #[inline]
     pub fn num_elements(&self) -> usize {
         self.stride * self.height as usize / self.format.element_size()
     }
 
-    /// Reads the pixel at `(x, y)` in channel `c`.
-    ///
-    /// Panics if the coordinates are out of range.
     #[inline]
     pub fn pixel(&self, x: u32, y: u32, c: u32) -> f32 {
         debug_assert!((x < self.width) && (y < self.height) && (c < self.channels));
@@ -336,9 +288,6 @@ impl<'a> Frame<'a> {
         self.data[(y as usize) * row_stride + (x as usize) * (self.channels as usize) + (c as usize)]
     }
 
-    /// Mutable access to the pixel at `(x, y)` in channel `c`.
-    ///
-    /// Panics if the coordinates are out of range.
     #[inline]
     pub fn pixel_mut(&mut self, x: u32, y: u32, c: u32) -> &mut f32 {
         debug_assert!((x < self.width) && (y < self.height) && (c < self.channels));
@@ -346,9 +295,6 @@ impl<'a> Frame<'a> {
         &mut self.data[(y as usize) * row_stride + (x as usize) * (self.channels as usize) + (c as usize)]
     }
 
-    /// The valid pixels of row `y` (`width * channels` elements).
-    ///
-    /// Panics if `y` is out of range.
     #[inline]
     pub fn row(&self, y: u32) -> &[f32] {
         debug_assert!(y < self.height);
@@ -357,9 +303,6 @@ impl<'a> Frame<'a> {
         &self.data[start..start + len]
     }
 
-    /// Mutable access to the valid pixels of row `y`.
-    ///
-    /// Panics if `y` is out of range.
     #[inline]
     pub fn row_mut(&mut self, y: u32) -> &mut [f32] {
         debug_assert!(y < self.height);
@@ -410,7 +353,6 @@ pub struct OwnedFrame {
 }
 
 impl OwnedFrame {
-    /// Makes a compact copy of a frame view (stride padding dropped).
     pub fn from_frame(frame: &FrameRef) -> Self {
         let mut data = Vec::with_capacity(frame.pixel_count());
         for y in 0..frame.height() {
@@ -439,21 +381,16 @@ impl OwnedFrame {
         self.channels
     }
 
-    /// `(width, height, channels)`.
     #[inline]
     pub fn dims(&self) -> (u32, u32, u32) {
         (self.width, self.height, self.channels)
     }
 
-    /// Number of pixels (`width * height * channels`).
     #[inline]
     pub fn pixel_count(&self) -> usize {
         self.width as usize * self.height as usize * self.channels as usize
     }
 
-    /// Reads the pixel at `(x, y)` in channel `c`.
-    ///
-    /// Panics if the coordinates are out of range.
     #[inline]
     pub fn pixel(&self, x: u32, y: u32, c: u32) -> f32 {
         debug_assert!((x < self.width) && (y < self.height) && (c < self.channels));
@@ -462,9 +399,6 @@ impl OwnedFrame {
             + (c as usize)]
     }
 
-    /// Mutable access to the pixel at `(x, y)` in channel `c`.
-    ///
-    /// Panics if the coordinates are out of range.
     #[inline]
     pub fn pixel_mut(&mut self, x: u32, y: u32, c: u32) -> &mut f32 {
         debug_assert!((x < self.width) && (y < self.height) && (c < self.channels));
@@ -473,23 +407,15 @@ impl OwnedFrame {
             + (c as usize)]
     }
 
-    /// The whole compact buffer.
     #[inline]
     pub fn as_slice(&self) -> &[f32] {
         &self.data
     }
 }
 
-/// Abstraction for zero-copy native frame handles across platforms
-/// (e.g. AHardwareBuffer on Android, CVPixelBuffer on iOS).
-///
-/// The caller owns the memory behind `data_ptr` for the lifetime of the
-/// handle; the handle never frees it. The pixel format is caller-defined;
-/// `stride` is in bytes and must be at least `width` (one byte per pixel
-/// column).
-///
-/// This is the platform-side wrapper that will *produce* [`Frame`]/[`FrameRef`]
-/// views for the FFI once native buffers are wired in (P1.5).
+/// Zero-copy handle over a platform-native pixel buffer (AHardwareBuffer,
+/// CVPixelBuffer, ...). The caller owns `data_ptr` for the handle's lifetime;
+/// the handle never frees it. `stride` is in bytes and must be at least `width`.
 pub struct NativeFrameHandle {
     width: u32,
     height: u32,
@@ -674,12 +600,10 @@ mod tests {
 
     #[test]
     fn test_frame_stride_padding() {
-        // Stride larger than the minimum: padding must be skipped.
         let stride = (W * C) as usize * 4 + 8;
         let mut data = vec![99.0f32; stride as usize / 4 * H as usize];
         let mut frame = Frame::new(W, H, C, stride, &mut data).unwrap();
         *frame.pixel_mut(0, 0, 0) = 1.0;
-        // Only valid pixels are touched; padding stays untouched.
         for y in 0..H {
             for i in (W * C) as usize..stride / 4 {
                 assert_eq!(data[y as usize * stride / 4 + i], 99.0);
@@ -701,7 +625,6 @@ mod tests {
     fn test_copy_from_dim_mismatch() {
         let src_data = make_input();
         let src = FrameRef::new(W, H, C, STRIDE, &src_data).unwrap();
-        // Destination has 4 channels: valid stride for 4 channels is 64 bytes.
         let mut dst_data = vec![0.0f32; (W * H * (C + 1)) as usize];
         let mut dst = Frame::new(W, H, C + 1, (W * (C + 1)) as usize * 4, &mut dst_data).unwrap();
         let err = dst.copy_from(&src).unwrap_err();

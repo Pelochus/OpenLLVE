@@ -26,21 +26,15 @@ class CoreToppings(
     companion object {
         private const val CHANNELS = 3
 
-        // EWMA_ALPHA weights the CURRENT frame (core/src/filters/ewma.rs:
-        // out = alpha*current + (1-alpha)*previous); 0.8 keeps most of the
-        // current frame so ghosting stays invisible on video while still
-        // damping frame-to-frame shimmer. BLEND_BETA weights the
-        // AI-enhanced frame — 0.9 keeps the picture mostly model output. P1.8
-        // promotes both to `EnhancementSettings`; core/tests/filters_properties.rs
-        // pins this pair in a golden-frame hash.
+        // EWMA_ALPHA weights the current frame, BLEND_BETA the AI-enhanced frame:
+        // 0.8 / 0.9 keeps video mostly current with mild shimmer damping.
         private const val EWMA_ALPHA = 0.8f
         private const val BLEND_BETA = 0.9f
 
         // Bytes per row for a tightly packed RGB `FloatArray` (4 bytes per element).
         private const val STRIDE_SCALE = CHANNELS * 4
 
-        // Must match core/src/ffi.rs OPENLLVE_ABI_VERSION; scripts/build-bridge.sh
-        // rebuilds the library, this constant is what catches a stale one.
+        // Must match the core's ABI version; a mismatch means a stale prebuilt library.
         private const val CORE_ABI_VERSION = 3
     }
 
@@ -137,8 +131,8 @@ class CoreToppings(
     private fun coreReady(): Boolean {
         if (!coreLoaded) {
             coreLoaded = true
-            // scripts/build-bridge.sh renames Cargo's artifact (libopenllve_core_bridge.so)
-            // to libbridge.so in jniLibs, which is the name the JVM resolves.
+            // build-bridge.sh renames the artifact to libbridge.so, the name the JVM
+            // resolves by file name.
             System.loadLibrary("bridge")
             val abi = bridge.abiVersion()
             if (abi != CORE_ABI_VERSION) {

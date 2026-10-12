@@ -5,7 +5,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 
-// Material 3 default typography with a slightly tightened display scale.
 val OpenLLVETypography =
     Typography(
         displaySmall =

@@ -3,8 +3,7 @@
 /// Latencies are accumulated in `f64` for precision over long benchmark runs.
 /// Warm-up frames can be excluded from all statistics via
 /// [`BenchmarkMetrics::with_warmup`]: the first `n` recorded samples are kept
-/// separately and never included in average/median/p99/FPS (see
-/// `docs/benchmarks/METHODOLOGY.md`).
+/// separately and never included in average/median/p99/FPS.
 #[derive(Clone)]
 pub struct BenchmarkMetrics {
     latencies_ms: Vec<f64>,

@@ -1,6 +1,5 @@
-// Property tests (P3.8) for the temporal toppings: invariants that must hold
-// for EVERY input, not just the unit-test samples. Filter contracts live in
-// core/src/filters/{ewma,blend}.rs.
+// Property tests for the temporal toppings: invariants that must hold
+// for EVERY input, not just the unit-test samples.
 
 use openllve_core::filters::{EwmaFilter, FrameBlendFilter};
 use openllve_core::frame::{Frame, FrameRef};
@@ -149,9 +148,8 @@ fn frame_hash(data: &[f32]) -> u64 {
 
 #[test]
 fn golden_blend_then_ewma_chain() {
-    // Pins the app defaults (CoreToppings EWMA_ALPHA = 0.8f, BLEND_BETA = 0.9f):
-    // blend(raw, enhanced) -> EWMA over three frames -> stable hash. If a filter
-    // formula or these defaults change, this hash changes and the test fails.
+    // Pins the app defaults (EWMA_ALPHA 0.8, BLEND_BETA 0.9): blend -> EWMA over three
+    // frames -> stable hash. A formula or default change changes the hash and fails.
     let w: u32 = 4;
     let h: u32 = 3;
     let c: u32 = 3;

@@ -133,8 +133,6 @@ class VideoFrameProvider(
 
         try {
             while (!finished && running.get()) {
-                // Feed the next input sample (or the EOS flag when the stream is
-                // exhausted).
                 if (!eosFed && inputBufferIndex >= 0) {
                     val inputBuffer = codec.getInputBuffer(inputBufferIndex)
                     if (inputBuffer != null) {
@@ -171,7 +169,6 @@ class VideoFrameProvider(
                     inputBufferIndex = codec.dequeueInputBuffer(INPUT_TIMEOUT_US)
                 }
 
-                // Drain decoded output frames until none are available.
                 while (!finished) {
                     val idx = codec.dequeueOutputBuffer(outputInfo, OUTPUT_TIMEOUT_US)
                     when (idx) {
@@ -202,8 +199,6 @@ class VideoFrameProvider(
                                     val n = frameCount.value + 1
                                     frameCount.value = n
                                     inferenceMsTotal.value += engine.lastInferenceMs
-                                    // Periodic progress summary (the engine logs
-                                    // each frame at DEBUG level).
                                     if (n % 30 == 0) {
                                         AppLog.info(
                                             "Video: $n frames, avg ${(inferenceMsTotal.value / n)}ms/frame",

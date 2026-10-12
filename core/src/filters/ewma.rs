@@ -126,7 +126,6 @@ mod tests {
 
     #[test]
     fn test_ewma_first_frame_passthrough_and_stride() {
-        // Frame with stride padding: only valid pixels are processed.
         // 2x1x2 frame with stride 16 bytes (4 elems/row); last 2 elems are padding.
         let data = vec![1.0, 2.0, 99.0, 99.0];
         let mut out = vec![0.0f32; 4];
@@ -149,7 +148,6 @@ mod tests {
             .apply(&frame_ref(&f1, 2, 1, 1), &mut frame_mut(&mut out1, 2, 1, 1))
             .unwrap();
 
-        // Different dimensions: state is dropped, frame passes through.
         let f2 = vec![1.0, 2.0, 3.0, 4.0];
         let mut out2 = vec![0.0; 4];
         filter
@@ -172,7 +170,6 @@ mod tests {
     #[test]
     fn test_ewma_apply_in_place() {
         let mut filter = EwmaFilter::new(0.5).unwrap();
-        // First frame (holds the current enhanced frame) passes through.
         let mut out1 = vec![0.0, 10.0];
         filter.apply_in_place(&mut frame_mut(&mut out1, 2, 1, 1)).unwrap();
         assert_eq!(out1, vec![0.0, 10.0]);
@@ -193,7 +190,6 @@ mod tests {
             .unwrap();
         filter.reset();
 
-        // After reset the next frame is a first frame again.
         let f2 = vec![10.0, 0.0];
         let mut out2 = vec![0.0; 2];
         filter

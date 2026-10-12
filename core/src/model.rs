@@ -1,17 +1,12 @@
-//! Feature-gated LiteRT model runner (see `docs/dev/architecture/ARCHITECTURE.md` §11).
+//! Feature-gated LiteRT model runner: `cargo build --features model`.
 //!
-//! Enabled with `cargo build --features model`. It loads a `.tflite` model via
-//! `tflite-c-rs`, which dynamically opens `libtensorflowlite_c` at runtime
-//! (no build-time link). The library path is taken from the
-//! `OPENLLVE_TFLITE_LIB` environment variable when set, otherwise the
-//! default library search path is used.
+//! Loads a `.tflite` model via `tflite-c-rs`, which opens `libtensorflowlite_c`
+//! at runtime (no build-time link); the library path comes from
+//! `OPENLLVE_TFLITE_LIB` when set, else the default search path.
 //!
-//! The runner targets the Zero-DCE model (`zero-dce-int8.tflite`), which has a
-//! **fixed** 256×256 input shape (see `external/models/README.md`): input
-//! `(1, 256, 256, 4)` (RGB in `[0, 1]` + brightness channel) → output
-//! `(1, 256, 256, 24)` (8 iterations × 3 RGB curve parameters). Frames larger
-//! than 256×256 are tiled into overlapping patches and reassembled, mirroring
-//! the upstream `network.py`.
+//! Targets Zero-DCE: fixed `(1, 256, 256, 4)` input (RGB in `[0, 1]` + brightness
+//! channel) → `(1, 256, 256, 24)` output (8 iterations × 3 RGB curve parameters).
+//! Frames larger than 256×256 are tiled into overlapping patches and reassembled.
 
 use std::path::Path;
 
@@ -30,8 +25,8 @@ const EXPECTED_OUTPUT_DIMS: [i32; 4] = [1, 256, 256, 24];
 /// Runs the Zero-DCE model on 256×256 patches.
 ///
 /// Owns a LiteRT interpreter and reusable scratch buffers so steady-state
-/// frames allocate nothing. The interpreter is not thread-safe: one runner is
-/// owned by one thread (the FFI documents this for strategy handles).
+/// frames allocate nothing. The interpreter is not thread-safe: one runner
+/// per thread.
 pub struct ModelRunner {
     interpreter: Interpreter,
     /// Reusable `(256, 256, 4)` model-input scratch.
@@ -117,20 +112,16 @@ impl ModelRunner {
 
     /// Runs the model on a full frame, writing the enhanced RGB frame.
     ///
-    /// `input` must be `(width, height, 3)` with RGB in `[0, 1]`; `output`
-    /// must have the same dimensions. The 4th (brightness) input channel is
-    /// derived as the frame's global mean clamped to `0.5` — a faithful
-    /// simplification of the upstream `_prepare_image` (its 4×4 bilinear
-    /// downscale + blend collapses to the global mean for practical images).
-    ///
-    /// Frames larger than 256×256 are tiled into 256×256 patches with a 16 px
-    /// overlap (reflect padding at edges, linear-ramp reassembly), matching
-    /// the upstream `network.py`.
+    /// `input` is `(width, height, 3)` with RGB in `[0, 1]`; `output` has the same
+    /// dimensions. The 4th (brightness) input channel is the frame's global mean
+    /// clamped to `0.5`. Frames larger than 256×256 are tiled into 256×256
+    /// patches with 16 px overlap (reflect padding, linear-ramp reassembly),
+    /// following the upstream Zero-DCE inference script.
     ///
     /// # Errors
-    /// Returns [`CoreError::InvalidParameter`] if the input is not 3-channel,
-    /// [`CoreError::BufferDimensionMismatch`] if the output dimensions differ,
-    /// or [`CoreError::InferenceFailure`] if inference fails.
+    /// [`CoreError::InvalidParameter`] if the input is not 3-channel,
+    /// [`CoreError::BufferDimensionMismatch`] if `output` differs, or
+    /// [`CoreError::InferenceFailure`] if inference fails.
     pub fn run_frame(&mut self, input: &crate::frame::FrameRef, output: &mut crate::frame::Frame) -> Result<()> {
         let (w, h, c) = input.dims();
         if c != 3 {
@@ -377,7 +368,6 @@ mod tests {
     }
 
     fn make_input(w: u32, h: u32) -> Vec<f32> {
-        // Deterministic gradient in [0, 1].
         (0..(w * h * 3) as usize).map(|i| ((i % 251) as f32) / 250.0).collect()
     }
 
@@ -423,11 +413,9 @@ mod tests {
 
     #[test]
     fn test_brightness_channel() {
-        // 2x2x3 all 0.4 -> mean 0.4, clamped to 0.4.
         let data = vec![0.4f32; 12];
         let frame = FrameRef::new(2, 2, 3, 24, &data).unwrap();
         assert!((ModelRunner::brightness_channel(&frame) - 0.4).abs() < 1e-6);
-        // mean > 0.5 clamps to 0.5.
         let data = vec![0.9f32; 12];
         let frame = FrameRef::new(2, 2, 3, 24, &data).unwrap();
         assert!((ModelRunner::brightness_channel(&frame) - 0.5).abs() < 1e-6);
@@ -446,9 +434,7 @@ mod tests {
 
         runner.run_frame(&in_frame, &mut out_frame).unwrap();
 
-        // Output must be finite and within [0, 1].
         assert!(output.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v)));
-        // The enhancement must actually change the frame (not be identity).
         let changed = (0..output.len())
             .filter(|&idx| (output[idx] - input[idx]).abs() > 1e-4)
             .count();
@@ -464,7 +450,6 @@ mod tests {
             return;
         };
 
-        // 400x320 exercises the tiling path (2x2 patches).
         let w = 400u32;
         let h = 320u32;
         let input = make_input(w, h);

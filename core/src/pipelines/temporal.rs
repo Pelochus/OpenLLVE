@@ -35,8 +35,7 @@ impl Default for LlveTemporalPipeline {
 
 impl Pipeline for LlveTemporalPipeline {
     fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()> {
-        // Placeholder temporal model: enhanced == raw. P1.2 replaces this
-        // with the real temporal model.
+        // Placeholder temporal model: enhanced == raw.
         output.copy_from(input)?;
 
         // Blend the *current* raw frame with the enhanced frame:
@@ -49,8 +48,7 @@ impl Pipeline for LlveTemporalPipeline {
     }
 
     fn reset(&mut self) {
-        // No temporal state yet; will reset model state when a real temporal
-        // model is integrated.
+        // No temporal state yet.
     }
 
     fn mode(&self) -> TemporalMode {
@@ -89,8 +87,6 @@ mod tests {
 
     #[test]
     fn test_temporal_pipeline_with_blend_uses_current_frame() {
-        // Without a model the enhanced frame equals the raw frame, so a blend
-        // with the current frame leaves the output equal to the input.
         let mut pipeline = LlveTemporalPipeline::new().with_blend(0.5).unwrap();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 3];

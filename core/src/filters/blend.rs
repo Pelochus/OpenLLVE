@@ -109,8 +109,6 @@ mod tests {
             )
             .unwrap();
 
-        // 0.8 * 10.0 + 0.2 * 0.0 = 8.0
-        // 0.8 * 0.0 + 0.2 * 10.0 = 2.0
         // f32 arithmetic is not exact, so compare with a tolerance.
         assert!((out[0] - 8.0).abs() < 1e-4);
         assert!((out[1] - 2.0).abs() < 1e-4);
@@ -132,7 +130,6 @@ mod tests {
 
     #[test]
     fn test_frame_blend_rgb() {
-        // 2x2 RGB: per-channel blending.
         let blender = FrameBlendFilter::new(0.5).unwrap();
         let raw = vec![0.0; 12];
         let enh = vec![1.0; 12];

@@ -74,15 +74,12 @@ class AndroidLiteRtEngine(
         for (target in ComputeTarget.entries) {
             val ok =
                 when (target) {
-                    // CPU is always available. XNNPACK maps to CPU: LiteRT
-                    // `CompiledModel` has no separate XNNPACK accelerator (the
-                    // experimental YNNPACK CPU accelerator is a build flag, not a
-                    // delegate).
+                    // CPU is always available. XNNPACK maps to CPU: LiteRT `CompiledModel`
+                    // has no XNNPACK accelerator (YNNPACK is a build flag, not a delegate).
                     ComputeTarget.CPU, ComputeTarget.XNNPACK -> true
 
-                    // 2.3.0 ships GPU acceleration as a separate Maven package
-                    // (`litert-gpu`, ML Drift); without it GPU is never
-                    // available.
+                    // GPU needs the separate `litert-gpu` package (ML Drift); without it GPU
+                    // is never available.
                     ComputeTarget.GPU -> Accelerator.GPU in available
 
                     // Needs the vendored dispatch runtime (see TensorNpuProvider).
@@ -199,8 +196,6 @@ class AndroidLiteRtEngine(
         compiledModel = null
         AppLog.debug("Engine released", "Engine")
     }
-
-    // ---- Model path (mirrors core/src/model.rs) ----
 
     private fun createModelWithFallback(
         modelFile: File,

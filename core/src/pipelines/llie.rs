@@ -6,10 +6,9 @@ use std::path::Path;
 
 /// Pipeline A: LLIE (static frame enhancer) with optional temporal toppings.
 ///
-/// With the `model` feature enabled, this pipeline runs the Zero-DCE model
-/// (`ModelRunner`, see `docs/dev/architecture/ARCHITECTURE.md` §11): frame in → enhanced frame out. Without the
-/// feature (or without a model), `process` is an identity stub so the core
-/// still builds and tests without the LiteRT runtime present.
+/// With the `model` feature this runs the Zero-DCE model (frame in → enhanced
+/// frame out); without it (or without a model) `process` is an identity stub so
+/// the core builds and tests without the LiteRT runtime.
 #[derive(Default, Debug)]
 pub struct LliePipeline {
     ewma: Option<EwmaFilter>,
@@ -66,7 +65,6 @@ impl LliePipeline {
 impl Pipeline for LliePipeline {
     fn process(&mut self, input: &FrameRef, output: &mut Frame) -> Result<()> {
         // 1. Enhancement: the model if present, else an identity stub.
-        //    (P1.2: the model maps RGB [0,1] in -> enhanced RGB [0,1] out.)
         #[cfg(feature = "model")]
         if let Some(model) = &mut self.model {
             model.run_frame(input, output)?;
@@ -158,8 +156,6 @@ mod tests {
 
     #[test]
     fn test_llie_pipeline_with_blend_uses_current_frame() {
-        // Without a model the enhanced frame equals the raw frame, so a blend
-        // with the current frame leaves the output equal to the input.
         let mut pipeline = LliePipeline::new().unwrap().with_blend(0.5).unwrap();
         let input = vec![1.0, 2.0, 3.0];
         let mut output = vec![0.0; 3];
