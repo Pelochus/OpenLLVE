@@ -26,6 +26,7 @@ model = ["dep:tflite-c-rs"]
 
 [dev-dependencies]
 criterion = "0.5"
+proptest = "1.1"
 
 [[bench]]
 name = "inference_bench"
