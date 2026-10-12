@@ -9,9 +9,8 @@ Status of the remaining §4 items (finished work is not listed — see `TODO.md`
 
 | Item | Status |
 | --- | --- |
-| P1.5 `NativeFrameHandle` | ⚠️ partial — validated (`new_checked` returns `Result`, rejects null ptr / `stride < width`), lifetime + pixel format documented; still **unused**: the bridge passes raw pointers + dimensions and guards them in `bridge/android/src/frames.rs` instead |
+| P1.5 `NativeFrameHandle` | ⚠️ open — validated (`new_checked` returns `Result`, rejects null ptr / `stride < width`), lifetime + pixel format documented; still **unused** by the FFI (raw `float*` + dimensions cross instead) |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` + `proptest` added (`serde` no longer needed — P3.6 rejected) |
-| P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core (fuzzing confirms `ffi.rs` accepts stride/height products that wrap) |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer, tracked at a high level only (§4 P4); the C ABI in `ffi.rs` is already complete for it |
 | P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.8f`, `BLEND_BETA = 0.9f` (re-tuned: 80 % of the current frame, flicker damped without visible ghosting; 90 % AI-enhanced) |
 
@@ -31,7 +30,10 @@ Status of the remaining §4 items (finished work is not listed — see `TODO.md`
 The docs are clear and good; the code contradicts them in two places:
 
 1. **"All business logic must live in the Rust core"** — the temporal toppings do run there through the JNI shim (P1.1); model inference deliberately stays on the Kotlin LiteRT path (`docs/dev/architecture/FFI-WIRING.md` §3), so the core's `process_frame`/pipeline constructors are exported but unused by the app.
-2. **"Platform-neutral compute belongs in `core/`"** — the frame geometry/buffer checks run under `cargo test` on a PC yet sit in the Android shim (`bridge/android/src/frames.rs`), so no other host is guarded (P1.4).
+2. **"Platform-neutral compute belongs in `core/`"** — satisfied for frame checks: the
+   frame contract lives in `core/src/frame.rs` and both the C ABI (`core/src/ffi.rs`) and
+   the JVM shim (`bridge/android/src/frames.rs`) run it; the shim keeps JVM facts only.
+   Model inference deliberately stays on the Kotlin LiteRT path (`docs/dev/architecture/FFI-WIRING.md` §3).
 3. **"KMP for all shared app logic"** — satisfied: `app/shared/` is a real KMP module (`:shared`) with the domain, UI-state, and media contracts plus the platform-neutral `SettingsStore` persistence contract.
 4. **"Zero-copy frame handles"** — `NativeFrameHandle` exists but is unused by the FFI (raw `float*` + dimensions are passed) and has no lifetime/aliasing story for the raw `*mut u8` (P1.5).
 
@@ -53,9 +55,15 @@ The earlier round's stale entries (`VideoPipelineManager.kt`, `SystemMonitor.kt`
 
 1. **Wire `NativeFrameHandle` (P1.5) into the FFI** (pass pointer + stride + pixel format,
    validate dimensions) **or delete it** until it is used.
-2. **Move frame validation into the core** (P1.4): the geometry/buffer checks today live in
-   the Android shim, so a C or iOS consumer of the core's C ABI gets no guard
-   while `ffi.rs` builds slices from caller-supplied numbers.
+2. ~~**Move frame validation into the core** (P1.4)~~ — **done**: `core/src/frame.rs` gained
+   `validate_dimensions` (positive dims, `stride` a multiple of the element size, `stride >=
+   width*channels*element_size`) and `buffer_elements` (the buffer requirement in u64, rejected
+   when `stride*height` leaves the address space); `Frame::new`/`FrameRef::new` are thin wrappers,
+   every frame-taking `ffi.rs` export runs the check *before* sizing caller memory
+   (`frame_elements` → `validate_dimensions` + `buffer_elements`), and `frames.rs` now delegates
+   and keeps JVM facts only (signed `jint`, array element count). Fuzzing had shown the ABI
+   accepting stride/height products that wrap into a short slice — fixed, and asserted by
+   `core/tests/ffi_fuzz.rs::fuzz_frames_larger_than_the_address_space_are_rejected`.
 3. **Expose the EWMA/blend weights as `EnhancementSettings`** (P1.8) — they are `CoreToppings`
    constants today.
 
@@ -97,4 +105,4 @@ gets its own bridge crate (`docs/dev/architecture/ARCHITECTURE.md` §3).
 
 ### TL;DR
 
-The Rust core is real and the app now calls it: P1.1 landed (22 JNI exports, `libbridge.so` in the APK, EWMA + blend applied per frame). Highest-leverage work remaining: (1) move frame validation into the core (P1.4 — only the JVM is guarded today), (2) property/FFI-fuzz tests (P3.8, unblocked).
+The Rust core is real and the app now calls it: P1.1 landed (22 JNI exports, `libbridge.so` in the APK, EWMA + blend applied per frame), and P1.4 landed (one frame contract in `core/src/frame.rs`, run by the C ABI and the JVM shim alike). Highest-leverage work remaining: (1) model validation on real frames (P1.2 follow-ups), (2) promote the EWMA/blend weights to `EnhancementSettings` (P1.8), (3) wire `NativeFrameHandle` into the FFI or delete it (P1.5).

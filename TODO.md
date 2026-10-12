@@ -25,23 +25,12 @@ live in `AGENTS.md`.
 1. [~] **P1.2 follow-ups — model validation on real frames.**
    - Verify the pipeline on real (non-synthetic) frames; re-confirm the global-mean
      brightness channel against upstream's 4×4 bilinear downscale.
-2. [~] **P1.4 — Move frame validation into the core (every host bridge reuses it).**
-   - `bridge/android/src/frames.rs` holds platform-neutral checks (positive dims,
-     `stride >= width*channels*4`, buffer element count vs `stride*height/4`) that only
-     the JVM gets today; `ffi.rs` builds slices with `slice::from_raw_parts(ptr, stride*height/4)`
-     from caller numbers, so a C or iOS consumer of the core's C ABI is unguarded.
-     Fuzzing (`core/tests/ffi_fuzz.rs`) confirms it: absurd stride/height pairs whose
-     product wraps are accepted, and the slice built is then shorter than the memory
-     the caller owns.
-   - Do: expose the check in the core (one Rust function beside the frame types, returning
-     the same `OpenLlveError` codes), have both bridges call it, and
-     keep in the shim only host facts (JVM array element count, signed `jint`).
-3. [ ] **P1.8 — Promote EWMA/blend weights to `EnhancementSettings`.** `CoreToppings`
+2. [ ] **P1.8 — Promote EWMA/blend weights to `EnhancementSettings`.** `CoreToppings`
    keeps `EWMA_ALPHA = 0.8f` / `BLEND_BETA = 0.9f` (defaults tuned for video:
    alpha weights the current frame — no ghosting, mild flicker damping) as
    constants while the UI already
    exposes `ewmaEnabled` / `flickerReductionEnabled`; the weights are the missing half.
-4. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
+3. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
     - Beyond Google Tensor: Qualcomm, then MediaTek if prebuilt libs appear. The newest
       LiteRT release that ships NPU runtime libraries at all is the **2.2.0** zip (2.3.0
       ships none); 2.3.0 added Samsung (Exynos AI LiteCore) and Intel (OpenVINO) support
@@ -52,7 +41,7 @@ live in `AGENTS.md`.
     - Per-vendor `NpuCompatibilityChecker` + the `isLibraryReady()` existence check;
       dispatch shims need the vendor runtime on-device (Tensor `libedgetpu_litert.so`,
       Qualcomm QAIRT). arm64-v8a only; JIT is Beta per vendor, AOT is the supported path.
-5. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
+4. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
     - P4.1 `bridge/ios/` Swift shim over the core's `cdylib` (core + ABI reused unchanged);
       P4.2 AVFoundation media; P4.3 Core ML / Metal inference
       (LiteRT stays Android-side); P4.4 SwiftUI on the `:shared` contracts.

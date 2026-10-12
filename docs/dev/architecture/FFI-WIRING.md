@@ -113,3 +113,29 @@ enums, and `OpenLlveError` codes are the source of truth, and each host shim
 derives its own host-side declarations from them (JNI via `jni_mangle` today;
 a Swift/iOS bridge would generate its interface from the `cdylib` or use a
 binding tool, per P4.1).
+
+## 6. One frame contract, every host (P1.4, 2026-10-12)
+
+The frame checks were JVM-only: `bridge/android/src/frames.rs` guarded geometry and
+buffer lengths before pointers crossed, while `core/src/ffi.rs` derived slice lengths
+from caller numbers. Fuzzing (`core/tests/ffi_fuzz.rs`, `bridge/android/src/frames.rs::ffi_fuzz`)
+showed the gap was real — an absurd `stride * height` wrapped into a short slice, so the
+ABI validated a legal-looking frame over memory the caller does not own — and the JVM guard
+accepted a stride that is not a whole number of `f32`, whose requirement rounds down past
+the allocation.
+
+Both moved into the core, where they can run under `cargo test` on a PC:
+
+- `core/src/frame.rs` exports `validate_dimensions(width, height, channels, stride)` (positive
+  dims, `stride` a multiple of the element size, `stride >= width*channels*element_size`) and
+  `buffer_elements(height, stride) -> Option<u64>` (the requirement in `u64`; `None` when
+  `stride * height` leaves the address space, so it cannot wrap). `Frame::new`/`FrameRef::new`
+  are thin wrappers, so the safe API and the C ABI cannot drift apart.
+- `core/src/ffi.rs` sizes caller memory only after `frame_elements` accepts the description —
+  the check runs *before* `slice::from_raw_parts`, which is why the wrap is gone.
+- `bridge/android/src/frames.rs` calls the core's two functions and keeps JVM facts only: `Int`
+  is signed, and a JVM array reports an element count, not a byte length.
+
+Error codes are the shared `OpenLlveError` ones, so a host maps them without re-deriving the
+predicate. A C or iOS consumer of the C ABI is guarded by the same code with no bridge at all —
+the remaining host-specific knowledge is how that host reports buffer lengths.
