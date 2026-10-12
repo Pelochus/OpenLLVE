@@ -1,7 +1,7 @@
 # `bridge/android` — JNI shim over the core's C ABI
 
 The JVM half of P1.1: it exposes the Rust core to Kotlin. The core itself keeps
-one ABI surface (`core/src/ffi.rs` + `core/include/openllve_core.h`); nothing
+one ABI surface (`core/src/ffi.rs`); nothing
 here redefines it — the crate depends on `openllve_core` as a normal Rust
 library and calls its functions directly. See
 `docs/dev/architecture/FFI-WIRING.md` for the decision record.

@@ -4,7 +4,7 @@ The Rust core for **OpenLLVE** is the portable, performance-sensitive layer that
 
 ## Why the C FFI layer exists
 
-The Rust core is not meant to be directly embedded into the Kotlin or Swift host runtime. Instead, it exposes a C-compatible API through `core/include/openllve_core.h` and `src/ffi.rs`.
+The Rust core is not meant to be directly embedded into the Kotlin or Swift host runtime. Instead, `src/ffi.rs` exposes a C-compatible API: the `extern "C"` exports, their handle types, and their error codes are the contract every host bridge reuses.
 
 This is the standard pattern when you need:
 
@@ -23,8 +23,6 @@ Modern Rust prefers folder modules without `mod.rs` when using 2018+ edition. Th
 core/
 ├── Cargo.toml
 ├── README.md
-├── include/
-│   └── openllve_core.h
 ├── src/
 │   ├── lib.rs
 │   ├── error.rs

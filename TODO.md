@@ -34,9 +34,9 @@ live in `AGENTS.md`.
    - `bridge/android/src/frames.rs` holds platform-neutral checks (positive dims,
      `stride >= width*channels*4`, buffer element count vs `stride*height/4`) that only
      the JVM gets today; `ffi.rs` builds slices with `slice::from_raw_parts(ptr, stride*height/4)`
-     from caller numbers, so a C or iOS consumer of `core/include/openllve_core.h` is unguarded.
-   - Do: expose the check in the core (declare it in the header beside the frame
-     functions, return the same `OpenLlveError` codes), have both bridges call it, and
+     from caller numbers, so a C or iOS consumer of the core's C ABI is unguarded.
+   - Do: expose the check in the core (one Rust function beside the frame types, returning
+     the same `OpenLlveError` codes), have both bridges call it, and
      keep in the shim only host facts (JVM array element count, signed `jint`).
 4. [ ] **P1.8 — Promote EWMA/blend weights to `EnhancementSettings`.** `CoreToppings`
    keeps `EWMA_ALPHA = 0.8f` / `BLEND_BETA = 0.85f` (defaults tuned for video:
@@ -55,8 +55,8 @@ live in `AGENTS.md`.
       dispatch shims need the vendor runtime on-device (Tensor `libedgetpu_litert.so`,
       Qualcomm QAIRT). arm64-v8a only; JIT is Beta per vendor, AOT is the supported path.
 6. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
-    - P4.1 `bridge/ios/` Swift shim `@cImport`ing `core/include/openllve_core.h` (core +
-      ABI reused unchanged); P4.2 AVFoundation media; P4.3 Core ML / Metal inference
+    - P4.1 `bridge/ios/` Swift shim over the core's `cdylib` (core + ABI reused unchanged);
+      P4.2 AVFoundation media; P4.3 Core ML / Metal inference
       (LiteRT stays Android-side); P4.4 SwiftUI on the `:shared` contracts.
     - Hard rule: nothing iOS-specific enters `core/` or `app/shared/` — one bridge crate
       per host (`docs/dev/architecture/ARCHITECTURE.md` §3).

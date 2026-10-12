@@ -50,8 +50,8 @@ fn core_error_to_abi(error: &CoreError) -> OpenLlveError {
 
 /// Pipeline handle: LLIE (static frame enhancer) or temporal (sequence model).
 ///
-/// The name matches the opaque `OpenLlvePipeline` typedef in
-/// `include/openllve_core.h`.
+/// Crossed as an opaque pointer in the C ABI; the caller owns it and frees it
+/// with the matching `*_free` function.
 pub enum OpenLlvePipeline {
     Llie(LliePipeline),
     Temporal(LlveTemporalPipeline),

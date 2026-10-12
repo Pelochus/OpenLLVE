@@ -100,3 +100,16 @@ Follow-ups left open: EWMA/blend weights are constants in `CoreToppings`
 pipeline constructors are wired but not yet used by the app (the app keeps its
 Kotlin LiteRT inference path per §3); `x86_64` ABI is not built (arm64-v8a only);
 P3.8 property tests and FFI-fuzz tests can now target the bridge.
+
+## 5. The C header was dropped (2026-10-12)
+
+`core/include/openllve_core.h` (and `core/include/README.md`) are deleted. Nothing
+consumed it: no `#include`, no `@cImport`, no build step or CI job read it, and
+Kotlin declares its contract in `CoreBridge.kt` instead. It was a hand-written
+mirror of `ffi.rs` with nothing checking it for drift.
+
+`core/src/ffi.rs` remains the ABI contract — the `extern "C"` exports, handle
+enums, and `OpenLlveError` codes are the source of truth, and each host shim
+derives its own host-side declarations from them (JNI via `jni_mangle` today;
+a Swift/iOS bridge would generate its interface from the `cdylib` or use a
+binding tool, per P4.1).

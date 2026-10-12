@@ -25,7 +25,7 @@ before making changes. Keep it updated when conventions change.
   the code reference the doc by path.
 - **Doc comments stay** where they are load-bearing: public Rust API / C ABI
   (`ffi.rs` — contracts for handles, lifetimes, error codes are consumed by
-  the C header and Kotlin `external fun`s), and exported Kotlin shared
+  the Kotlin `external fun`s and by future host bridges), and exported Kotlin shared
   contracts in `app/shared/`.
 - No commented-out code. Delete it or keep it.
 - Follow `.editorconfig` (4-space indent, LF, UTF-8, trailing newline) and
