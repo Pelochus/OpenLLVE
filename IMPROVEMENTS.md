@@ -11,9 +11,9 @@ Status of the remaining §4 items (finished work is not listed — see `TODO.md`
 | --- | --- |
 | P1.5 `NativeFrameHandle` | ⚠️ partial — validated (`new_checked` returns `Result`, rejects null ptr / `stride < width`), lifetime + pixel format documented; still **unused**: the bridge passes raw pointers + dimensions and guards them in `bridge/android/src/frames.rs` instead |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` + `proptest` added (`serde` no longer needed — P3.6 rejected) |
-| P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core |
+| P1.4 frame validation shared across host bridges | ⚠️ open — the checks live in `bridge/android/src/frames.rs`, so only the JVM is guarded; move them into the core (fuzzing confirms `ffi.rs` accepts stride/height products that wrap) |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer, tracked at a high level only (§4 P4); the C ABI in `ffi.rs` is already complete for it |
-| P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.7f`, `BLEND_BETA = 0.9f` (re-tuned: mild flicker damping without visible ghosting; 90 % AI-enhanced) |
+| P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.8f`, `BLEND_BETA = 0.9f` (re-tuned: 80 % of the current frame, flicker damped without visible ghosting; 90 % AI-enhanced) |
 
 ## 1. What this repo is
 
@@ -67,7 +67,7 @@ blocks the build.
 | # | Item (`DESIGN_SUGGESTIONS.md` §) | Effort | Verdict | Notes |
 | --- | --- | --- | --- | --- |
 | P3.3 | Crate additions (§2) | easy | enabler | Add each crate when its paired item lands: `proptest` → P3.8; `miri` as a CI job later; `static_assertions` optional. (`serde` no longer needed — P3.6 rejected.) |
-| P3.8 | Property / FFI-fuzz tests (§1) | med | partial | Done in `core/tests/filters_properties.rs`: EWMA-bounds, blend-convexity, blend-endpoint proptests + golden-frame hash pinning the app defaults (EWMA 0.7 / blend 0.9). Remaining: FFI fuzzing against the bridge crate. |
+| P3.8 | Property / FFI-fuzz tests (§1) | med | done | `core/tests/filters_properties.rs`: EWMA-bounds, blend-convexity, blend-endpoint proptests + golden-frame hash pinning the app defaults (EWMA 0.8 / blend 0.9). FFI fuzzing landed on both boundaries: `core/tests/ffi_fuzz.rs` (C-ABI handles, dims, strides, weights — nulls/dims/params classified, no UB) and `bridge/android/src/frames.rs::ffi_fuzz` (adversarial JVM `Int` tuples against an independent oracle). The bridge fuzz caught the guard accepting a stride that is not a whole number of `f32` — its buffer requirement rounds down past the allocation, now rejected there like the core's. |
 
 ### P4 — iOS platform (deliberately high-level)
 
