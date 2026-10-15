@@ -33,3 +33,5 @@ Thumbs.db
 *.temp
 .kotlin/
 .ruff_cache/
+# pi agent
+.pi/
