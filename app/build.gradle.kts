@@ -76,7 +76,8 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Falls back to the debug keystore unless the RELEASE_* env vars
+            // Falls back to the debug keystore unless the RELEASE_* env vars are set.
+            signingConfig = if (signingConfigs.names.contains("release")) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
