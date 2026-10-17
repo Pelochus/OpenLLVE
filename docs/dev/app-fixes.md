@@ -31,6 +31,10 @@ dead ends. Open app work lives in `TODO.md`, not here.
   compiler toolchain plus per-device compilation, which no agent environment
   has. If a device cannot JIT, `configure` falls back to CPU with an explicit
   reason (never silent).
+- **NNAPI is not a backend LiteRT 2.x can use:** the NNAPI delegate was dropped, so
+  `ComputeTarget.NPU` ("NPU (NNAPI)") is only ever served by the vendored per-vendor dispatch
+  runtime (Google Tensor today) — an unavailable NPU is expected on unsupported devices, not a
+  regression.
 - **XNNPACK has no LiteRT accelerator:** `ComputeTarget.XNNPACK` maps to CPU —
   a LiteRT capability gap, not an app bug.
 - **A bare "unexpected error" on the video path is vendor text, not app code:** the
