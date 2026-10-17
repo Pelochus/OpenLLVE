@@ -140,6 +140,13 @@ class AndroidLiteRtEngine(
 
         val patchIn = FloatArray(PATCH * PATCH * 4)
         var patchOut = FloatArray(PATCH * PATCH * 24)
+        val accumBytes = hPad.toLong() * wPad * 24 * 4
+        // Logged before allocating: an allocation failure tombstones the process, so the
+        // size that was about to be requested is the last thing worth recording.
+        AppLog.debug(
+            "enhanceFrame: ${width}x$height, ${numW * numH} patches, accum ≈ ${accumBytes / (1 shl 20)} MB",
+            "Engine",
+        )
         val accum = FloatArray(hPad * wPad * 24)
 
         val start = SystemClock.elapsedRealtime()
@@ -153,7 +160,7 @@ class AndroidLiteRtEngine(
         val modelOutput = FloatArray(width * height * 3)
         applyCurves(input, modelOutput, width, height, wPad, accum)
         this.lastInferenceMsValue = SystemClock.elapsedRealtime() - start
-        AppLog.debug("enhanceFrame: ${width}x$height, ${numW * numH} patches, ${lastInferenceMsValue}ms", "Engine")
+        AppLog.debug("enhanceFrame: ${width}x$height, ${lastInferenceMsValue}ms", "Engine")
         val toppings = coreToppingsFor(width, height)
         if (toppings == null) {
             return modelOutput

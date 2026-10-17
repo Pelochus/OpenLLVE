@@ -127,6 +127,15 @@ class EnhancementViewModel(
                     "Image: done ${metrics.inputResolution} in ${metrics.inferenceMs}ms (${metrics.backend.label})",
                     "Image",
                 )
+            } catch (e: OutOfMemoryError) {
+                // Not an Exception: an oversized image otherwise tombstones the process.
+                AppLog.error("Image: out of memory: ${e.message ?: "allocation failed"}", "Image")
+                _uiState.update {
+                    it.copy(
+                        error = "Image too large for memory: ${e.message ?: "allocation failed"}",
+                        processing = false,
+                    )
+                }
             } catch (e: Exception) {
                 AppLog.error("Image: failed: ${e.message ?: "unknown error"}", "Image")
                 _uiState.update { it.copy(error = "Image processing failed: ${e.message ?: "unknown error"}", processing = false) }
