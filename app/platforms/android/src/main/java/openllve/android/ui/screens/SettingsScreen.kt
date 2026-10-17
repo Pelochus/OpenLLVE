@@ -25,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -41,9 +40,8 @@ import openllve.shared.ui.UiState
 
 /**
  * Settings screen: the app's configuration (default compute target +
- * toppings), upcoming features, and app/model/device information. The home
- * screen only shows a read-only summary of the active configuration, so the
- * two screens are distinct.
+ * toppings), logs, and app/model/device information. The home screen only
+ * shows a read-only summary of the active configuration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,13 +85,9 @@ fun SettingsScreen(
                 onSettingsChange = viewModel::updateSettings,
             )
 
-            ComingSoonCard()
-
             LogsCard(onViewLogs = onOpenLogs)
 
             AboutCard()
-
-            PrivacyCard()
         }
     }
 }
@@ -150,35 +144,6 @@ private fun LogsCard(onViewLogs: () -> Unit) {
     }
 }
 
-/** Features not implemented yet, shown disabled so the roadmap is visible. */
-@Composable
-private fun ComingSoonCard() {
-    Card(modifier = Modifier.padding(horizontal = 12.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Coming soon", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            ComingSoonRow("Adaptive exposure compensation")
-            ComingSoonRow("Temporal noise suppression")
-            ComingSoonRow("Automatic backend selection")
-        }
-    }
-}
-
-@Composable
-private fun ComingSoonRow(label: String) {
-    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = "planned for a later phase",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = false, enabled = false, onCheckedChange = {})
-    }
-}
-
 /** App, model, runtime, and device information. */
 @Composable
 private fun AboutCard() {
@@ -222,24 +187,5 @@ private fun AboutRow(
             modifier = Modifier.weight(1f),
         )
         Text(text = value, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-/** On-device processing and local storage note. */
-@Composable
-private fun PrivacyCard() {
-    Card(modifier = Modifier.padding(horizontal = 12.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Privacy", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text =
-                    "All processing happens on-device. Your images and videos " +
-                        "never leave the phone; settings are stored locally with " +
-                        "Jetpack DataStore.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
