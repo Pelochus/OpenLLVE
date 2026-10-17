@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import openllve.shared.domain.BackendProbeResult
 import openllve.shared.domain.ComputeTarget
 import openllve.shared.domain.EnhancementSettings
+import kotlin.math.roundToInt
 
 /**
  * Combined configuration cards (default target + toppings). Used on the
@@ -74,7 +76,9 @@ fun ComputeTargetCard(
 /**
  * Enhancement toppings: EWMA smoothing and flicker reduction (blend). The
  * toggles decide which native filters `CoreToppings` creates for a session;
- * both run in the Rust core per frame.
+ * the sliders set the filter weights (EWMA alpha = share of the current frame,
+ * blend beta = share of the AI-enhanced frame), both applied in the Rust core
+ * per frame.
  */
 @Composable
 fun ToppingsCard(
@@ -91,10 +95,28 @@ fun ToppingsCard(
                 checked = settings.ewmaEnabled,
                 onCheckedChange = { onSettingsChange(settings.copy(ewmaEnabled = it)) },
             )
+            WeightRow(
+                label = "EWMA weight (current frame)",
+                value = settings.ewmaAlpha,
+                minValue = EWMA_ALPHA_MIN,
+                onValueChange = { alpha ->
+                    onSettingsChange(
+                        settings.copy(ewmaAlpha = alpha.coerceIn(EWMA_ALPHA_MIN..1f)),
+                    )
+                },
+            )
             ToggleRow(
                 label = "Flicker reduction",
                 checked = settings.flickerReductionEnabled,
                 onCheckedChange = { onSettingsChange(settings.copy(flickerReductionEnabled = it)) },
+            )
+            WeightRow(
+                label = "Blend weight (AI-enhanced frame)",
+                value = settings.blendBeta,
+                minValue = 0f,
+                onValueChange = { beta ->
+                    onSettingsChange(settings.copy(blendBeta = beta.coerceIn(0f..1f)))
+                },
             )
         }
     }
@@ -161,3 +183,27 @@ private fun ToggleRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+@Composable
+private fun WeightRow(
+    label: String,
+    value: Float,
+    minValue: Float,
+    onValueChange: (Float) -> Unit,
+) {
+    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "$label — ${(value * 100).roundToInt()} %",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Slider(
+            value = value.coerceIn(minValue..1f),
+            valueRange = minValue..1f,
+            onValueChange = { weighted -> onValueChange(weighted.coerceIn(minValue..1f)) },
+        )
+    }
+}
+
+private const val EWMA_ALPHA_MIN = 0.25f

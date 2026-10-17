@@ -69,7 +69,9 @@ class EnhancementViewModel(
 
     fun updateSettings(settings: EnhancementSettings) {
         AppLog.info(
-            "Settings: target=${settings.computeTarget.label}, ewma=${settings.ewmaEnabled}, flicker=${settings.flickerReductionEnabled}",
+            "Settings: target=${settings.computeTarget.label}, " +
+                "ewma=${settings.ewmaEnabled}/${settings.ewmaAlpha}, " +
+                "flicker=${settings.flickerReductionEnabled}/${settings.blendBeta}",
             "Settings",
         )
         viewModelScope.launch { settingsRepository.save(settings) }

@@ -35,12 +35,7 @@ live in `AGENTS.md`.
 1. [~] **P1.2 follow-ups — model validation on real frames.**
    - Verify the pipeline on real (non-synthetic) frames; re-confirm the global-mean
      brightness channel against upstream's 4×4 bilinear downscale.
-2. [ ] **P1.8 — Promote EWMA/blend weights to `EnhancementSettings`.** `CoreToppings`
-   keeps `EWMA_ALPHA = 0.8f` / `BLEND_BETA = 0.9f` (defaults tuned for video: alpha
-   weights the current frame — no ghosting, mild flicker damping) as constants while
-   the UI already exposes `ewmaEnabled` / `flickerReductionEnabled`; the weights are
-   the missing half.
-3. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
+2. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
    - Beyond Google Tensor: Qualcomm, then MediaTek if prebuilt libs appear. The newest
      LiteRT release that ships NPU runtime libraries at all is the **2.2.0** zip (2.3.0
      ships none); 2.3.0 added Samsung (Exynos AI LiteCore) and Intel (OpenVINO) support
@@ -51,13 +46,13 @@ live in `AGENTS.md`.
    - Per-vendor `NpuCompatibilityChecker` + the `isLibraryReady()` existence check;
      dispatch shims need the vendor runtime on-device (Tensor `libedgetpu_litert.so`,
      Qualcomm QAIRT). arm64-v8a only; JIT is Beta per vendor, AOT is the supported path.
-4. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
+3. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
    - P4.1 `bridge/ios/` Swift shim over the core's `cdylib` (core + ABI reused unchanged);
      P4.2 AVFoundation media; P4.3 Core ML / Metal inference (LiteRT stays Android-side);
      P4.4 SwiftUI on the `:shared` contracts.
    - Hard rule: nothing iOS-specific enters `core/` or `app/shared/` — one bridge crate
      per host.
-5. [ ] **P5 — App UI in the Morphe Manager style** ([MorpheApp/morphe-manager](https://github.com/MorpheApp/morphe-manager)).
+4. [ ] **P5 — App UI in the Morphe Manager style** ([MorpheApp/morphe-manager](https://github.com/MorpheApp/morphe-manager)).
    - Look-and-structure reference only: Material 3 surfaces, card + toggle layout, icon-led
      settings rows, step/progress indicators while a session runs.
    - License gate: `morphe-manager` is GPL-3.0, this repo is Apache-2.0 — imitate the design,

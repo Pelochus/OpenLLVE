@@ -26,11 +26,6 @@ class CoreToppings(
     companion object {
         private const val CHANNELS = 3
 
-        // EWMA_ALPHA weights the current frame, BLEND_BETA the AI-enhanced frame:
-        // 0.8 / 0.9 keeps video mostly current with mild shimmer damping.
-        private const val EWMA_ALPHA = 0.8f
-        private const val BLEND_BETA = 0.9f
-
         // Bytes per row for a tightly packed RGB `FloatArray` (4 bytes per element).
         private const val STRIDE_SCALE = CHANNELS * 4
 
@@ -111,13 +106,13 @@ class CoreToppings(
     private fun newEwmaHandle(): Long {
         if (!settings.ewmaEnabled) return 0L
         if (!coreReady()) return 0L
-        return bridge.ewmaFilterNew(EWMA_ALPHA)
+        return bridge.ewmaFilterNew(settings.ewmaAlpha)
     }
 
     private fun newBlendHandle(): Long {
         if (!settings.flickerReductionEnabled) return 0L
         if (!coreReady()) return 0L
-        return bridge.blendFilterNew(BLEND_BETA)
+        return bridge.blendFilterNew(settings.blendBeta)
     }
 
     /**

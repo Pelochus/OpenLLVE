@@ -10,7 +10,6 @@ this file tracks what remains.*
 | P1.5 `NativeFrameHandle` | ⚠️ open — validated (`new_checked` returns `Result`, rejects null ptr / `stride < width`), lifetime + pixel format documented; still **unused** by the FFI (raw `float*` + dimensions cross instead) |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` + `proptest` added (`serde` no longer needed — P3.6 rejected) |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer tracked at a high level only (§4 P4); the C ABI in `ffi.rs` is already complete for it |
-| P1.8 EWMA/blend weights as settings | ⚠️ open — `CoreToppings` constants `EWMA_ALPHA = 0.8f`, `BLEND_BETA = 0.9f` (80 % of the current frame: flicker damped without visible ghosting; 90 % AI-enhanced) |
 | P5 Morphe-style app UI | ⏸ parked — design reference recorded (§4 P5, `TODO.md` item 5), no UI work started |
 
 ## 1. What this repo is
@@ -47,7 +46,7 @@ benchmark harness.
 | --- | --- |
 | `core/src/ffi.rs` | The pipeline constructors and `process_frame` are exported but unused by the app, which keeps its Kotlin inference path. |
 | `AndroidLiteRtEngine.kt` | Inference is a Kotlin LiteRT implementation parallel to the Rust model path — by design; its `enhanceFrame` output does go through the Rust toppings. |
-| `CoreToppings.kt` | Applies EWMA/flicker through the Rust core per frame, but the alpha/beta weights are constants rather than `EnhancementSettings` values. |
+| `CoreToppings.kt` | Applies EWMA/flicker through the Rust core per frame; the weights are now `EnhancementSettings` values set by sliders in the settings screen. |
 
 ## 4. Suggested improvements (prioritized, remaining)
 
@@ -55,8 +54,6 @@ benchmark harness.
 
 1. **Wire `NativeFrameHandle` (P1.5) into the FFI** (pass pointer + stride + pixel
    format, validate dimensions) **or delete it** until it is used.
-2. **Expose the EWMA/blend weights as `EnhancementSettings`** (P1.8) — they are
-   `CoreToppings` constants today.
 
 ### P3 — Design follow-ups (easiest first)
 
@@ -103,6 +100,5 @@ its own bridge crate.
 The Rust core is real and the app calls it: P1.1 landed (22 JNI exports, `libbridge.so`
 in the APK, EWMA + blend applied per frame) and P1.4 landed (one frame contract in
 `core/src/frame.rs`, run by the C ABI and the JVM shim alike). Highest-leverage work
-remaining: (1) model validation on real frames (P1.2 follow-ups), (2) promote the
-EWMA/blend weights to `EnhancementSettings` (P1.8), (3) wire `NativeFrameHandle`
+remaining: (1) model validation on real frames (P1.2 follow-ups), (2) wire `NativeFrameHandle`
 into the FFI or delete it (P1.5).
