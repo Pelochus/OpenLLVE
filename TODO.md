@@ -35,7 +35,16 @@ live in `AGENTS.md`.
 1. [~] **P1.2 follow-ups — model validation on real frames.**
    - Verify the pipeline on real (non-synthetic) frames; re-confirm the global-mean
      brightness channel against upstream's 4×4 bilinear downscale.
-2. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
+2. [ ] **P1.1 follow-up — band the patch accumulation in `AndroidLiteRtEngine.enhanceFrame`.**
+   - `accum` is sized for the whole frame (`hPad * wPad * 24` floats ≈ 1.17 GB at 4000×3000), so
+     large stills exhaust the JVM heap and the process tombstones (the app-side guard that reports
+     it landed; see `docs/dev/app-fixes.md`). Fix: walk the patch grid in horizontal bands —
+     accumulate one band of rows, apply the curve planes to that band, reuse the buffer — so peak
+     memory stops at `bandHeight * wPad * 24` instead of frame height.
+   - Constraint: no device here, so validate the band math under
+     `app/platforms/android/src/test/` against the un-banded path on synthetic frames; never claim
+     device-verified results.
+3. [ ] **P3.9 — NPU: additional vendor dispatch runtimes (long-term).**
    - Beyond Google Tensor: Qualcomm, then MediaTek if prebuilt libs appear. The newest
      LiteRT release that ships NPU runtime libraries at all is the **2.2.0** zip (2.3.0
      ships none); 2.3.0 added Samsung (Exynos AI LiteCore) and Intel (OpenVINO) support
@@ -46,13 +55,13 @@ live in `AGENTS.md`.
    - Per-vendor `NpuCompatibilityChecker` + the `isLibraryReady()` existence check;
      dispatch shims need the vendor runtime on-device (Tensor `libedgetpu_litert.so`,
      Qualcomm QAIRT). arm64-v8a only; JIT is Beta per vendor, AOT is the supported path.
-3. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
+4. [ ] **P4 — iOS platform (high-level only; do not pre-write iOS code).**
    - P4.1 `bridge/ios/` Swift shim over the core's `cdylib` (core + ABI reused unchanged);
      P4.2 AVFoundation media; P4.3 Core ML / Metal inference (LiteRT stays Android-side);
      P4.4 SwiftUI on the `:shared` contracts.
    - Hard rule: nothing iOS-specific enters `core/` or `app/shared/` — one bridge crate
      per host.
-4. [ ] **P5 — App UI in the Morphe Manager style** ([MorpheApp/morphe-manager](https://github.com/MorpheApp/morphe-manager)).
+5. [ ] **P5 — App UI in the Morphe Manager style** ([MorpheApp/morphe-manager](https://github.com/MorpheApp/morphe-manager)).
    - Look-and-structure reference only: Material 3 surfaces, card + toggle layout, icon-led
      settings rows, step/progress indicators while a session runs.
    - License gate: `morphe-manager` is GPL-3.0, this repo is Apache-2.0 — imitate the design,

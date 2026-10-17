@@ -7,6 +7,7 @@ this file tracks what remains.*
 
 | Item | Status |
 | --- | --- |
+| P1.1 engine memory (oversized stills) | ⚠️ open — `OutOfMemoryError` is caught and the allocation size it was about to request is logged; the whole-frame patch accumulator still needs banding (§4 P1, `TODO.md` item 2) |
 | P1.5 `NativeFrameHandle` | ⚠️ open — validated (`new_checked` returns `Result`, rejects null ptr / `stride < width`), lifetime + pixel format documented; still **unused** by the FFI (raw `float*` + dimensions cross instead) |
 | P3.3 crate additions | ⚠️ partial — `bytemuck` + `proptest` added (`serde` no longer needed — P3.6 rejected) |
 | P4.1 iOS platform (high-level) | ⚠️ open — iOS is a separate host layer tracked at a high level only (§4 P4); the C ABI in `ffi.rs` is already complete for it |
@@ -46,6 +47,7 @@ benchmark harness.
 | --- | --- |
 | `core/src/ffi.rs` | The pipeline constructors and `process_frame` are exported but unused by the app, which keeps its Kotlin inference path. |
 | `AndroidLiteRtEngine.kt` | Inference is a Kotlin LiteRT implementation parallel to the Rust model path — by design; its `enhanceFrame` output does go through the Rust toppings. |
+| `AndroidLiteRtEngine.kt` | `enhanceFrame` sizes its patch accumulator for the whole frame (`hPad * wPad * 24` floats), so peak memory scales with image area and large stills exhaust the JVM heap; banding it is `TODO.md` item 2. |
 | `CoreToppings.kt` | Applies EWMA/flicker through the Rust core per frame; the weights are now `EnhancementSettings` values set by sliders in the settings screen. |
 
 ## 4. Suggested improvements (prioritized, remaining)
@@ -54,6 +56,9 @@ benchmark harness.
 
 1. **Wire `NativeFrameHandle` (P1.5) into the FFI** (pass pointer + stride + pixel
    format, validate dimensions) **or delete it** until it is used.
+2. **Band the patch accumulation in `AndroidLiteRtEngine.enhanceFrame`** so peak memory is
+   band-sized, not frame-sized (`TODO.md` item 2). The app-side guard that reports the failure
+   already landed (`docs/dev/app-fixes.md`); the fix is what makes large stills work.
 
 ### P3 — Design follow-ups (easiest first)
 
