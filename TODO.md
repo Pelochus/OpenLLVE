@@ -13,7 +13,7 @@ live in `AGENTS.md`.
    `docs/dev/app-fixes.md` — fixes already applied and vendor/platform dead ends
    (**do not re-attempt**).
 
-## Current state (2026-10-12)
+## Current state (2026-10-17)
 
 - **Rust core**: 50 unit + 8 property + 4 FFI-fuzz + 3 filter-property tests green,
   clippy/fmt clean; FFI hardened (error codes, `openllve_abi_version`), the frame
@@ -25,7 +25,9 @@ live in `AGENTS.md`.
   as a raw file, new models as submodules); app assets symlink to it.
 - **Android app**: functional vertical slice (Compose UI, LiteRT engine, MediaCodec
   decode, DataStore settings) over the `:shared` KMP contracts; EWMA + blend run in
-  the Rust core per frame.
+  the Rust core per frame, with their weights as `EnhancementSettings` values set by
+  sliders (P1.8). Oversized stills now report an error banner instead of tombstoning;
+  banding the patch accumulation is item 2 below.
 - **CI**: `android-ci.yml` (ktlint, androidLint, test, assemble), `rust-core.yml`
   (test, clippy, fmt), `release.yml` (on `v*` tags), `docker-image.yml` (push to
   `dev`/`main` → GHCR `ghcr.io/pelochus/openllve-dev:latest`).

@@ -10,7 +10,8 @@ dead ends. Open app work lives in `TODO.md`, not here.
 | --- | --- |
 | CPU: "output tensor not found" on configure | `AndroidLiteRtEngine` queries the output dtype with the **signature** output name (`output_0`) instead of the graph tensor name (`StatefulPartitionedCall_1:0`); verified against the model with the LiteRT C API (`TfLiteSignatureRunnerGetOutputName`). |
 | NPU: "not available" on Tensor devices (e.g. Pixel 10 Pro) | LiteRT's `Environment.create(context)` never registers the NPU accelerator, so the app bundles the Google Tensor dispatch runtime (`libLiteRtDispatch_GoogleTensor.so` + `libLiteRtCompilerPlugin_google_tensor.so` from the LiteRT 2.2.0 release zip — the newest release that ships NPU libraries) into `app/platforms/android/src/main/jniLibs/arm64-v8a/` and builds the environment with a `TensorNpuProvider` (`NpuAcceleratorProvider`) exposing the native library directory; the environment is passed to `CompiledModel.create`. |
-| Settings screen too similar to the home screen | Settings now has **Default compute target** (selector moved from home), **Enhancement toppings** (EWMA + flicker), **Coming soon** placeholder toggles, **About** (version, model, runtime, device/SoC), and **Privacy**; home shows a read-only "Current configuration" summary that opens Settings. |
+| Settings screen too similar to the home screen | Settings now has **Default compute target** (selector moved from home), **Enhancement toppings** (EWMA + flicker toggles and weight sliders), **Logs**, and **About** (version, model, runtime, device/SoC); home shows a read-only "Current configuration" summary that opens Settings. |
+| Settings showed decorative "Coming soon" and "Privacy" cards | Both deleted: roadmap placeholders with no backing code, and a note that only restates on-device processing. **About** was kept because it is dynamic (`BuildConfig` + `Build.*` read at runtime, not hard-coded identity). |
 | No way to inspect app behaviour on-device | New **Logs** section in Settings: in-memory ring buffer (last 1000 entries, shared KMP `LogBuffer`) with **View logs** (monospace viewer), **Save to file…** (Storage Access Framework, no permissions), and **Clear**; critical areas instrumented (probe results, NPU provider status, configure fallback reasons, per-frame timing, decode progress), every entry mirrored to logcat under tag `OpenLLVE`. |
 | Image enhancement hard-crashed (tombstone) on large stills | `OutOfMemoryError` is not an `Exception`, so the image path's catch never saw it: `EnhancementViewModel` now catches it and shows the normal error banner, and `AndroidLiteRtEngine.enhanceFrame` logs the patch-accumulation size **before** allocating, so a run that still dies leaves the number it requested in Settings → Logs. Root cause is the whole-frame accumulator (`hPad * wPad * 24` floats ≈ 1.17 GB at 4000×3000) — banding it is `TODO.md` item 2; this guard makes the failure reportable, it does not make large stills work. |
 | Gradle 177 parse errors on `app/build.gradle.kts` | Comment cleanup swallowed the `signingConfig = if (signingConfigs.names.contains("release")) {` line into the comment above it; the if-expression is restored (release signing opt-in unchanged). |
@@ -51,5 +52,10 @@ dead ends. Open app work lives in `TODO.md`, not here.
 - **The log buffer is RAM-only** (last 1000 entries, cleared on restart; "Save to
   file" keeps a copy). `LogBuffer` lives in the KMP layer so a future host reuses it
   with its own mirroring and viewer.
-- UI labels for the toppings still read "prototype — applied by the native
-  pipeline"; reword once they are verified on a device.
+- **Topping labels describe what the core now does** ("EWMA (temporal smoothing)",
+  "EWMA weight (current frame)", "Flicker reduction", "Blend weight (AI-enhanced frame)");
+  the weights are applied per frame in Rust, but the visual effect is still unverified on
+  hardware — no device here.
+- **About's "Model" and "Runtime" rows are static strings** ("Zero-DCE (DCE-Net), INT8",
+  "LiteRT 2.3.0 …") while device/SoC/version rows are read at runtime; they must be edited
+  whenever the asset or the bundled runtime changes.

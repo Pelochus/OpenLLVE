@@ -131,7 +131,8 @@ strings, themes), `assets/models/` (`zero-dce-int8.tflite`),
   dispatch libs) are **not app bugs** — see `docs/dev/app-fixes.md` before
   "fixing" them.
 - EWMA/flicker toggles are real settings and their computation now runs in
-  the Rust core through the JNI bridge (P1.1); the weights are `CoreToppings`
-  constants until P1.8 promotes them to `EnhancementSettings`.
+  the Rust core through the JNI bridge (P1.1); the weights are `EnhancementSettings`
+  values (`ewmaAlpha`, clamped to ≥ 0.25; `blendBeta`) set by sliders in the settings
+  screen — `CoreToppings` only forwards them to the native filters.
 - No Android device hardware available: end-to-end NPU/GPU validation
   cannot be done here; never claim device-verified results.
